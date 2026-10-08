@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     # Telegram Bot
     TELEGRAM_BOT_TOKEN: str = ""
     TELEGRAM_ALLOWED_USER_ID: int = 0
+    TELEGRAM_WEBHOOK_SECRET: str = ""
 
     # External APIs
     GOOGLE_PLACES_API_KEY: str = ""

@@ -109,6 +109,7 @@ class AgentEngine:
         chat_id: Optional[int],
         user_message: str,
         user_location: Optional[tuple[float, float]] = None,
+        conversation_history: Optional[list[dict[str, str]]] = None,
         on_progress: Optional[Callable[[str], Awaitable[None]]] = None,
     ) -> str:
         """自研 OpenAI-Format Agent Loop 核心入口"""
@@ -127,6 +128,14 @@ class AgentEngine:
                     "content": f"[當前系統座標情境] 使用者目前的 GPS 座標為：緯度 {lat}, 經度 {lng}。",
                 }
             )
+
+        # 帶入前幾輪對話歷史上下文
+        if conversation_history:
+            for item in conversation_history:
+                role = item.get("role", "user")
+                content = item.get("content", "")
+                if role in ["user", "assistant"] and content:
+                    messages.append({"role": role, "content": content})
 
         messages.append({"role": "user", "content": user_message})
 

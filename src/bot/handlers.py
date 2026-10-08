@@ -88,7 +88,7 @@ class TelegramBotHandler:
             )
             return
 
-        # 查詢上次位置記憶
+        # 查詢對話歷史與位置記憶
         user_location: Optional[tuple[float, float]] = None
         session = await self.session_repo.get_session(chat_id)
         if session and session.get("last_location_lat") and session.get("last_location_lng"):
@@ -96,6 +96,8 @@ class TelegramBotHandler:
                 float(session["last_location_lat"]),
                 float(session["last_location_lng"]),
             )
+
+        history = await self.session_repo.get_recent_history(chat_id, max_turns=3)
 
         # 發送初始思考訊息，取得 message_id
         status_msg_id = await self._send_telegram_message(
@@ -107,13 +109,22 @@ class TelegramBotHandler:
             if status_msg_id:
                 await self._edit_telegram_message(chat_id, status_msg_id, status_text)
 
-        # 執行 Agent Loop
+        # 執行 Agent Loop (附帶歷史紀錄)
         final_response = await self.agent_engine.run_agent(
             chat_id=chat_id,
             user_message=text,
             user_location=user_location,
+            conversation_history=history,
             on_progress=on_progress,
         )
+
+        # 紀錄本輪對話至 Session
+        try:
+            await self.session_repo.add_conversation_turn(
+                chat_id=chat_id, user_message=text, assistant_response=final_response
+            )
+        except Exception as e:
+            logger.warning(f"Could not save conversation turn to DB: {e}")
 
         # 最終呈現 Agent 結果
         if status_msg_id:

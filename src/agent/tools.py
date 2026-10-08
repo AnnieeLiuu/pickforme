@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from src.db.repositories.restaurant import RestaurantRepository
@@ -137,7 +138,7 @@ class AgentToolExecutor:
         if not google_place_id:
             return json.dumps({"error": "google_place_id is required"}, ensure_ascii=False)
 
-        # 1. 檢查 DB 是否已有快取
+        # 1. 檢查 DB 是否已有快取 (包含 7 天 TTL 驗證)
         cached = None
         try:
             cached = await self.restaurant_repo.get_by_google_place_id(google_place_id)
@@ -145,22 +146,34 @@ class AgentToolExecutor:
             logger.warning(f"DB lookup failed for place_id {google_place_id}: {e}")
 
         if cached and cached.get("tabelog_rating"):
-            return json.dumps(
-                {
-                    "google_place_id": google_place_id,
-                    "tabelog_url": cached.get("tabelog_url"),
-                    "name_ja": cached.get("name_ja"),
-                    "tabelog_rating": float(cached["tabelog_rating"]) if cached.get("tabelog_rating") else None,
-                    "review_count": cached.get("review_count"),
-                    "price_lunch": cached.get("price_lunch"),
-                    "price_dinner": cached.get("price_dinner"),
-                    "match_confidence": float(cached["match_confidence"]) if cached.get("match_confidence") else 1.0,
-                    "cached": True,
-                },
-                ensure_ascii=False,
-            )
+            updated_at = cached.get("updated_at")
+            is_fresh = True
+            if updated_at and isinstance(updated_at, datetime):
+                now = datetime.now(timezone.utc)
+                if updated_at.tzinfo is None:
+                    updated_at = updated_at.replace(tzinfo=timezone.utc)
+                age_days = (now - updated_at).days
+                if age_days >= 7:
+                    logger.info(f"Tabelog cache for {google_place_id} is stale ({age_days} days old), refreshing...")
+                    is_fresh = False
 
-        # 2. 無快取，進行實體比對與抓取
+            if is_fresh:
+                return json.dumps(
+                    {
+                        "google_place_id": google_place_id,
+                        "tabelog_url": cached.get("tabelog_url"),
+                        "name_ja": cached.get("name_ja"),
+                        "tabelog_rating": float(cached["tabelog_rating"]) if cached.get("tabelog_rating") else None,
+                        "review_count": cached.get("review_count"),
+                        "price_lunch": cached.get("price_lunch"),
+                        "price_dinner": cached.get("price_dinner"),
+                        "match_confidence": float(cached["match_confidence"]) if cached.get("match_confidence") else 1.0,
+                        "cached": True,
+                    },
+                    ensure_ascii=False,
+                )
+
+        # 2. 無快取或快取已過期 7 天，進行實體比對與抓取
         store_name = args.get("store_name", "")
         phone = args.get("phone", "")
         lat = args.get("lat", 0.0)
