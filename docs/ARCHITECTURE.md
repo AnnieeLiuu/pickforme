@@ -167,10 +167,19 @@ CREATE TABLE restaurant_insights (
 
 ### C. 預熱與防封鎖機制
 - **預熱佇列**：使用 Neon `prewarm_jobs` 表搭配 `FOR UPDATE SKIP LOCKED`。
-- **執行環境**：出發前於家用電腦執行 Local Worker（家用 IP 不易被封鎖）；旅行期間於 Cloud Run 抓取，但加入 Rate Limit (每 2-3 秒 1 次)。若遇封鎖或逾時，自動降級僅顯示 Google Places 評分。
-
-### D. Phase B: 跨語言與向量小實驗 (Phase 2 前置)
-- **實驗設計**：比較「中文問句直接搜尋日文 Embedding」、「問句先翻譯成日文」、「評論全部翻譯成中文」三者的 Recall@5 與 Token 成本，決定是否需要大規模翻譯。
+### E. 工程維護品質與軟體最佳實踐 (Engineering & Maintainability Practices)
+- **品質防線與 CI 守門 (Code Quality Gates)**：
+  - **靜態檢查與型別標註**：全面採用 `ruff` (代碼規範/格式化) 與 `mypy` (Python 3.11 嚴格型別校驗)，確保程式碼可讀性與型別安全。
+  - **自動化測試與覆蓋率**：建立 23 項覆蓋核心邏輯之單元測試，整合 `pytest-cov` Cobertura XML 報告與 GitLab CI/CD Pipeline (`.gitlab-ci.yml`)，未通過品質關卡禁止合併主線。
+- **資安防護與存取控制 (Security & Access Control)**：
+  - **Telegram Webhook Secret Token 驗證**：要求驗證 `X-Telegram-Bot-Api-Secret-Token` 標頭，防止惡意流量觸發 Cloud Run。
+  - **白名單過濾**：以 `TELEGRAM_ALLOWED_USER_ID` 限制存取權限。
+  - **GitLab Secret Detection**：引入 CI 密鑰洩漏檢測模板，確保 API Keys 不外洩。
+- **快取維護與對話記憶 (Cache TTL & Session Context)**：
+  - **7 天 Tabelog 快取 TTL**：Neon DB 快取超過 7 天自動觸發背景爬蟲刷新，平衡評分即時性與抓取頻率。
+  - **3 輪對話歷史記憶**：`chat_sessions` 自動保存最近 3 輪對話內容，支援自然語言追問（如「第 2 家有開嗎？」）。
+- **OTel 格式 Trace 可觀測性 (Structured Observability)**：
+  - 每筆 Agent 執行同步記錄至 Neon `agent_runs` 與 `agent_steps`，量化分析 Model 降級率、Tool Latency (ms) 與 Token 成本。
 
 ---
 
