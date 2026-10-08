@@ -1,5 +1,6 @@
 import logging
 from typing import AsyncGenerator
+
 import psycopg
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
