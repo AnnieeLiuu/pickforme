@@ -1,0 +1,26 @@
+# API 金鑰與敏感環境變數 (極度重要)
+.env
+*.env.local
+gemini-key.txt
+groq-key.txt
+
+# Python 編譯與虛擬環境
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# 測試與 CI 產生檔案
+report.xml
+coverage.xml
+.coverage
+
+# IDE 與系統檔
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

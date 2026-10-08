@@ -1,0 +1,31 @@
+stages:
+  - lint
+  - type-check
+  - test
+
+default:
+  image: python:3.11-slim
+  before_script:
+    - python -m pip install --upgrade pip
+    - pip install -r requirements.txt
+
+lint-job:
+  stage: lint
+  script:
+    - pip install ruff
+    - ruff check src/ tests/
+
+typecheck-job:
+  stage: type-check
+  script:
+    - pip install mypy
+    - mypy src/
+
+pytest-job:
+  stage: test
+  script:
+    - pytest tests/ -v --junitxml=report.xml
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
