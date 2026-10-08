@@ -1,13 +1,13 @@
-import json
-from pathlib import Path
-import re
-import math
-from difflib import SequenceMatcher
 import logging
+import math
+import re
+from difflib import SequenceMatcher
+from pathlib import Path
 from typing import Any, Optional
-from pydantic import BaseModel
+
 from google import genai
 from google.genai import types
+from pydantic import BaseModel
 
 from src.config import settings
 
@@ -38,13 +38,13 @@ def normalize_japanese_phone(phone: Optional[str]) -> str:
     """日本電話號碼正規化：+81 轉 0，移除所有非數字字元"""
     if not phone:
         return ""
-    
+
     cleaned = phone.strip()
     if cleaned.startswith("+81"):
         cleaned = "0" + cleaned[3:]
     elif cleaned.startswith("81") and len(cleaned) > 9:
         cleaned = "0" + cleaned[2:]
-        
+
     return re.sub(r"\D", "", cleaned)
 
 
@@ -52,7 +52,7 @@ def normalize_store_name(name: str) -> str:
     """店名正規化：全形轉半形、漢字同義轉譯、去除標點與空格"""
     if not name:
         return ""
-    
+
     # 1. 繁日漢字同義轉譯
     for trad, jp in KANJI_NORMALIZE_MAP.items():
         name = name.replace(trad, jp)
@@ -68,7 +68,7 @@ def normalize_store_name(name: str) -> str:
         else:
             result.append(char)
     normalized = "".join(result).lower()
-    
+
     # 3. 移除中日半全形空白與常見標點
     normalized = re.sub(r"[\s\-\_\·\・\(\)\[\]「」『』【】]", "", normalized)
     return normalized
@@ -133,7 +133,7 @@ class EntityResolver:
         # Step 2: 店名相似度 + 距離計算
         for cand in tabelog_candidates:
             sim_score = calculate_string_similarity(google_name, cand.get("name_ja", ""))
-            
+
             cand_lat = cand.get("lat")
             cand_lng = cand.get("lng")
             dist_penalty = 0.0
