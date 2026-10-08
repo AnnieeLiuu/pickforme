@@ -1,0 +1,38 @@
+[
+  {
+    "id": "ChIJN1t_tDeuEmsRUsoyG83frY4",
+    "displayName": {
+      "text": "創始面屋武蔵",
+      "languageCode": "ja"
+    },
+    "nationalPhoneNumber": "03-3363-4690",
+    "location": {
+      "latitude": 35.6938,
+      "longitude": 139.7034
+    },
+    "rating": 4.2,
+    "userRatingCount": 1250,
+    "formattedAddress": "東京都新宿區西新宿7-2-6",
+    "regularOpeningHours": {
+      "openNow": true
+    }
+  },
+  {
+    "id": "ChIJ_3_fake_hakata_ichiran",
+    "displayName": {
+      "text": "一蘭 博多店",
+      "languageCode": "ja"
+    },
+    "internationalPhoneNumber": "+81 92-263-7585",
+    "location": {
+      "latitude": 33.5902,
+      "longitude": 130.4207
+    },
+    "rating": 4.4,
+    "userRatingCount": 3400,
+    "formattedAddress": "福岡縣福岡市博多區中洲5-3-2",
+    "regularOpeningHours": {
+      "openNow": true
+    }
+  }
+]
