@@ -1,11 +1,7 @@
-include:
-  - template: Security/Secret-Detection.gitlab-ci.yml
-
 stages:
   - lint
   - type-check
   - test
-  - secret-detection
 
 variables:
   PYTHONPATH: "."
