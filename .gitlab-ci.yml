@@ -7,22 +7,24 @@ stages:
   - test
   - secret-detection
 
+variables:
+  PYTHONPATH: "."
+
 default:
   image: python:3.11-slim
   before_script:
     - python -m pip install --upgrade pip
     - pip install -r requirements.txt
+    - pip install -e .
 
 lint-job:
   stage: lint
   script:
-    - pip install ruff
     - ruff check src/ tests/
 
 typecheck-job:
   stage: type-check
   script:
-    - pip install mypy
     - mypy src/
 
 pytest-job:
