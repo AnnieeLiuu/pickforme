@@ -153,6 +153,12 @@ class AgentEngine:
             usage = data.get("usage", {})
             total_tokens = usage.get("total_tokens", 0)
 
+            # 防禦空回應：若模型既無 content 亦無 tool_calls，視為無效回應觸發 Failover
+            content_str = (message_obj.get("content") or "").strip()
+            tool_calls = message_obj.get("tool_calls")
+            if not content_str and not tool_calls:
+                raise ValueError(f"Model {model} returned empty response (no content and no tool_calls)")
+
             return message_obj, total_tokens
 
     async def run_agent(
@@ -233,7 +239,8 @@ class AgentEngine:
 
             # 1. 無 Tool Call ➡️ LLM 回覆最終答案
             if not tool_calls:
-                final_answer = str(message_obj.get("content", "抱歉，無法處理您的請求。"))
+                raw_content = message_obj.get("content") or ""
+                final_answer = str(raw_content).strip() or "抱歉，目前無法處理您的請求，請稍後再試。"
                 await self.trace_logger.finish_run(
                     status="completed",
                     model_used=last_model_used,
