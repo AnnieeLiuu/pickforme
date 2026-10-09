@@ -1,3 +1,4 @@
+import json
 import logging
 import math
 import re
@@ -5,11 +6,7 @@ from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any, Optional
 
-from google import genai
-from google.genai import types
 from pydantic import BaseModel
-
-from src.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -98,9 +95,18 @@ def calculate_string_similarity(s1: str, s2: str) -> float:
 
 
 class EntityResolver:
-    def __init__(self, gemini_api_key: Optional[str] = None):
-        self.api_key = gemini_api_key or settings.GEMINI_API_KEY
-        self.ai_client = genai.Client(api_key=self.api_key) if self.api_key else None
+    def __init__(self, agent_engine: Optional[Any] = None, gemini_api_key: Optional[str] = None):
+        self._agent_engine = agent_engine
+
+    def _get_engine(self) -> Any:
+        if self._agent_engine is None:
+            from src.agent.core import AgentEngine
+            from src.agent.tools import AgentToolExecutor
+
+            # 使用獨立的 AgentToolExecutor(entity_resolver=self) 防止循環遞迴
+            tool_executor = AgentToolExecutor(entity_resolver=self)
+            self._agent_engine = AgentEngine(tool_executor=tool_executor)
+        return self._agent_engine
 
     async def resolve_entity(
         self, google_store: dict[str, Any], tabelog_candidates: list[dict[str, Any]]
@@ -162,7 +168,7 @@ class EntityResolver:
             }
 
         # Step 3: LLM 灰色地帶判定 (0.60 ~ 0.85)
-        if best_candidate and 0.60 <= best_score < 0.85 and self.ai_client:
+        if best_candidate and 0.60 <= best_score < 0.85:
             llm_result = await self._verify_with_llm(google_store, best_candidate)
             if llm_result and llm_result.is_same_store:
                 return {
@@ -184,10 +190,7 @@ class EntityResolver:
     async def _verify_with_llm(
         self, google_store: dict[str, Any], tabelog_candidate: dict[str, Any]
     ) -> Optional[EntityVerifyResponse]:
-        """呼叫 Gemini Flash 進行灰色地帶比對 (Structured Output)"""
-        if not self.ai_client:
-            return None
-
+        """使用 AgentEngine 多模型自動降級進行灰色地帶比對 (Gemini ➡️ Groq Failover)"""
         prompt_path = Path(__file__).parent.parent.parent / "config" / "prompts" / "entity_verify.md"
         system_instruction = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else "比對兩家餐廳是否相同"
 
@@ -205,19 +208,23 @@ Tabelog 店家資料:
 """
 
         try:
-            response = self.ai_client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=user_content,
-                config=types.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                    temperature=0.0,
-                    response_mime_type="application/json",
-                    response_schema=EntityVerifyResponse,
-                ),
+            prompt = (
+                f"{system_instruction}\n\n"
+                f"{user_content}\n\n"
+                "請嚴格只回傳以下 JSON 格式（切勿包含任何 Markdown 標記或額外文字）：\n"
+                '{"is_same_store": true, "confidence": 0.95, "reason": "店名相同且座標吻合"}'
             )
-            if response.text:
-                return EntityVerifyResponse.model_validate_json(response.text)
+            messages = [{"role": "user", "content": prompt}]
+            engine = self._get_engine()
+            msg_obj, model_used, _ = await engine.call_llm_with_failover(messages)
+            raw_text = msg_obj.get("content", "").strip()
+            cleaned_text = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_text, flags=re.MULTILINE).strip()
+            data = json.loads(cleaned_text)
+            return EntityVerifyResponse(
+                is_same_store=bool(data.get("is_same_store", False)),
+                confidence=float(data.get("confidence", 0.0)),
+                reason=str(data.get("reason", f"由 {model_used} 驗證完成")),
+            )
         except Exception as e:
-            logger.error(f"Error calling Gemini LLM for entity verification: {e}")
+            logger.error(f"Error calling AgentEngine for entity verification: {e}")
             return None
-        return None
