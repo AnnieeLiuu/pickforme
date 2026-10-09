@@ -55,7 +55,7 @@ class AgentEngine:
 
         # 2. 備援降級 1：Groq Qwen 3.8 27B (Fallback 1)
         if settings.GROQ_API_KEY:
-            for fallback_model in ["qwen/qwen3.8-27b", "llama-3.1-8b-instant"]:
+            for fallback_model in ["qwen/qwen3.8-27b"]:
                 try:
                     msg_resp, tokens = await self._call_openai_compatible_api(
                         url=GROQ_OPENAI_URL,
@@ -104,6 +104,11 @@ class AgentEngine:
 
         async with httpx.AsyncClient(timeout=20.0) as client:
             resp = await client.post(url, json=body, headers=headers)
+            if resp.status_code == 429:
+                logger.warning(f"LLM API ({model}) 觸發 Rate Limit (429)，等待 2.5 秒後進行自動重試...")
+                await asyncio.sleep(2.5)
+                resp = await client.post(url, json=body, headers=headers)
+
             if resp.status_code >= 400:
                 logger.error(f"LLM API Error ({model}) HTTP {resp.status_code}: {resp.text[:500]}")
                 resp.raise_for_status()
