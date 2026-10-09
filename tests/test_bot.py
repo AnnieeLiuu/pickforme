@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from httpx import ASGITransport, AsyncClient
 from src.bot.handlers import TelegramBotHandler, is_update_processed
+from src.config import settings
 from src.main import app
 
 
@@ -76,8 +77,12 @@ async def test_telegram_webhook_fastapi_endpoint():
             },
         }
 
+        headers = {}
+        if settings.TELEGRAM_WEBHOOK_SECRET:
+            headers["X-Telegram-Bot-Api-Secret-Token"] = settings.TELEGRAM_WEBHOOK_SECRET
+
         with patch("src.bot.webhook.bot_handler.handle_update", new_callable=AsyncMock) as mock_handle:
-            resp = await ac.post("/api/telegram/webhook", json=webhook_payload)
+            resp = await ac.post("/api/telegram/webhook", json=webhook_payload, headers=headers)
             assert resp.status_code == 200
             assert resp.json() == {"status": "ok"}
             mock_handle.assert_called_once()
