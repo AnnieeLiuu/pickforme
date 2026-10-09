@@ -152,12 +152,13 @@ class TelegramBotHandler:
 
             if area:
                 try:
-                    job_id = await self.prewarm_repo.create_job(area_name=area, target_count=20)
+                    job_id = await self.prewarm_repo.create_job(area_name=area, target_count=20, chat_id=chat_id)
                     reply_msg = (
                         f"♨️ **已成功將「{area}」排入 Neon 預熱佇列！**\n\n"
                         f"🆔 **任務 ID**：`{job_id}`\n"
                         f"🎯 **目標數量**：20 家高評價餐廳\n"
-                        f"🔄 **狀態**：`pending`（等待背景 Worker 快取）\n\n"
+                        f"🔄 **狀態**：`pending`（等待背景 Worker 快取）\n"
+                        f"🔔 **推播提醒**：預熱完成時，PickForMe 將自動在此發訊通知您！\n\n"
                         f"💡 背景 Worker 將自動為您鎖定該地標，預先抓取 Google Places 與 Tabelog 評分並存入資料庫！"
                     )
                     await self._send_telegram_message(chat_id, reply_msg)
@@ -253,6 +254,8 @@ class TelegramBotHandler:
         """編輯已發送的 Telegram 訊息以達成串流效果，支援 Markdown 並含降級機制"""
         if not self.bot:
             logger.warning(f"[Mock Bot Edit] msg_id={message_id}: {text}")
+            return
+        if not text or not text.strip():
             return
         try:
             await self.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text, parse_mode="Markdown")

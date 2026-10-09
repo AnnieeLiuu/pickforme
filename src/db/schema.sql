@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS chat_sessions (
 -- 4. 預熱工作佇列 (SKIP LOCKED)
 CREATE TABLE IF NOT EXISTS prewarm_jobs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    chat_id BIGINT,
     area_name VARCHAR(100) NOT NULL,
     status VARCHAR(20) DEFAULT 'pending',
     target_count INT DEFAULT 20,

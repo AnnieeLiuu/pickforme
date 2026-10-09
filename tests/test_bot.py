@@ -107,7 +107,7 @@ async def test_telegram_handler_prewarm_command():
 
     with patch("src.config.settings.TELEGRAM_ALLOWED_USER_ID", 0):
         await handler.handle_update(prewarm_update)
-        mock_prewarm.create_job.assert_called_once_with(area_name="新宿御苑", target_count=20)
+        mock_prewarm.create_job.assert_called_once_with(area_name="新宿御苑", target_count=20, chat_id=100)
         mock_bot.send_message.assert_called_once()
         args = mock_bot.send_message.call_args[1]
         assert "新宿御苑" in args["text"]

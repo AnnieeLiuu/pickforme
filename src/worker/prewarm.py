@@ -2,11 +2,13 @@ import asyncio
 import logging
 from typing import Optional
 
+from src.config import settings
 from src.db.repositories.prewarm import PrewarmRepository
 from src.db.repositories.restaurant import RestaurantRepository
 from src.services.entity_resolver import EntityResolver
 from src.services.google_places import GooglePlacesClient
 from src.services.tabelog_scraper import TabelogScraper
+from telegram import Bot
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +22,7 @@ class PrewarmWorker:
         entity_resolver: Optional[EntityResolver] = None,
         restaurant_repo: Optional[RestaurantRepository] = None,
         scrape_delay_sec: float = 2.0,
+        bot: Optional[Bot] = None,
     ):
         self.prewarm_repo = prewarm_repo or PrewarmRepository()
         self.places_client = places_client or GooglePlacesClient()
@@ -27,6 +30,7 @@ class PrewarmWorker:
         self.entity_resolver = entity_resolver or EntityResolver()
         self.restaurant_repo = restaurant_repo or RestaurantRepository()
         self.scrape_delay_sec = scrape_delay_sec
+        self.bot = bot or (Bot(token=settings.TELEGRAM_BOT_TOKEN) if settings.TELEGRAM_BOT_TOKEN else None)
 
     async def process_next_job(self) -> bool:
         """從佇列鎖定並處理下一筆 pending 預熱任務"""
@@ -114,6 +118,21 @@ class PrewarmWorker:
 
             await self.prewarm_repo.update_job_status(job_id, "completed")
             logger.info(f"Successfully completed prewarm job for area '{area_name}' ({saved_count} stores processed)")
+
+            # 若任務有綁定使用者 chat_id，主動推播 Telegram 完成通知
+            chat_id = job.get("chat_id")
+            if self.bot and chat_id:
+                try:
+                    notify_text = (
+                        f"🔔 **【{area_name}】美食快取預熱完成！**\n\n"
+                        f"🍱 系統已為您成功建立 **{saved_count} 家** 熱門名店與評分資料。\n\n"
+                        f"💡 您現在可以隨時詢問：「推薦 {area_name} 的美食」，享受秒速回覆體驗！"
+                    )
+                    await self.bot.send_message(chat_id=chat_id, text=notify_text, parse_mode="Markdown")
+                    logger.info(f"Sent prewarm completion notification to chat {chat_id}")
+                except Exception as notify_err:
+                    logger.warning(f"Failed to send completion notification to chat {chat_id}: {notify_err}")
+
             return True
 
         except Exception as e:

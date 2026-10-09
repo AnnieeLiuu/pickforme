@@ -8,18 +8,18 @@ logger = logging.getLogger(__name__)
 
 
 class PrewarmRepository:
-    async def create_job(self, area_name: str, target_count: int = 20) -> UUID:
-        """新增一筆預熱區域任務"""
+    async def create_job(self, area_name: str, target_count: int = 20, chat_id: Optional[int] = None) -> UUID:
+        """新增一筆預熱區域任務 (可綁定 chat_id 以支援完成推播)"""
         job_id = uuid4()
         pool = await get_db_pool()
         sql = """
-            INSERT INTO prewarm_jobs (id, area_name, target_count, status, created_at, updated_at)
-            VALUES (%s, %s, %s, 'pending', NOW(), NOW())
+            INSERT INTO prewarm_jobs (id, chat_id, area_name, target_count, status, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, 'pending', NOW(), NOW())
             RETURNING id;
         """
         async with pool.connection() as conn:
             async with conn.cursor() as cur:
-                await cur.execute(sql, (job_id, area_name, target_count))
+                await cur.execute(sql, (job_id, chat_id, area_name, target_count))
                 await conn.commit()
         return job_id
 
@@ -27,7 +27,7 @@ class PrewarmRepository:
         """以 FOR UPDATE SKIP LOCKED 取出下一筆 pending 任務並切換為 processing"""
         pool = await get_db_pool()
         find_and_lock_sql = """
-            SELECT id, area_name, target_count, status, created_at, updated_at
+            SELECT id, chat_id, area_name, target_count, status, created_at, updated_at
             FROM prewarm_jobs
             WHERE status = 'pending'
             ORDER BY created_at ASC

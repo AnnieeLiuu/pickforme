@@ -109,3 +109,34 @@ async def test_prewarm_worker_with_food_category():
     assert processed is True
     mock_places_client.geocode_location.assert_called_once_with("新宿御苑")
     mock_places_client.search_nearby.assert_called_once_with(lat=35.685, lng=139.710, radius=800, keyword="拉麵")
+
+
+@pytest.mark.asyncio
+async def test_prewarm_worker_notification_on_completion():
+    mock_repo = AsyncMock(spec=PrewarmRepository)
+    mock_repo.get_next_pending_job.return_value = {
+        "id": "job_notify_1",
+        "chat_id": 998877,
+        "area_name": "澀谷",
+        "target_count": 5,
+    }
+
+    mock_places_client = AsyncMock()
+    mock_places_client.geocode_location.return_value = (35.658, 139.701)
+    mock_places_client.search_nearby.return_value = []
+
+    mock_bot = AsyncMock()
+
+    worker = PrewarmWorker(
+        prewarm_repo=mock_repo,
+        places_client=mock_places_client,
+        bot=mock_bot,
+    )
+    processed = await worker.process_next_job()
+
+    assert processed is True
+    mock_bot.send_message.assert_called_once()
+    call_args = mock_bot.send_message.call_args[1]
+    assert call_args["chat_id"] == 998877
+    assert "澀谷" in call_args["text"]
+    assert "預熱完成" in call_args["text"]
