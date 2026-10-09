@@ -44,25 +44,25 @@ class AgentEngine:
                 msg_resp, tokens = await self._call_openai_compatible_api(
                     url=GEMINI_OPENAI_URL,
                     api_key=settings.GEMINI_API_KEY,
-                    model="gemini-2.0-flash",
+                    model="gemini-3.8-flash",
                     messages=messages,
                     tools=TOOL_SCHEMAS,
                 )
-                return msg_resp, "gemini-2.0-flash", tokens
+                return msg_resp, "gemini-3.8-flash", tokens
             except Exception as e:
                 logger.warning(f"Primary Gemini Flash LLM call failed: {e}. Attempting failover to Groq...")
 
-        # 2. 備援降級：Groq Llama 3.3 (Fallback)
+        # 2. 備援降級：Groq Qwen 3.8 / GPT-OSS (Fallback)
         if settings.GROQ_API_KEY:
             try:
                 msg_resp, tokens = await self._call_openai_compatible_api(
                     url=GROQ_OPENAI_URL,
                     api_key=settings.GROQ_API_KEY,
-                    model="llama-3.3-70b-versatile",
+                    model="qwen/qwen3.8-27b",
                     messages=messages,
                     tools=TOOL_SCHEMAS,
                 )
-                return msg_resp, "llama-3.3-70b-versatile", tokens
+                return msg_resp, "qwen/qwen3.8-27b", tokens
             except Exception as e:
                 logger.error(f"Fallback Groq LLM call also failed: {e}")
                 raise RuntimeError(f"All LLM endpoints failed. Last error: {e}")

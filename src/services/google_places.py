@@ -57,10 +57,7 @@ class GooglePlacesClient:
         if included_types:
             body["includedTypes"] = included_types
         else:
-            body["includedTypes"] = ["restaurant", "food", "ramen_restaurant", "sushi_restaurant"]
-
-        if keyword:
-            body["textQuery"] = keyword
+            body["includedTypes"] = ["restaurant", "ramen_restaurant", "sushi_restaurant", "japanese_restaurant"]
 
         async with httpx.AsyncClient(timeout=10.0) as client:
             try:

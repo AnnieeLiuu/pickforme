@@ -119,6 +119,9 @@ class PrewarmWorker:
 
 
 if __name__ == "__main__":
+    import sys
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
     worker = PrewarmWorker()
     asyncio.run(worker.run_loop())

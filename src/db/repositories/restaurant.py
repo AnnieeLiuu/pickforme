@@ -75,7 +75,7 @@ class RestaurantRepository:
                 )
                 res_row = await cur.fetchone()
                 if res_row:
-                    restaurant_id = res_row[0]
+                    restaurant_id = res_row["id"] if isinstance(res_row, dict) else res_row[0]
 
                 # 2. Upsert 到 tabelog_cache 表 (若有抓到 Tabelog 資料)
                 if tabelog_data:

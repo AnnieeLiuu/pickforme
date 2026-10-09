@@ -95,7 +95,7 @@ async def test_agent_engine_run_loop_direct_answer():
             "role": "assistant",
             "content": "推薦博多站附近的「一蘭拉麵本店」，Tabelog 評分為 3.65！",
         },
-        "gemini-2.0-flash",
+        "gemini-3.8-flash",
         150,
     )
 
@@ -109,7 +109,7 @@ async def test_agent_engine_run_loop_direct_answer():
         assert "一蘭拉麵本店" in result
         mock_trace.start_run.assert_called_once()
         mock_trace.finish_run.assert_called_once_with(
-            status="completed", model_used="gemini-2.0-flash", total_tokens=150
+            status="completed", model_used="gemini-3.8-flash", total_tokens=150
         )
 
 
@@ -132,6 +132,6 @@ async def test_agent_engine_failover_gemini_to_groq():
             ],
         ):
             msg, model, tokens = await engine.call_llm_with_failover([{"role": "user", "content": "hi"}])
-            assert model == "llama-3.3-70b-versatile"
+            assert model == "qwen/qwen3.8-27b"
             assert msg["content"] == "Groq 回覆推薦！"
             assert tokens == 120
