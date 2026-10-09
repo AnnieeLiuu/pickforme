@@ -2,6 +2,7 @@ import logging
 import time
 from typing import Optional
 
+from src.agent.bridge import IDEAgentBridge
 from src.agent.core import AgentEngine
 from src.config import settings
 from src.db.connection import get_db_pool
@@ -10,10 +11,11 @@ logger = logging.getLogger(__name__)
 
 
 class DevOpsSubagent:
-    """DevOps 遠端診斷 Subagent：專門處理 Telegram @debug 指令與伺服器自動診斷"""
+    """DevOps 遠端診斷 Subagent：專門處理 Telegram 指令與伺服器自動診斷，支援 IDE Agent Bridge 轉發"""
 
-    def __init__(self, agent_engine: Optional[AgentEngine] = None):
+    def __init__(self, agent_engine: Optional[AgentEngine] = None, bridge: Optional[IDEAgentBridge] = None):
         self.agent_engine = agent_engine or AgentEngine()
+        self.bridge = bridge or IDEAgentBridge()
 
     async def run_diagnosis(self, user_query: str) -> str:
         """根據開發者在 Telegram 輸入的需求執行系統健康掃描與診斷"""
@@ -21,6 +23,11 @@ class DevOpsSubagent:
         query_text = user_query.replace("@debug", "").replace("/debug", "").strip()
         if not query_text:
             query_text = "自動進行系統健康檢查與排查"
+
+        # 0. 優先嘗試轉發至本地 IDE Agent Bridge (Option B)
+        bridge_report = await self.bridge.forward_diagnosis_request(query_text)
+        if bridge_report:
+            return bridge_report
 
         # 1. 檢查是否包含自動修復關鍵字，並執行對應自動修復動作
         auto_fix_results = await self._execute_auto_healing(query_text)

@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     # Storage
     GCS_BUCKET_NAME: str = "pickforme-cold-archive"
 
+    # IDE Agent Bridge (Option B)
+    IDE_AGENT_BRIDGE_URL: str = "http://127.0.0.1:8000/agent/diagnose"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
