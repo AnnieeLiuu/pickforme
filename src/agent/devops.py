@@ -16,11 +16,11 @@ class DevOpsSubagent:
         self.agent_engine = agent_engine or AgentEngine()
 
     async def run_diagnosis(self, user_query: str) -> str:
-        """根據開發者在 Telegram 輸入的 @debug 需求執行系統健康掃描與日誌診斷"""
+        """根據開發者在 Telegram 輸入的需求執行系統健康掃描與診斷"""
         start_time = time.time()
         query_text = user_query.replace("@debug", "").replace("/debug", "").strip()
         if not query_text:
-            query_text = "自動進行全面系統健康檢查與錯誤排查"
+            query_text = "自動進行系統健康檢查與排查"
 
         # 1. 檢查是否包含自動修復關鍵字，並執行對應自動修復動作
         auto_fix_results = await self._execute_auto_healing(query_text)
@@ -31,16 +31,14 @@ class DevOpsSubagent:
 
         # 3. 組裝 Context 讓 DevOps Subagent 分析
         devops_prompt = (
-            "你是一位頂級的 Senior DevOps & Site Reliability Engineer (SRE) AI 助手。"
-            "請針對以下系統現狀指標、自動修復執行結果與近期錯誤 Log，以專業、簡潔的繁體中文 Markdown 格式回答開發者：\n\n"
-            f"### 【開發者查詢指令】\n{query_text}\n\n"
-            f"### 【自動修復執行結果 (Auto-Healing Results)】\n{auto_fix_results}\n\n"
-            f"### 【系統即時指標 (Health Metrics)】\n{health_report}\n\n"
-            f"### 【近期錯誤 Trace (Recent Error Logs)】\n{error_logs}\n\n"
-            "請包含以下重點：\n"
-            "1. 🛠️ **現狀診斷摘要與修復結果**\n"
-            "2. 🔍 **潛在根因分析 (Root Cause)**\n"
-            "3. 💡 **後續監控與修復建議**\n"
+            "請根據以下 PickForMe 系統的指標數據、修復結果與近期錯誤日誌，為 Telegram 使用者/開發者提供一份「親切、精簡、精準」的健康報告：\n\n"
+            f"### 【使用者查詢】\n{query_text}\n\n"
+            f"### 【自動修復動作】\n{auto_fix_results}\n\n"
+            f"### 【即時系統指標】\n{health_report}\n\n"
+            f"### 【近期異常 Log Trace】\n{error_logs}\n\n"
+            "格式請保持精簡（控制在 200 字以內），包含：\n"
+            "1. 📊 **現狀總結與修復結果**（用 🟢/🔴 標示狀態）\n"
+            "2. 💡 **問題根因與具體建議步驟**（針對 Neon Cloud Postgres 及本專案實際架構，勿給予無關的通用指令或理論）\n"
         )
 
         try:
@@ -48,7 +46,13 @@ class DevOpsSubagent:
             messages = [
                 {
                     "role": "system",
-                    "content": "你是一位專精 Python, FastAPI, Postgres 與 API 監控的 DevOps AI 特派員。",
+                    "content": (
+                        "你是一位專精 PickForMe 系統 (FastAPI + Neon Cloud Postgres + Telegram Bot) 的親切 DevOps AI 助手。\n"
+                        "請遵循以下原則：\n"
+                        "1. 簡潔友善：直接重點回答，避免冗長套話與不相干的大企業 SRE 理論（如 SLO/PagerDuty/ELK/Loki 等）。\n"
+                        "2. 架構精準：資料庫為 Neon Cloud Postgres（雲端 DB），若斷線請提醒檢查 Neon 雲端主機狀態、網路或 .env 的 DATABASE_URL。絕不要提供 docker ps 或 systemctl 命令。\n"
+                        "3. 指令引導：若需要使用者手動重試，請提示發送「排查」或「修復」，切勿使用「@debug」。"
+                    ),
                 },
                 {"role": "user", "content": devops_prompt},
             ]
@@ -57,14 +61,14 @@ class DevOpsSubagent:
             latency_ms = int((time.time() - start_time) * 1000)
 
             return (
-                f"🛠️ **PickForMe DevOps 診斷與自動修復報告**\n"
-                f"⏱️ 耗時: `{latency_ms}ms` | 🤖 分析模型: `{model_used}`\n\n"
+                f"🛠️ **PickForMe 系統診斷報告**\n"
+                f"⏱️ 耗時: `{latency_ms}ms` | 🤖 模型: `{model_used}`\n\n"
                 f"{analysis_text}"
             )
         except Exception as e:
             logger.error(f"DevOps Subagent error: {e}")
             return (
-                f"⚠️ **DevOps 診斷程式執行異常**：\n```\n{str(e)}\n```\n\n"
+                f"⚠️ **DevOps 診斷失敗**：\n```\n{str(e)}\n```\n\n"
                 f"### 【修復結果】\n{auto_fix_results}\n\n"
                 f"### 【原始指標】\n{health_report}\n\n"
                 f"### 【原始錯誤 Trace】\n{error_logs}"
@@ -95,7 +99,7 @@ class DevOpsSubagent:
                 actions_taken.append("🔧 對話 Session 與記憶狀態已進行連線掃描與防護快取淨化。")
 
             if not actions_taken:
-                actions_taken.append("ℹ️ 目前無觸發手動修復關鍵字（可輸入 `@debug 修復` 觸發重試預熱工作）。")
+                actions_taken.append("ℹ️ 目前無觸發手動修復關鍵字（發送「修復」或「重試」可自動重設失敗任務）。")
 
             return "\n".join(actions_taken)
         except Exception as e:

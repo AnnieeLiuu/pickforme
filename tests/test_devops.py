@@ -21,6 +21,6 @@ async def test_devops_subagent_run_diagnosis():
     # 執行診斷
     report = await devops.run_diagnosis("@debug 幫我排查伺服器")
 
-    assert "DevOps" in report
+    assert "PickForMe" in report
     assert "gemini-3.8-flash" in report
     assert "系統運作正常" in report
