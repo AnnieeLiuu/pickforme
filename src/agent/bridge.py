@@ -78,3 +78,34 @@ class IDEAgentBridge:
             logger.warning(f"IDE Agent 實體比對轉發失敗: {e}")
 
         return None
+
+    async def forward_agent_request(
+        self,
+        user_message: str,
+        chat_id: Optional[int] = None,
+        user_location: Optional[tuple[float, float]] = None,
+    ) -> Optional[str]:
+        """將 Telegram 一般對話與搜尋需求轉發給本地 IDE Agent 大腦"""
+        if not await self.is_bridge_available():
+            return None
+
+        try:
+            url = self.bridge_url.rsplit("/", 1)[0] + "/run-agent"
+            async with httpx.AsyncClient(timeout=25.0) as client:
+                resp = await client.post(
+                    url,
+                    json={
+                        "user_message": user_message,
+                        "chat_id": chat_id,
+                        "user_location": user_location,
+                    },
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data.get("status") == "ok" and data.get("response"):
+                        logger.info("成功由 IDE Agent Bridge 完成對話處理。")
+                        return str(data["response"])
+        except Exception as e:
+            logger.warning(f"IDE Agent 對話轉發失敗: {e}")
+
+        return None

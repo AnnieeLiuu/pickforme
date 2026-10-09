@@ -184,14 +184,23 @@ class TelegramBotHandler:
             if status_msg_id:
                 await self._edit_telegram_message(chat_id, status_msg_id, status_text)
 
-        # 執行 Agent Loop (附帶歷史紀錄)
-        final_response = await self.agent_engine.run_agent(
-            chat_id=chat_id,
+        # 0. 優先嘗試轉發至本地 IDE Agent Bridge (PC 開著時)
+        bridge_resp = await self.devops_subagent.bridge.forward_agent_request(
             user_message=text,
+            chat_id=chat_id,
             user_location=user_location,
-            conversation_history=history,
-            on_progress=on_progress,
         )
+        if bridge_resp:
+            final_response = bridge_resp
+        else:
+            # 離線降級：執行內建 Agent Loop
+            final_response = await self.agent_engine.run_agent(
+                chat_id=chat_id,
+                user_message=text,
+                user_location=user_location,
+                conversation_history=history,
+                on_progress=on_progress,
+            )
 
         # 紀錄本輪對話至 Session
         try:

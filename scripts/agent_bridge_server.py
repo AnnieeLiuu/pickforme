@@ -5,6 +5,7 @@ import re
 import sys
 import time
 from pathlib import Path
+from typing import Optional
 
 import uvicorn
 from fastapi import FastAPI
@@ -31,10 +32,28 @@ class EntityVerifyRequest(BaseModel):
     tabelog_candidate: dict
 
 
+class AgentRunRequest(BaseModel):
+    user_message: str
+    chat_id: Optional[int] = None
+    user_location: Optional[tuple[float, float]] = None
+
+
 @app.get("/health")
 @app.get("/agent/health")
 async def health_check():
     return {"status": "ok", "agent": "Antigravity IDE Agent Bridge Active"}
+
+
+@app.post("/agent/run-agent")
+async def run_agent_endpoint(req: AgentRunRequest):
+    logger.info(f"IDE Agent Bridge: Handling chat request: '{req.user_message}'")
+    agent_engine = AgentEngine()
+    response = await agent_engine.run_agent(
+        chat_id=req.chat_id,
+        user_message=req.user_message,
+        user_location=req.user_location,
+    )
+    return {"status": "ok", "response": response, "agent": "Antigravity IDE Agent"}
 
 
 @app.post("/agent/verify-entity")
