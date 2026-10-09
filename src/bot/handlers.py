@@ -161,4 +161,3 @@ class TelegramBotHandler:
             except TelegramError as err:
                 if "Message is not modified" not in str(err):
                     logger.warning(f"Error editing Telegram message {message_id}: {err}")
-

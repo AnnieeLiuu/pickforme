@@ -139,8 +139,16 @@ class TabelogScraper:
         name_ja = name_elem.get_text(strip=True) if name_elem else ""
 
         # 榮譽與標章 (Awards & 百名店)
-        awards = [elem.get_text(strip=True) for elem in soup.select(".rdheader-official-info__award-title, .rdheader-award") if elem.get_text(strip=True)]
-        hyakumeiten = [elem.get_text(strip=True) for elem in soup.select(".hyakumeiten-badge, .rdheader-official-info") if elem.get_text(strip=True)]
+        awards = [
+            elem.get_text(strip=True)
+            for elem in soup.select(".rdheader-official-info__award-title, .rdheader-award")
+            if elem.get_text(strip=True)
+        ]
+        hyakumeiten = [
+            elem.get_text(strip=True)
+            for elem in soup.select(".hyakumeiten-badge, .rdheader-official-info")
+            if elem.get_text(strip=True)
+        ]
 
         # 支付方式解析 (カード & QRコード)
         supports_paypay = False
@@ -172,4 +180,3 @@ class TabelogScraper:
             "supports_paypay": supports_paypay,
             "credit_cards": credit_cards,
         }
-

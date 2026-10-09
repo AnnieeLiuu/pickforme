@@ -35,7 +35,9 @@ class AgentEngine:
         return "你是一位日本美食特派員 PickForMe，請依據使用者地點與需求推薦美食。"
 
     async def call_llm_with_failover(self, messages: list[dict[str, Any]]) -> tuple[dict[str, Any], str, int]:
-        """呼叫 LLM (Gemini Flash 主力 ➡️ Groq Llama 3.3 自動降級)"""
+        """呼叫 LLM (Gemini Flash 主力 ➡️ Groq Qwen 27B ➡️ Groq Llama 8B 多層自動降級)"""
+        errors = []
+
         # 1. 嘗試 Gemini Flash (Primary)
         if settings.GEMINI_API_KEY:
             try:
@@ -49,24 +51,25 @@ class AgentEngine:
                 return msg_resp, "gemini-3.8-flash", tokens
             except Exception as e:
                 logger.warning(f"Primary Gemini Flash LLM call failed: {e}. Attempting failover to Groq...")
+                errors.append(f"Gemini: {e}")
 
-        # 2. 備援降級：Groq Qwen 3.8 / GPT-OSS (Fallback)
+        # 2. 備援降級 1：Groq Qwen 3.8 27B (Fallback 1)
         if settings.GROQ_API_KEY:
-            try:
-                msg_resp, tokens = await self._call_openai_compatible_api(
-                    url=GROQ_OPENAI_URL,
-                    api_key=settings.GROQ_API_KEY,
-                    model="qwen/qwen3.8-27b",
-                    messages=messages,
-                    tools=TOOL_SCHEMAS,
-                )
-                return msg_resp, "qwen/qwen3.8-27b", tokens
-            except Exception as e:
-                logger.error(f"Fallback Groq LLM call also failed: {e}")
-                raise RuntimeError(f"All LLM endpoints failed. Last error: {e}")
+            for fallback_model in ["qwen/qwen3.8-27b", "llama-3.1-8b-instant"]:
+                try:
+                    msg_resp, tokens = await self._call_openai_compatible_api(
+                        url=GROQ_OPENAI_URL,
+                        api_key=settings.GROQ_API_KEY,
+                        model=fallback_model,
+                        messages=messages,
+                        tools=TOOL_SCHEMAS,
+                    )
+                    return msg_resp, fallback_model, tokens
+                except Exception as e:
+                    logger.warning(f"Groq model {fallback_model} call failed: {e}")
+                    errors.append(f"Groq ({fallback_model}): {e}")
 
-        # 無 Key 測試/Mock 備援
-        raise RuntimeError("No valid LLM API key configured (GEMINI_API_KEY or GROQ_API_KEY).")
+        raise RuntimeError(f"All LLM endpoints failed. Errors: {'; '.join(errors)}")
 
     async def _call_openai_compatible_api(
         self,
@@ -81,20 +84,31 @@ class AgentEngine:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
+
+        # 淨化 messages 格式 (轉化 None 為空字串，相容各 API 規範)
+        cleaned_messages = []
+        for msg in messages:
+            cleaned_msg = dict(msg)
+            if cleaned_msg.get("content") is None:
+                cleaned_msg["content"] = ""
+            cleaned_messages.append(cleaned_msg)
+
         body: dict[str, Any] = {
             "model": model,
-            "messages": messages,
+            "messages": cleaned_messages,
             "temperature": 0.2,
         }
         if tools:
             body["tools"] = tools
             body["tool_choice"] = "auto"
 
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=20.0) as client:
             resp = await client.post(url, json=body, headers=headers)
-            resp.raise_for_status()
-            data = resp.json()
+            if resp.status_code >= 400:
+                logger.error(f"LLM API Error ({model}) HTTP {resp.status_code}: {resp.text[:500]}")
+                resp.raise_for_status()
 
+            data = resp.json()
             choice = data.get("choices", [{}])[0]
             message_obj = choice.get("message", {})
             usage = data.get("usage", {})

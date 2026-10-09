@@ -23,16 +23,24 @@ Welcome to **PickForMe** — a high-performance Japan Food AI Agent system built
 
 ---
 
-## 🧪 Testing & Pre-warming Commands
+## 🛡️ Pre-push Quality Assurance Guidelines (CI Fail Prevention)
+
+Before issuing any `git push` to remote (GitLab CI), AI Agents and developers **MUST** run the following local formatting and quality verification steps to guarantee 100% CI pass rate:
 
 ```bash
-# Run pytest suite (26+ unit tests)
+# 1. Format code with Ruff
+python -m ruff format src/ tests/
+
+# 2. Run Ruff lint check
+python -m ruff check src/ tests/
+
+# 3. Run Mypy type check
+python -m mypy src/
+
+# 4. Run Pytest suite
 pytest
-
-# Seed and pre-warm Tabelog cache for a target area (e.g. 横浜)
-python scripts/seed_prewarm_jobs.py --areas "橫濱"
-python -m src.worker.prewarm
-
-# Run local development server
-python run_server.py
 ```
+
+> [!NOTE]
+> A Git pre-push hook (`.git/hooks/pre-push`) is installed to automatically intercept and prevent pushes if any of the above checks fail locally.
+
