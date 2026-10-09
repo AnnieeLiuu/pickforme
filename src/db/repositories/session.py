@@ -105,3 +105,19 @@ class SessionRepository:
             max_messages = max_turns * 2
             return raw_history[-max_messages:]
         return []
+
+    async def get_latest_agent_run(self, chat_id: int) -> Optional[dict[str, Any]]:
+        """取得最近一筆 Agent 執行 Trace 紀錄"""
+        pool = await get_db_pool()
+        sql = """
+            SELECT run_id, chat_id, user_query, model_used, total_tokens, latency_ms, status, created_at
+            FROM agent_runs
+            WHERE chat_id = %s
+            ORDER BY created_at DESC
+            LIMIT 1;
+        """
+        async with pool.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(sql, (chat_id,))
+                row = await cur.fetchone()
+                return dict(row) if row else None

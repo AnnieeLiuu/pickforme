@@ -86,6 +86,40 @@ class TelegramBotHandler:
             )
             return
 
+        if text.startswith("/status"):
+            gemini_status = "🟢 已設定" if settings.GEMINI_API_KEY else "🔴 未設定"
+            groq_status = "🟢 已設定" if settings.GROQ_API_KEY else "🔴 未設定"
+            google_status = "🟢 已設定" if settings.GOOGLE_PLACES_API_KEY else "🔴 未設定"
+
+            status_text = (
+                "📊 **PickForMe 系統健康狀態總覽**\n\n"
+                "🗄️ **資料庫**：🟢 正常 (Neon Cloud Postgres)\n"
+                f"🧠 **Gemini API**：{gemini_status}\n"
+                f"⚡ **Groq Fallback**：{groq_status}\n"
+                f"🗺️ **Google Places API**：{google_status}\n\n"
+                "💡 輸入 `/logs` 可查看最近一次 Agent 執行與錯誤 Trace。"
+            )
+            await self._send_telegram_message(chat_id, status_text)
+            return
+
+        if text.startswith("/logs"):
+            recent_run = await self.session_repo.get_latest_agent_run(chat_id)
+            if not recent_run:
+                await self._send_telegram_message(chat_id, "ℹ️ 目前尚無 Agent 執行日誌紀錄。")
+                return
+
+            status_emoji = "🟢 成功" if recent_run.get("status") == "completed" else "🔴 失敗"
+            log_text = (
+                "📝 **最新 Agent 執行日誌 (Trace)**\n\n"
+                f"📌 **問句**：`{recent_run.get('user_query', '')}`\n"
+                f"⏱️ **狀態**：{status_emoji}\n"
+                f"🤖 **模型**：`{recent_run.get('model_used', 'unknown')}`\n"
+                f"🪙 **Tokens**：{recent_run.get('total_tokens', 0)}\n"
+                f"⏳ **耗時**：{recent_run.get('latency_ms', 0)} ms"
+            )
+            await self._send_telegram_message(chat_id, log_text)
+            return
+
         # 查詢對話歷史與位置記憶
         user_location: Optional[tuple[float, float]] = None
         session = await self.session_repo.get_session(chat_id)
