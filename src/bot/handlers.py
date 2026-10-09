@@ -2,6 +2,7 @@ import logging
 from typing import Any, Optional, Set
 
 from src.agent.core import AgentEngine
+from src.agent.devops import DevOpsSubagent
 from src.config import settings
 from src.db.repositories.session import SessionRepository
 from telegram import Bot
@@ -30,10 +31,12 @@ class TelegramBotHandler:
         agent_engine: Optional[AgentEngine] = None,
         session_repo: Optional[SessionRepository] = None,
         bot: Optional[Bot] = None,
+        devops_subagent: Optional[DevOpsSubagent] = None,
     ):
         self.agent_engine = agent_engine or AgentEngine()
         self.session_repo = session_repo or SessionRepository()
         self.bot = bot or (Bot(token=settings.TELEGRAM_BOT_TOKEN) if settings.TELEGRAM_BOT_TOKEN else None)
+        self.devops_subagent = devops_subagent or DevOpsSubagent(agent_engine=self.agent_engine)
 
     async def handle_update(self, update_data: dict[str, Any]) -> None:
         """處理 Telegram Webhook Update 主入口"""
@@ -118,6 +121,17 @@ class TelegramBotHandler:
                 f"⏳ **耗時**：{recent_run.get('latency_ms', 0)} ms"
             )
             await self._send_telegram_message(chat_id, log_text)
+            return
+
+        if text.startswith("/debug") or "@debug" in text:
+            status_msg_id = await self._send_telegram_message(
+                chat_id, "🛠️ **PickForMe DevOps Subagent 正在為您進行排查與診斷...**"
+            )
+            report_text = await self.devops_subagent.run_diagnosis(text)
+            if status_msg_id:
+                await self._edit_telegram_message(chat_id, status_msg_id, report_text)
+            else:
+                await self._send_telegram_message(chat_id, report_text)
             return
 
         # 查詢對話歷史與位置記憶
