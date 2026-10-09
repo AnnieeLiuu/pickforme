@@ -121,7 +121,9 @@ class EntityResolver:
         if google_phone:
             for cand in tabelog_candidates:
                 cand_phone = normalize_japanese_phone(cand.get("phone"))
-                if cand_phone and (google_phone == cand_phone or google_phone in cand_phone or cand_phone in google_phone):
+                if cand_phone and (
+                    google_phone == cand_phone or google_phone in cand_phone or cand_phone in google_phone
+                ):
                     return {
                         "match_found": True,
                         "candidate": cand,
@@ -191,15 +193,15 @@ class EntityResolver:
 
         user_content = f"""
 Google 店家資料:
-- 名稱: {google_store.get('name')}
-- 地址: {google_store.get('address')}
-- 電話: {google_store.get('phone')}
-- 座標: ({google_store.get('lat')}, {google_store.get('lng')})
+- 名稱: {google_store.get("name")}
+- 地址: {google_store.get("address")}
+- 電話: {google_store.get("phone")}
+- 座標: ({google_store.get("lat")}, {google_store.get("lng")})
 
 Tabelog 店家資料:
-- 名稱: {tabelog_candidate.get('name_ja')}
-- 地址: {tabelog_candidate.get('address')}
-- 電話: {tabelog_candidate.get('phone')}
+- 名稱: {tabelog_candidate.get("name_ja")}
+- 地址: {tabelog_candidate.get("address")}
+- 電話: {tabelog_candidate.get("phone")}
 """
 
         try:

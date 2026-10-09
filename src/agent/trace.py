@@ -24,7 +24,7 @@ class AgentTraceLogger:
         except Exception as e:
             logger.warning(f"Failed to start agent trace run in DB: {e}")
             self.run_id = None
-        return self.run_id # type: ignore[return-value]
+        return self.run_id  # type: ignore[return-value]
 
     async def log_step(
         self,

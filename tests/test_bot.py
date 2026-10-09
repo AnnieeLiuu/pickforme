@@ -52,9 +52,7 @@ async def test_telegram_handler_location_message():
 
     with patch("src.config.settings.TELEGRAM_ALLOWED_USER_ID", 0):
         await handler.handle_update(location_update)
-        mock_session_repo.update_location.assert_called_once_with(
-            chat_id=100, lat=33.5902, lng=130.4207
-        )
+        mock_session_repo.update_location.assert_called_once_with(chat_id=100, lat=33.5902, lng=130.4207)
         mock_bot.send_message.assert_called_once()
         args = mock_bot.send_message.call_args[1]
         assert "已成功接收並記錄您的定位資訊" in args["text"]

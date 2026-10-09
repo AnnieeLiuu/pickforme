@@ -26,9 +26,7 @@ class TabelogScraper:
             "Referer": "https://tabelog.com/",
         }
 
-    async def search_tabelog_candidates(
-        self, store_name: str, area_name: str = ""
-    ) -> list[dict[str, Any]]:
+    async def search_tabelog_candidates(self, store_name: str, area_name: str = "") -> list[dict[str, Any]]:
         """搜尋 Tabelog 候選店家頁面 (Fail-Fast 降級)"""
         query_str = f"{area_name} {store_name}".strip()
         search_url = f"https://tabelog.com/rstLst/?vs=1&sa={httpx.QueryParams({'sk': query_str})['sk']}"
@@ -94,13 +92,15 @@ class TabelogScraper:
             address_elem = item.select_one(".list-rst__address")
             address = address_elem.get_text(strip=True) if address_elem else ""
 
-            results.append({
-                "tabelog_url": url,
-                "name_ja": name,
-                "tabelog_rating": rating,
-                "phone": phone,
-                "address": address,
-            })
+            results.append(
+                {
+                    "tabelog_url": url,
+                    "name_ja": name,
+                    "tabelog_rating": rating,
+                    "phone": phone,
+                    "address": address,
+                }
+            )
         return results
 
     def _parse_store_details(self, html: str, tabelog_url: str) -> dict[str, Any]:

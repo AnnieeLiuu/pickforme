@@ -57,9 +57,7 @@ class TelegramBotHandler:
         if settings.TELEGRAM_ALLOWED_USER_ID and settings.TELEGRAM_ALLOWED_USER_ID != 0:
             if user_id != settings.TELEGRAM_ALLOWED_USER_ID:
                 logger.warning(f"Unauthorized access attempt from Telegram user_id: {user_id}")
-                await self._send_telegram_message(
-                    chat_id, "⛔ 抱歉，您未獲權限使用此 PickForMe Bot。"
-                )
+                await self._send_telegram_message(chat_id, "⛔ 抱歉，您未獲權限使用此 PickForMe Bot。")
                 return
 
         # 2. 處理位置訊息 (Location Message)
@@ -100,9 +98,7 @@ class TelegramBotHandler:
         history = await self.session_repo.get_recent_history(chat_id, max_turns=3)
 
         # 發送初始思考訊息，取得 message_id
-        status_msg_id = await self._send_telegram_message(
-            chat_id, "🔍 PickForMe 正在啟動 Agent 為您搜尋..."
-        )
+        status_msg_id = await self._send_telegram_message(chat_id, "🔍 PickForMe 正在啟動 Agent 為您搜尋...")
 
         # 定義進度更新 Callback (動態編輯 Telegram 訊息)
         async def on_progress(status_text: str) -> None:

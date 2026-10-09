@@ -70,7 +70,9 @@ class PrewarmWorker:
 
                 # 無快取，進行抓取與比對
                 store_name = place.get("name", "")
-                candidates = await self.tabelog_scraper.search_tabelog_candidates(store_name=store_name, area_name=area_name)
+                candidates = await self.tabelog_scraper.search_tabelog_candidates(
+                    store_name=store_name, area_name=area_name
+                )
                 resolve_res = await self.entity_resolver.resolve_entity(place, candidates)
 
                 if resolve_res.get("match_found"):
@@ -120,6 +122,7 @@ class PrewarmWorker:
 
 if __name__ == "__main__":
     import sys
+
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")

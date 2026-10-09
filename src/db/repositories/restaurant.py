@@ -41,8 +41,12 @@ class RestaurantRepository:
         restaurant_id = existing["id"] if existing else uuid4()
 
         tabelog_url = tabelog_data.get("tabelog_url") if tabelog_data else None
-        name_ja = (tabelog_data.get("name_ja") if tabelog_data and tabelog_data.get("name_ja") else google_store.get("name", ""))
-        phone = (tabelog_data.get("phone") if tabelog_data and tabelog_data.get("phone") else google_store.get("phone"))
+        name_ja = (
+            tabelog_data.get("name_ja")
+            if tabelog_data and tabelog_data.get("name_ja")
+            else google_store.get("name", "")
+        )
+        phone = tabelog_data.get("phone") if tabelog_data and tabelog_data.get("phone") else google_store.get("phone")
 
         async with pool.connection() as conn:
             async with conn.cursor() as cur:

@@ -11,7 +11,7 @@ def test_restaurant_pydantic_model():
         phone="03-3363-4690",
         lat=35.6938,
         lng=139.7034,
-        address="東京都新宿區西新宿7-2-6"
+        address="東京都新宿區西新宿7-2-6",
     )
 
     assert req.google_place_id == "ChIJN1t_tDeuEmsRUsoyG83frY4"
@@ -31,7 +31,7 @@ def test_tabelog_cache_model():
         price_lunch="￥1,000～￥1,999",
         price_dinner="￥1,000～￥1,999",
         match_confidence=0.95,
-        match_method="phone_exact"
+        match_method="phone_exact",
     )
 
     assert cache.restaurant_id == res_id

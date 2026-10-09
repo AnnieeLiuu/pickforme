@@ -117,8 +117,9 @@ async def test_agent_engine_run_loop_direct_answer():
 async def test_agent_engine_failover_gemini_to_groq():
     engine = AgentEngine()
 
-    with patch("src.config.settings.GEMINI_API_KEY", "fake_gemini_key"), patch(
-        "src.config.settings.GROQ_API_KEY", "fake_groq_key"
+    with (
+        patch("src.config.settings.GEMINI_API_KEY", "fake_gemini_key"),
+        patch("src.config.settings.GROQ_API_KEY", "fake_groq_key"),
     ):
         with patch.object(
             engine,

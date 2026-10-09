@@ -34,9 +34,7 @@ class AgentEngine:
             return prompt_path.read_text(encoding="utf-8")
         return "你是一位日本美食特派員 PickForMe，請依據使用者地點與需求推薦美食。"
 
-    async def call_llm_with_failover(
-        self, messages: list[dict[str, Any]]
-    ) -> tuple[dict[str, Any], str, int]:
+    async def call_llm_with_failover(self, messages: list[dict[str, Any]]) -> tuple[dict[str, Any], str, int]:
         """呼叫 LLM (Gemini Flash 主力 ➡️ Groq Llama 3.3 自動降級)"""
         # 1. 嘗試 Gemini Flash (Primary)
         if settings.GEMINI_API_KEY:

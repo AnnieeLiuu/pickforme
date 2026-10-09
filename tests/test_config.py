@@ -12,6 +12,7 @@ def test_settings_override(monkeypatch):
     monkeypatch.setenv("GCS_BUCKET_NAME", "my-custom-bucket")
 
     from src.config import Settings
+
     custom_settings = Settings()
 
     assert custom_settings.ENVIRONMENT == "production"

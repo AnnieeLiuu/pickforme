@@ -167,7 +167,9 @@ class AgentToolExecutor:
                         "review_count": cached.get("review_count"),
                         "price_lunch": cached.get("price_lunch"),
                         "price_dinner": cached.get("price_dinner"),
-                        "match_confidence": float(cached["match_confidence"]) if cached.get("match_confidence") else 1.0,
+                        "match_confidence": float(cached["match_confidence"])
+                        if cached.get("match_confidence")
+                        else 1.0,
                         "cached": True,
                     },
                     ensure_ascii=False,
