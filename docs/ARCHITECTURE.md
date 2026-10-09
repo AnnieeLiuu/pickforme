@@ -189,11 +189,11 @@ flowchart TD
         PingOllama -- "🟢 在線 (PC ON)" --> OllamaLLM["調用 Ollama Local LLM<br/>Model: qwen2.5:7b<br/>0 API Key 消耗 / 0 費用"]
         OllamaLLM -- 成功 --> StepLLMResult["LLM 思考完成: 回傳 Prompt / Tool Calls"]
 
-        PingOllama -- "🔴 離線 / 超時 (PC OFF)" --> GeminiLLM["1. 調用 Gemini 2.0 Flash<br/>Google AI Studio 每日 1500 次免費層"]
+        PingOllama -- "🔴 離線 / 超時 (PC OFF)" --> GeminiLLM["1. 調用 Gemini 3.8 Flash<br/>Google AI Studio 每日免費層"]
         OllamaLLM -- 失敗 / 異常 --> GeminiLLM
 
         GeminiLLM -- 成功 --> StepLLMResult
-        GeminiLLM -- 429 Rate Limit / 503 Overload --> GroqFailover["2. 調用 Groq 多模型降級鏈<br/>qwen3.8-27b ➔ llama3.3-70b ➔ gemma2-9b"]
+        GeminiLLM -- 429 Rate Limit / 503 Overload --> GroqFailover["2. 調用 Groq 多模型降級鏈<br/>qwen3.8-27b ➔ gpt-oss-120b ➔ gpt-oss-20b"]
         GroqFailover --> StepLLMResult
     end
 
