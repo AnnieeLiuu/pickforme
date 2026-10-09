@@ -31,14 +31,18 @@ class DevOpsSubagent:
 
         # 3. 組裝 Context 讓 DevOps Subagent 分析
         devops_prompt = (
-            "請根據以下 PickForMe 系統的指標數據、修復結果與近期錯誤日誌，為 Telegram 使用者/開發者提供一份「親切、精簡、精準」的健康報告：\n\n"
-            f"### 【使用者查詢】\n{query_text}\n\n"
+            "請針對 PickForMe 系統的現狀指標與錯誤日誌，生成一份極簡、友善且 100% 符合作者的診斷報告：\n\n"
+            f"### 【查詢需求】\n{query_text}\n\n"
             f"### 【自動修復動作】\n{auto_fix_results}\n\n"
-            f"### 【即時系統指標】\n{health_report}\n\n"
-            f"### 【近期異常 Log Trace】\n{error_logs}\n\n"
-            "格式請保持精簡（控制在 200 字以內），包含：\n"
-            "1. 📊 **現狀總結與修復結果**（用 🟢/🔴 標示狀態）\n"
-            "2. 💡 **問題根因與具體建議步驟**（針對 Neon Cloud Postgres 及本專案實際架構，勿給予無關的通用指令或理論）\n"
+            f"### 【系統即時指標】\n{health_report}\n\n"
+            f"### 【近期 Log Trace】\n{error_logs}\n\n"
+            "嚴格限制與格式規範：\n"
+            "1. 總字數限制：控制在 150 字以內，條列清晰。\n"
+            "2. 架構真實性：專案使用 Neon Cloud Postgres（雲端 Serverless 雲端 DB）。若 DB 連線失敗，只建議檢查本機網路、Neon 控制台狀態或 .env 的 DATABASE_URL。\n"
+            "3. 絕對禁用語：嚴禁輸出任何 `docker`, `kubectl`, `systemctl`, `pg_hba.conf`, `Prometheus`, `SLO`, `ELK` 或傳統託管維運命令！\n"
+            "4. 正確輸出結構：\n"
+            "   - 📊 **現狀總結** (標示 🟢/🔴)\n"
+            "   - 💡 **建議處置步驟** (3 點以內具體行動)\n"
         )
 
         try:
@@ -47,11 +51,8 @@ class DevOpsSubagent:
                 {
                     "role": "system",
                     "content": (
-                        "你是一位專精 PickForMe 系統 (FastAPI + Neon Cloud Postgres + Telegram Bot) 的親切 DevOps AI 助手。\n"
-                        "請遵循以下原則：\n"
-                        "1. 簡潔友善：直接重點回答，避免冗長套話與不相干的大企業 SRE 理論（如 SLO/PagerDuty/ELK/Loki 等）。\n"
-                        "2. 架構精準：資料庫為 Neon Cloud Postgres（雲端 DB），若斷線請提醒檢查 Neon 雲端主機狀態、網路或 .env 的 DATABASE_URL。絕不要提供 docker ps 或 systemctl 命令。\n"
-                        "3. 指令引導：若需要使用者手動重試，請提示發送「排查」或「修復」，切勿使用「@debug」。"
+                        "你是一位 PickForMe (FastAPI + Neon Cloud Postgres + Telegram Bot) 的輕量級客服診斷助手。\n"
+                        "說話必須極簡、精準、白話、友善。絕不給予無關的伺服器維運技術命令（無 docker, kubectl, systemctl, postgresql.conf）。"
                     ),
                 },
                 {"role": "user", "content": devops_prompt},
