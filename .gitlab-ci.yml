@@ -40,3 +40,7 @@ pytest-job:
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
+
+secret_detection:
+  allow_failure: false
+
