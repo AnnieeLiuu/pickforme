@@ -129,9 +129,21 @@ class AgentToolExecutor:
         keyword = args.get("keyword", "")
 
         places = await self.places_client.search_nearby(lat=lat, lng=lng, radius=radius, keyword=keyword)
-        # 上下文控管：最多回傳前 10 家，精簡欄位
-        top_places = places[:10]
-        return json.dumps({"count": len(top_places), "places": top_places}, ensure_ascii=False)
+        # 上下文控管：精簡為前 5 家重點店家與核心欄位，大幅減輕本地 LLM Prompt 負擔
+        compact_places = [
+            {
+                "name": p.get("name"),
+                "google_place_id": p.get("google_place_id"),
+                "rating": p.get("rating"),
+                "user_ratings_total": p.get("user_ratings_total"),
+                "phone": p.get("phone"),
+                "address": p.get("address"),
+                "lat": p.get("lat"),
+                "lng": p.get("lng"),
+            }
+            for p in places[:5]
+        ]
+        return json.dumps({"count": len(compact_places), "places": compact_places}, ensure_ascii=False)
 
     async def _handle_get_tabelog_info(self, args: dict[str, Any]) -> str:
         google_place_id = args.get("google_place_id", "")

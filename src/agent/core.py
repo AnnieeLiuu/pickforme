@@ -61,6 +61,7 @@ class AgentEngine:
                     model=settings.OLLAMA_MODEL,
                     messages=messages,
                     tools=TOOL_SCHEMAS,
+                    timeout=90.0,
                 )
                 logger.info(f"Successfully processed by local Ollama ({settings.OLLAMA_MODEL})")
                 return msg_resp, f"ollama ({settings.OLLAMA_MODEL})", tokens
@@ -74,18 +75,19 @@ class AgentEngine:
                 msg_resp, tokens = await self._call_openai_compatible_api(
                     url=GEMINI_OPENAI_URL,
                     api_key=settings.GEMINI_API_KEY,
-                    model="gemini-2.0-flash",
+                    model="gemini-3.8-flash",
                     messages=messages,
                     tools=TOOL_SCHEMAS,
+                    timeout=30.0,
                 )
-                return msg_resp, "gemini-2.0-flash", tokens
+                return msg_resp, "gemini-3.8-flash", tokens
             except Exception as e:
                 logger.warning(f"Primary Gemini Flash LLM call failed: {e}. Attempting failover to Groq...")
                 errors.append(f"Gemini: {e}")
 
-        # 2. 備援降級：Groq 多模型自動順序切換 (Qwen 27B ➡️ Llama 3.3 70B ➡️ Gemma 2 9B)
+        # 2. 備援降級：Groq 多模型自動順序切換
         if settings.GROQ_API_KEY:
-            for fallback_model in ["qwen/qwen3.8-27b", "llama-3.3-70b-versatile", "gemma2-9b-it"]:
+            for fallback_model in ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"]:
                 try:
                     msg_resp, tokens = await self._call_openai_compatible_api(
                         url=GROQ_OPENAI_URL,
@@ -93,6 +95,7 @@ class AgentEngine:
                         model=fallback_model,
                         messages=messages,
                         tools=TOOL_SCHEMAS,
+                        timeout=30.0,
                     )
                     return msg_resp, fallback_model, tokens
                 except Exception as e:
@@ -108,6 +111,7 @@ class AgentEngine:
         model: str,
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]],
+        timeout: float = 60.0,
     ) -> tuple[dict[str, Any], int]:
         """以標準 OpenAI ChatCompletions REST API 發送請求"""
         headers = {
@@ -132,7 +136,7 @@ class AgentEngine:
             body["tools"] = tools
             body["tool_choice"] = "auto"
 
-        async with httpx.AsyncClient(timeout=20.0) as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.post(url, json=body, headers=headers)
             if resp.status_code == 429:
                 logger.warning(f"LLM API ({model}) 觸發 Rate Limit (429)，等待 2.5 秒後進行自動重試...")
@@ -188,10 +192,20 @@ class AgentEngine:
 
         total_tokens_used = 0
         last_model_used = "unknown"
+        tools_executed: list[str] = []
 
         for step in range(1, self.max_steps + 1):
             if on_progress:
-                await on_progress(f"🔍 PickForMe 正在思考中... (步驟 {step}/{self.max_steps})")
+                if step == 1:
+                    await on_progress("🧭 正在理解您的美食需求與分析所在座標...")
+                elif "get_tabelog_info" in tools_executed:
+                    await on_progress("✍️ 正在綜整日本食べログ真實評價與指標，為您生成專屬美食推薦卡片...")
+                elif "search_nearby" in tools_executed:
+                    await on_progress("🔍 已取得周邊候選店家，正在挑選指標餐廳準備查詢食べログ口碑...")
+                elif "geocode_location" in tools_executed:
+                    await on_progress("📍 已鎖定目標地理座標，正在準備掃描周邊人氣美食...")
+                else:
+                    await on_progress(f"🧠 正在深度思考下一步最佳推薦策略 (第 {step}/{self.max_steps} 步)...")
 
             t0 = time.time()
             try:
@@ -240,20 +254,35 @@ class AgentEngine:
                     tool_args = json.loads(args_str) if isinstance(args_str, str) else args_str
                 except json.JSONDecodeError:
                     tool_args = {}
+                if not isinstance(tool_args, dict):
+                    tool_args = {}
 
-                # 進度通知
+                # 階段性進度通知
                 if on_progress:
-                    readable_names = {
-                        "geocode_location": "搜尋地點座標",
-                        "search_nearby": "檢索週邊美食餐廳",
-                        "get_tabelog_info": "比對並獲取 Tabelog 評分",
-                    }
-                    display_name = readable_names.get(tool_name, tool_name)
-                    await on_progress(f"📊 正在執行：{display_name}...")
+                    if tool_name == "geocode_location":
+                        addr = tool_args.get("address") or tool_args.get("query") or "目標地點"
+                        await on_progress(f"📍 正在解析「{addr}」的精確地理座標...")
+                    elif tool_name == "search_nearby":
+                        kw = tool_args.get("keyword") or "美食"
+                        await on_progress(f"📡 正在開啟地圖雷達，檢索周邊「{kw}」高評價餐廳清單...")
+                    elif tool_name == "get_tabelog_info":
+                        s_name = tool_args.get("store_name") or "店家"
+                        await on_progress(f"🇯🇵 正在連線日本食べログ (Tabelog) 查閱「{s_name}」老饕評分與獲獎紀錄...")
+                    elif tool_name == "extract_user_preferences":
+                        await on_progress("🎯 正在提取您的用餐預算、口味偏好與限制條件...")
+                    else:
+                        readable_names = {
+                            "geocode_location": "搜尋地點座標",
+                            "search_nearby": "檢索週邊美食餐廳",
+                            "get_tabelog_info": "比對並獲取 Tabelog 評分",
+                        }
+                        display_name = readable_names.get(tool_name, tool_name)
+                        await on_progress(f"📊 正在執行：{display_name}...")
 
                 # 執行 Tool
                 tool_t0 = time.time()
                 tool_output_str = await self.tool_executor.execute_tool(tool_name, tool_args)
+                tools_executed.append(tool_name)
                 tool_latency_ms = int((time.time() - tool_t0) * 1000)
 
                 # Context Budgeting: 長度超過 2000 字自動截斷

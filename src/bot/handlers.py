@@ -177,30 +177,21 @@ class TelegramBotHandler:
         history = await self.session_repo.get_recent_history(chat_id, max_turns=3)
 
         # 發送初始思考訊息，取得 message_id
-        status_msg_id = await self._send_telegram_message(chat_id, "🔍 PickForMe 正在啟動 Agent 為您搜尋...")
+        status_msg_id = await self._send_telegram_message(chat_id, "🧭 收到！PickForMe 正在啟動美食 Agent 為您規劃...")
 
         # 定義進度更新 Callback (動態編輯 Telegram 訊息)
         async def on_progress(status_text: str) -> None:
             if status_msg_id:
                 await self._edit_telegram_message(chat_id, status_msg_id, status_text)
 
-        # 0. 優先嘗試轉發至本地 IDE Agent Bridge (PC 開著時)
-        bridge_resp = await self.devops_subagent.bridge.forward_agent_request(
-            user_message=text,
+        # 執行 Agent Loop (支援本機 Ollama 優先、雲端模型自動容錯與即時進度回傳)
+        final_response = await self.agent_engine.run_agent(
             chat_id=chat_id,
+            user_message=text,
             user_location=user_location,
+            conversation_history=history,
+            on_progress=on_progress,
         )
-        if bridge_resp:
-            final_response = bridge_resp
-        else:
-            # 離線降級：執行內建 Agent Loop
-            final_response = await self.agent_engine.run_agent(
-                chat_id=chat_id,
-                user_message=text,
-                user_location=user_location,
-                conversation_history=history,
-                on_progress=on_progress,
-            )
 
         # 紀錄本輪對話至 Session
         try:
@@ -241,11 +232,11 @@ class TelegramBotHandler:
         try:
             await self.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text, parse_mode="Markdown")
         except TelegramError as e:
-            if "Message is not modified" in str(e):
+            if "not modified" in str(e).lower():
                 return
             logger.warning(f"Markdown edit failed ({e}), falling back to plain text")
             try:
                 await self.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text)
             except TelegramError as err:
-                if "Message is not modified" not in str(err):
+                if "not modified" not in str(err).lower():
                     logger.warning(f"Error editing Telegram message {message_id}: {err}")

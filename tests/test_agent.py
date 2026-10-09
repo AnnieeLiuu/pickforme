@@ -95,7 +95,7 @@ async def test_agent_engine_run_loop_direct_answer():
             "role": "assistant",
             "content": "推薦博多站附近的「一蘭拉麵本店」，Tabelog 評分為 3.65！",
         },
-        "gemini-2.0-flash",
+        "gemini-3.8-flash",
         150,
     )
 
@@ -109,7 +109,7 @@ async def test_agent_engine_run_loop_direct_answer():
         assert "一蘭拉麵本店" in result
         mock_trace.start_run.assert_called_once()
         mock_trace.finish_run.assert_called_once_with(
-            status="completed", model_used="gemini-2.0-flash", total_tokens=150
+            status="completed", model_used="gemini-3.8-flash", total_tokens=150
         )
 
 
@@ -155,3 +155,58 @@ async def test_agent_engine_ollama_primary():
         assert "ollama" in model
         assert msg["content"] == "Ollama 本地推薦！"
         assert tokens == 80
+
+
+@pytest.mark.asyncio
+async def test_agent_engine_on_progress_stages():
+    engine = AgentEngine()
+    progress_updates: list[str] = []
+
+    async def mock_progress(msg: str) -> None:
+        progress_updates.append(msg)
+
+    # 模擬 2 步對話：第 1 步叫 search_nearby，第 2 步輸出最終結果
+    step1_response = (
+        {
+            "role": "assistant",
+            "content": None,
+            "tool_calls": [
+                {
+                    "id": "call_1",
+                    "type": "function",
+                    "function": {
+                        "name": "search_nearby",
+                        "arguments": json.dumps({"lat": 35.6, "lng": 139.7, "keyword": "拉麵"}),
+                    },
+                }
+            ],
+        },
+        "gemini-3.8-flash",
+        100,
+    )
+    step2_response = (
+        {
+            "role": "assistant",
+            "content": "為您推薦精選拉麵店！",
+        },
+        "gemini-3.8-flash",
+        50,
+    )
+
+    with patch.object(engine, "call_llm_with_failover", side_effect=[step1_response, step2_response]):
+        with patch.object(
+            engine.tool_executor,
+            "execute_tool",
+            AsyncMock(return_value=json.dumps({"count": 1, "places": []})),
+        ):
+            res = await engine.run_agent(
+                chat_id=999,
+                user_message="我想吃拉麵",
+                on_progress=mock_progress,
+            )
+
+    assert "精選拉麵店" in res
+    # 驗證進度訊息包含了各階段的具體語意
+    assert any("正在理解您的美食需求" in p for p in progress_updates)
+    assert any("正在開啟地圖雷達" in p and "拉麵" in p for p in progress_updates)
+    assert any("已取得周邊候選店家" in p for p in progress_updates)

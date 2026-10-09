@@ -89,7 +89,7 @@ class IDEAgentBridge:
 
         try:
             url = self.bridge_url.rsplit("/", 1)[0] + "/run-agent"
-            async with httpx.AsyncClient(timeout=25.0) as client:
+            async with httpx.AsyncClient(timeout=90.0) as client:
                 resp = await client.post(
                     url,
                     json={
