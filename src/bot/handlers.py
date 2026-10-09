@@ -4,6 +4,7 @@ from typing import Any, Optional, Set
 from src.agent.core import AgentEngine
 from src.agent.devops import DevOpsSubagent
 from src.config import settings
+from src.db.repositories.prewarm import PrewarmRepository
 from src.db.repositories.session import SessionRepository
 from telegram import Bot
 from telegram.error import TelegramError
@@ -32,11 +33,13 @@ class TelegramBotHandler:
         session_repo: Optional[SessionRepository] = None,
         bot: Optional[Bot] = None,
         devops_subagent: Optional[DevOpsSubagent] = None,
+        prewarm_repo: Optional[PrewarmRepository] = None,
     ):
         self.agent_engine = agent_engine or AgentEngine()
         self.session_repo = session_repo or SessionRepository()
         self.bot = bot or (Bot(token=settings.TELEGRAM_BOT_TOKEN) if settings.TELEGRAM_BOT_TOKEN else None)
         self.devops_subagent = devops_subagent or DevOpsSubagent(agent_engine=self.agent_engine)
+        self.prewarm_repo = prewarm_repo or PrewarmRepository()
 
     async def setup_commands(self) -> None:
         """向 Telegram 伺服器註冊選單與指令提示 (Slash Commands Menu)"""
@@ -140,15 +143,37 @@ class TelegramBotHandler:
             await self._send_telegram_message(chat_id, log_text)
             return
 
-        if text.startswith("/prewarm"):
+        if text.startswith("/prewarm") or text.startswith("預熱"):
+            area = ""
+            if text.startswith("/prewarm"):
+                area = text[len("/prewarm") :].strip()
+            elif text.startswith("預熱"):
+                area = text[len("預熱") :].strip()
+
+            if area:
+                try:
+                    job_id = await self.prewarm_repo.create_job(area_name=area, target_count=20)
+                    reply_msg = (
+                        f"♨️ **已成功將「{area}」排入 Neon 預熱佇列！**\n\n"
+                        f"🆔 **任務 ID**：`{job_id}`\n"
+                        f"🎯 **目標數量**：20 家高評價餐廳\n"
+                        f"🔄 **狀態**：`pending`（等待背景 Worker 快取）\n\n"
+                        f"💡 背景 Worker 將自動為您鎖定該地標，預先抓取 Google Places 與 Tabelog 評分並存入資料庫！"
+                    )
+                    await self._send_telegram_message(chat_id, reply_msg)
+                except Exception as e:
+                    logger.error(f"Failed to create prewarm job for '{area}': {e}")
+                    await self._send_telegram_message(chat_id, f"❌ 預熱任務建立失敗：{e}")
+                return
+
             prewarm_msg = (
                 "♨️ **PickForMe 精準地標與商圈美食快取預熱**\n\n"
                 "📍 **預熱概念**：日本旅遊以「熱門車站/觀光地標」為核心，預熱可將熱門地標 800m 內的 Tabelog 頂級評分餐廳提前寫入 Neon DB 快取，達成秒答體驗！\n\n"
                 "🎯 **推薦預熱地標範例**：\n"
-                "• 關東：`橫濱中華街`、`新宿歌舞伎町`、`澀谷`\n"
+                "• 關東：`橫濱中華街`、`新宿歌舞伎町`、`新宿御苑`\n"
                 "• 關西：`心齋橋`、`難波`、`京都河原町`\n"
                 "• 九州：`博多站`、`天神`、`由布院`\n\n"
-                "💡 **發動指令**：在對話中直接輸入 `預熱 橫濱中華街` 或 `預熱 博多站`，Agent 即會啟動該地標的精準預熱！"
+                "💡 **發動指令**：在對話中直接輸入 `預熱 新宿御苑` 或 `/prewarm 新宿御苑`，Agent 即會啟動該地標的精準預熱！"
             )
             await self._send_telegram_message(chat_id, prewarm_msg)
             return

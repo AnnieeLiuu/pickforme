@@ -84,3 +84,31 @@ async def test_telegram_webhook_fastapi_endpoint():
             assert resp.status_code == 200
             assert resp.json() == {"status": "ok"}
             mock_handle.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_telegram_handler_prewarm_command():
+    mock_bot = AsyncMock()
+    mock_prewarm = AsyncMock()
+    from uuid import uuid4
+
+    mock_prewarm.create_job.return_value = uuid4()
+    handler = TelegramBotHandler(bot=mock_bot, prewarm_repo=mock_prewarm)
+
+    prewarm_update = {
+        "update_id": 1004,
+        "message": {
+            "message_id": 4,
+            "from": {"id": 100},
+            "chat": {"id": 100},
+            "text": "預熱 新宿御苑",
+        },
+    }
+
+    with patch("src.config.settings.TELEGRAM_ALLOWED_USER_ID", 0):
+        await handler.handle_update(prewarm_update)
+        mock_prewarm.create_job.assert_called_once_with(area_name="新宿御苑", target_count=20)
+        mock_bot.send_message.assert_called_once()
+        args = mock_bot.send_message.call_args[1]
+        assert "新宿御苑" in args["text"]
+        assert "排入 Neon 預熱佇列" in args["text"]
