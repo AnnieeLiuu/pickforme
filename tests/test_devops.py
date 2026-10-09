@@ -16,7 +16,10 @@ async def test_devops_subagent_run_diagnosis():
         )
     )
 
-    devops = DevOpsSubagent(agent_engine=mock_agent_engine)
+    mock_bridge = MagicMock()
+    mock_bridge.forward_diagnosis_request = AsyncMock(return_value=None)
+
+    devops = DevOpsSubagent(agent_engine=mock_agent_engine, bridge=mock_bridge)
 
     # 執行診斷
     report = await devops.run_diagnosis("@debug 幫我排查伺服器")

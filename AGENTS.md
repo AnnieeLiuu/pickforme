@@ -53,4 +53,19 @@ Temporary scripts created in `scratch/` during exploratory phase MUST follow thi
 2. **Promotion (轉正)**: Once verified, refactor core runtime logic into `src/` modules or official CLI utilities into `scripts/` (e.g. `scripts/setup_webhook.py`).
 3. **Graduation & Clean-up (退場)**: Immediately clean up temporary files in `scratch/` to prevent repository clutter.
 
+---
+
+## ⚙️ New Feature CI Impact Evaluation Guidelines (新功能 CI 評估規範)
+
+Whenever designing or implementing a new feature or module, AI Agents and developers **MUST** perform a CI Evaluation:
+
+1. **Mockable Core Logic (適合進 CI)**:
+   - Core algorithms, data models, handlers, and client bridges (e.g., `IDEAgentBridge`) **MUST** have corresponding unit tests in `tests/test_*.py` using AsyncMock/MagicMock.
+   - These tests MUST run fast and offline without external dependencies (no live API keys, no network calls) so GitLab CI pipeline passes deterministically.
+
+2. **Environment-Dependent Features (不硬塞進 CI)**:
+   - Live local servers (e.g., `agent_bridge_server.py`), real Cloud Postgres DB connections, or live tunnel endpoints are NOT required to run as live services inside GitLab CI runners.
+   - Test their integration via mock-backed unit tests instead to keep CI fast and stable.
+
+
 
