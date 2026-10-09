@@ -1,5 +1,5 @@
 import json
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from src.agent.core import AgentEngine
@@ -231,3 +231,130 @@ async def test_agent_engine_on_progress_stages():
     assert any("正在理解您的美食需求" in p for p in progress_updates)
     assert any("正在開啟地圖雷達" in p and "拉麵" in p for p in progress_updates)
     assert any("已取得周邊候選店家" in p for p in progress_updates)
+
+
+@pytest.mark.asyncio
+async def test_call_openai_compatible_api_success():
+    engine = AgentEngine()
+    fake_payload = {
+        "choices": [{"message": {"role": "assistant", "content": "測試成功回覆"}}],
+        "usage": {"total_tokens": 42},
+    }
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = fake_payload
+
+    with patch("httpx.AsyncClient.post", AsyncMock(return_value=mock_resp)):
+        msg, tokens = await engine._call_openai_compatible_api(
+            url="http://fake-api/v1",
+            api_key="key",
+            model="fake-model",
+            messages=[{"role": "user", "content": "hello"}],
+            tools=[],
+        )
+        assert msg["content"] == "測試成功回覆"
+        assert tokens == 42
+
+
+@pytest.mark.asyncio
+async def test_call_openai_compatible_api_429_dynamic_retry():
+    engine = AgentEngine()
+    fake_429_resp = MagicMock()
+    fake_429_resp.status_code = 429
+    fake_429_resp.headers = {"retry-after": "0.1"}
+
+    fake_200_resp = MagicMock()
+    fake_200_resp.status_code = 200
+    fake_200_resp.json.return_value = {
+        "choices": [{"message": {"role": "assistant", "content": "重試後成功"}}],
+        "usage": {"total_tokens": 15},
+    }
+
+    with patch("asyncio.sleep", AsyncMock()) as mock_sleep:
+        with patch("httpx.AsyncClient.post", AsyncMock(side_effect=[fake_429_resp, fake_200_resp])):
+            msg, tokens = await engine._call_openai_compatible_api(
+                url="http://fake-api/v1",
+                api_key="key",
+                model="fake-model",
+                messages=[{"role": "user", "content": "hello"}],
+                tools=[],
+            )
+            assert msg["content"] == "重試後成功"
+            assert tokens == 15
+            mock_sleep.assert_called_once_with(3.0)  # max(0.1, 3.0) = 3.0
+
+
+@pytest.mark.asyncio
+async def test_call_openai_compatible_api_empty_response_rejection():
+    engine = AgentEngine()
+    empty_resp = MagicMock()
+    empty_resp.status_code = 200
+    empty_resp.json.return_value = {
+        "choices": [{"message": {"role": "assistant", "content": "", "tool_calls": None}}],
+        "usage": {"total_tokens": 5},
+    }
+
+    with patch("httpx.AsyncClient.post", AsyncMock(return_value=empty_resp)):
+        with pytest.raises(ValueError, match="empty response"):
+            await engine._call_openai_compatible_api(
+                url="http://fake-api/v1",
+                api_key="key",
+                model="fake-model",
+                messages=[{"role": "user", "content": "hello"}],
+                tools=[],
+            )
+
+
+@pytest.mark.asyncio
+async def test_agent_engine_final_step_forces_summary():
+    """驗證達到最大步數時，tools 被清空以強制 LLM 輸出最終總結卡片"""
+    engine = AgentEngine(max_steps=2)
+
+    # 第 1 步發動 tool_call
+    step1_resp = (
+        {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+                {
+                    "id": "call_1",
+                    "type": "function",
+                    "function": {"name": "search_nearby", "arguments": "{}"},
+                }
+            ],
+        },
+        "qwen/qwen3.8-27b",
+        50,
+    )
+
+    # 第 2 步（最後一步）：因為 tools 傳入空清單，模型輸出最終卡片文本
+    step2_resp = (
+        {
+            "role": "assistant",
+            "content": "已為您整理最終推薦美食！",
+        },
+        "qwen/qwen3.8-27b",
+        60,
+    )
+
+    call_records = []
+
+    async def mock_call_llm(messages, tools=None):
+        call_records.append(tools)
+        if len(call_records) == 1:
+            return step1_resp
+        return step2_resp
+
+    with patch.object(engine, "call_llm_with_failover", side_effect=mock_call_llm):
+        with patch.object(
+            engine.tool_executor,
+            "execute_tool",
+            AsyncMock(return_value=json.dumps({"count": 0, "places": []})),
+        ):
+            res = await engine.run_agent(chat_id=1, user_message="找美食")
+
+    assert "已為您整理最終推薦美食！" in res
+    assert len(call_records) == 2
+    assert call_records[0] == TOOL_SCHEMAS  # 第 1 步有 tools
+    assert call_records[1] == []  # 最後一步 tools 為空，強制結案輸出卡片

@@ -21,7 +21,7 @@ class AgentEngine:
         self,
         tool_executor: Optional[AgentToolExecutor] = None,
         trace_logger: Optional[AgentTraceLogger] = None,
-        max_steps: int = 5,
+        max_steps: int = 6,
     ):
         self.tool_executor = tool_executor or AgentToolExecutor()
         self.trace_logger = trace_logger or AgentTraceLogger()
@@ -48,11 +48,15 @@ class AgentEngine:
             return False
 
     async def _try_groq(
-        self, messages: list[dict[str, Any]], errors: list[str]
+        self,
+        messages: list[dict[str, Any]],
+        errors: list[str],
+        tools: Optional[list[dict[str, Any]]] = None,
     ) -> Optional[tuple[dict[str, Any], str, int]]:
         """嘗試使用雲端 Groq 多模型"""
         if not settings.GROQ_API_KEY:
             return None
+        active_tools = TOOL_SCHEMAS if tools is None else tools
         for fallback_model in ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"]:
             try:
                 msg_resp, tokens = await self._call_openai_compatible_api(
@@ -60,7 +64,7 @@ class AgentEngine:
                     api_key=settings.GROQ_API_KEY,
                     model=fallback_model,
                     messages=messages,
-                    tools=TOOL_SCHEMAS,
+                    tools=active_tools,
                     timeout=30.0,
                 )
                 return msg_resp, fallback_model, tokens
@@ -70,18 +74,22 @@ class AgentEngine:
         return None
 
     async def _try_gemini(
-        self, messages: list[dict[str, Any]], errors: list[str]
+        self,
+        messages: list[dict[str, Any]],
+        errors: list[str],
+        tools: Optional[list[dict[str, Any]]] = None,
     ) -> Optional[tuple[dict[str, Any], str, int]]:
         """嘗試使用 Google Gemini Flash 雲端主力"""
         if not settings.GEMINI_API_KEY:
             return None
+        active_tools = TOOL_SCHEMAS if tools is None else tools
         try:
             msg_resp, tokens = await self._call_openai_compatible_api(
                 url=GEMINI_OPENAI_URL,
                 api_key=settings.GEMINI_API_KEY,
                 model="gemini-3.8-flash",
                 messages=messages,
-                tools=TOOL_SCHEMAS,
+                tools=active_tools,
                 timeout=30.0,
             )
             return msg_resp, "gemini-3.8-flash", tokens
@@ -91,11 +99,15 @@ class AgentEngine:
         return None
 
     async def _try_ollama(
-        self, messages: list[dict[str, Any]], errors: list[str]
+        self,
+        messages: list[dict[str, Any]],
+        errors: list[str],
+        tools: Optional[list[dict[str, Any]]] = None,
     ) -> Optional[tuple[dict[str, Any], str, int]]:
         """嘗試使用本機 Ollama 離線模型"""
         if not await self._is_ollama_online():
             return None
+        active_tools = TOOL_SCHEMAS if tools is None else tools
         try:
             ollama_url = f"{settings.OLLAMA_BASE_URL.rstrip('/')}/v1/chat/completions"
             msg_resp, tokens = await self._call_openai_compatible_api(
@@ -103,7 +115,7 @@ class AgentEngine:
                 api_key="ollama",
                 model=settings.OLLAMA_MODEL,
                 messages=messages,
-                tools=TOOL_SCHEMAS,
+                tools=active_tools,
                 timeout=90.0,
             )
             logger.info(f"Successfully processed by local Ollama ({settings.OLLAMA_MODEL})")
@@ -113,7 +125,11 @@ class AgentEngine:
             errors.append(f"Ollama ({settings.OLLAMA_MODEL}): {e}")
         return None
 
-    async def call_llm_with_failover(self, messages: list[dict[str, Any]]) -> tuple[dict[str, Any], str, int]:
+    async def call_llm_with_failover(
+        self,
+        messages: list[dict[str, Any]],
+        tools: Optional[list[dict[str, Any]]] = None,
+    ) -> tuple[dict[str, Any], str, int]:
         """呼叫 LLM (依據 LLM_PRIMARY_PROVIDER 設定排列優先序，自動多級降級容錯)"""
         errors: list[str] = []
         primary = getattr(settings, "LLM_PRIMARY_PROVIDER", "groq").lower()
@@ -126,7 +142,7 @@ class AgentEngine:
             pipeline = [self._try_gemini, self._try_groq, self._try_ollama]
 
         for try_fn in pipeline:
-            result = await try_fn(messages, errors)
+            result = await try_fn(messages, errors, tools=tools)
             if result is not None:
                 return result
 
@@ -236,9 +252,14 @@ class AgentEngine:
         tools_executed: list[str] = []
 
         for step in range(1, self.max_steps + 1):
+            # 若已達最後一步，傳入空列表 [] 禁用 tools，強制 LLM 依現有搜集到的資料生成推薦卡片總結
+            step_tools = TOOL_SCHEMAS if step < self.max_steps else []
+
             if on_progress:
                 if step == 1:
                     await on_progress("🧭 正在理解您的美食需求與分析所在座標...")
+                elif step == self.max_steps:
+                    await on_progress("✍️ 正在綜整目前取得之美食推薦資料，為您生成最終推薦卡片...")
                 elif "get_tabelog_info" in tools_executed:
                     await on_progress("✍️ 正在綜整日本食べログ真實評價與指標，為您生成專屬美食推薦卡片...")
                 elif "search_nearby" in tools_executed:
@@ -250,7 +271,7 @@ class AgentEngine:
 
             t0 = time.time()
             try:
-                message_obj, model_used, tokens = await self.call_llm_with_failover(messages)
+                message_obj, model_used, tokens = await self.call_llm_with_failover(messages, tools=step_tools)
                 last_model_used = model_used
                 total_tokens_used += tokens
                 llm_latency_ms = int((time.time() - t0) * 1000)
