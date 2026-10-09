@@ -8,6 +8,8 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
+from src.agent.bridge import IDEAgentBridge
+
 logger = logging.getLogger(__name__)
 
 # 常見 繁體中文 ↔ 日文新字體/簡體 漢字對照表
@@ -95,8 +97,14 @@ def calculate_string_similarity(s1: str, s2: str) -> float:
 
 
 class EntityResolver:
-    def __init__(self, agent_engine: Optional[Any] = None, gemini_api_key: Optional[str] = None):
+    def __init__(
+        self,
+        agent_engine: Optional[Any] = None,
+        bridge: Optional[IDEAgentBridge] = None,
+        gemini_api_key: Optional[str] = None,
+    ):
         self._agent_engine = agent_engine
+        self.bridge = bridge or IDEAgentBridge()
 
     def _get_engine(self) -> Any:
         if self._agent_engine is None:
@@ -190,7 +198,21 @@ class EntityResolver:
     async def _verify_with_llm(
         self, google_store: dict[str, Any], tabelog_candidate: dict[str, Any]
     ) -> Optional[EntityVerifyResponse]:
-        """使用 AgentEngine 多模型自動降級進行灰色地帶比對 (Gemini ➡️ Groq Failover)"""
+        """優先使用 IDE Agent Bridge (PC 開著時) 進行灰色地帶比對，離線時自動降級為雲端多模型 LLM"""
+        # 1. PC 開著時：轉發至 IDE Agent Bridge 大腦處理
+        try:
+            if await self.bridge.is_bridge_available():
+                res_dict = await self.bridge.forward_entity_verify_request(google_store, tabelog_candidate)
+                if res_dict:
+                    return EntityVerifyResponse(
+                        is_same_store=bool(res_dict.get("is_same_store", False)),
+                        confidence=float(res_dict.get("confidence", 0.0)),
+                        reason=str(res_dict.get("reason", "由 IDE Agent 大腦比對完成")),
+                    )
+        except Exception as e:
+            logger.warning(f"IDE Agent 比對失敗，降級至雲端 API: {e}")
+
+        # 2. 離線狀況 (電腦關著)：使用雲端多模型降級機制 (Gemini ➡️ Groq Failover)
         prompt_path = Path(__file__).parent.parent.parent / "config" / "prompts" / "entity_verify.md"
         system_instruction = prompt_path.read_text(encoding="utf-8") if prompt_path.exists() else "比對兩家餐廳是否相同"
 

@@ -51,3 +51,30 @@ class IDEAgentBridge:
             logger.warning(f"呼叫 IDE Agent Bridge 失敗: {e}，切換至內部模組。")
 
         return None
+
+    async def forward_entity_verify_request(
+        self, google_store: dict, tabelog_candidate: dict
+    ) -> Optional[dict]:
+        """將 Prewarm 比對需求轉發給本地 IDE Agent 大腦"""
+        if not await self.is_bridge_available():
+            return None
+
+        try:
+            url = self.bridge_url.rsplit("/", 1)[0] + "/verify-entity"
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.post(
+                    url,
+                    json={
+                        "google_store": google_store,
+                        "tabelog_candidate": tabelog_candidate,
+                    },
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data.get("status") == "ok" and isinstance(data.get("result"), dict):
+                        logger.info("成功由 IDE Agent Bridge 完成實體比對。")
+                        return dict(data["result"])
+        except Exception as e:
+            logger.warning(f"IDE Agent 實體比對轉發失敗: {e}")
+
+        return None

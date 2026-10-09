@@ -1,5 +1,7 @@
 import asyncio
+import json
 import logging
+import re
 import sys
 import time
 from pathlib import Path
@@ -24,10 +26,50 @@ class DiagnosisRequest(BaseModel):
     query: str
 
 
+class EntityVerifyRequest(BaseModel):
+    google_store: dict
+    tabelog_candidate: dict
+
+
 @app.get("/health")
 @app.get("/agent/health")
 async def health_check():
     return {"status": "ok", "agent": "Antigravity IDE Agent Bridge Active"}
+
+
+@app.post("/agent/verify-entity")
+async def verify_entity(req: EntityVerifyRequest):
+    g_name = req.google_store.get("name", "")
+    t_name = req.tabelog_candidate.get("name_ja", "")
+    logger.info(f"IDE Agent Bridge: Verify entity for '{g_name}' vs '{t_name}'")
+
+    agent_engine = AgentEngine()
+    prompt = f"""
+你是 Antigravity IDE Agent。請精準比對以下兩家餐廳是否為同一家店：
+
+Google 店家:
+- 名稱: {g_name}
+- 地址: {req.google_store.get("address")}
+- 電話: {req.google_store.get("phone")}
+
+Tabelog 店家:
+- 名稱: {t_name}
+- 地址: {req.tabelog_candidate.get("address")}
+- 電話: {req.tabelog_candidate.get("phone")}
+
+請嚴格只回傳 JSON 格式（切勿包含 Markdown 或其他文字）：
+{{"is_same_store": true, "confidence": 0.95, "reason": "店名極度相似且座標吻合"}}
+"""
+    try:
+        messages = [{"role": "user", "content": prompt}]
+        msg_obj, model_used, _ = await agent_engine.call_llm_with_failover(messages)
+        raw_text = msg_obj.get("content", "").strip()
+        cleaned_text = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_text, flags=re.MULTILINE).strip()
+        data = json.loads(cleaned_text)
+        return {"status": "ok", "result": data, "agent": "Antigravity IDE Agent"}
+    except Exception as e:
+        logger.error(f"Error during IDE Agent entity verification: {e}")
+        return {"status": "error", "error": str(e)}
 
 
 @app.post("/agent/diagnose")
