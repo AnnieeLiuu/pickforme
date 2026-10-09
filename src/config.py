@@ -27,7 +27,7 @@ class Settings(BaseSettings):
 
     # Ollama Local LLM Configuration
     OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "qwen2.5:7b"
+    OLLAMA_MODEL: str = "qwen2.5:3b"
     OLLAMA_ENABLED: bool = True
 
     model_config = SettingsConfigDict(
