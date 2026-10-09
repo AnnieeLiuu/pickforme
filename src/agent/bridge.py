@@ -36,7 +36,7 @@ class IDEAgentBridge:
             return None
 
         try:
-            async with httpx.AsyncClient(timeout=8.0) as client:
+            async with httpx.AsyncClient(timeout=25.0) as client:
                 resp = await client.post(
                     self.bridge_url,
                     json={"query": user_query},
