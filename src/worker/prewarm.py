@@ -73,7 +73,7 @@ class PrewarmWorker:
                 candidates = await self.tabelog_scraper.search_tabelog_candidates(
                     store_name=store_name, area_name=area_name
                 )
-                resolve_res = await self.entity_resolver.resolve_entity(place, candidates, allow_llm=False)
+                resolve_res = await self.entity_resolver.resolve_entity(place, candidates, allow_llm=True)
 
                 if resolve_res.get("match_found"):
                     matched_cand = resolve_res["candidate"]

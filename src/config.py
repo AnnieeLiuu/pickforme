@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     # IDE Agent Bridge (Option B)
     IDE_AGENT_BRIDGE_URL: str = "http://127.0.0.1:8000/agent/diagnose"
 
+    # Ollama Local LLM Configuration
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "qwen2.5:7b"
+    OLLAMA_ENABLED: bool = True
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

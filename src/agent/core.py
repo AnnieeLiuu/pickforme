@@ -35,9 +35,38 @@ class AgentEngine:
             return prompt_path.read_text(encoding="utf-8")
         return "你是一位日本美食特派員 PickForMe，請依據使用者地點與需求推薦美食。"
 
+    async def _is_ollama_online(self) -> bool:
+        """發送 0.5s 極速 Ping 探測本機 Ollama 服務是否啟動」"""
+        if not getattr(settings, "OLLAMA_ENABLED", True):
+            return False
+        base_url = getattr(settings, "OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
+        try:
+            async with httpx.AsyncClient(timeout=0.5) as client:
+                resp = await client.get(f"{base_url}/api/tags")
+                return resp.status_code == 200
+        except Exception:
+            return False
+
     async def call_llm_with_failover(self, messages: list[dict[str, Any]]) -> tuple[dict[str, Any], str, int]:
-        """呼叫 LLM (Gemini Flash 主力 ➡️ Groq Qwen 27B ➡️ Groq Llama 8B 多層自動降級)"""
+        """呼叫 LLM (Ollama 本地大腦 ➡️ Gemini Flash 雲端主力 ➡️ Groq 多模型自動降級)"""
         errors = []
+
+        # 0. 優先嘗試本機 Ollama Local LLM (PC ON 且 Ollama 啟動時，100% 免費 0 API Key 消耗)
+        if await self._is_ollama_online():
+            try:
+                ollama_url = f"{settings.OLLAMA_BASE_URL.rstrip('/')}/v1/chat/completions"
+                msg_resp, tokens = await self._call_openai_compatible_api(
+                    url=ollama_url,
+                    api_key="ollama",
+                    model=settings.OLLAMA_MODEL,
+                    messages=messages,
+                    tools=TOOL_SCHEMAS,
+                )
+                logger.info(f"Successfully processed by local Ollama ({settings.OLLAMA_MODEL})")
+                return msg_resp, f"ollama ({settings.OLLAMA_MODEL})", tokens
+            except Exception as e:
+                logger.warning(f"Ollama local LLM call failed: {e}. Falling back to cloud APIs...")
+                errors.append(f"Ollama ({settings.OLLAMA_MODEL}): {e}")
 
         # 1. 嘗試 Gemini Flash (Primary)
         if settings.GEMINI_API_KEY:

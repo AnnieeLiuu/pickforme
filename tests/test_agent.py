@@ -118,6 +118,7 @@ async def test_agent_engine_failover_gemini_to_groq():
     engine = AgentEngine()
 
     with (
+        patch.object(engine, "_is_ollama_online", AsyncMock(return_value=False)),
         patch("src.config.settings.GEMINI_API_KEY", "fake_gemini_key"),
         patch("src.config.settings.GROQ_API_KEY", "fake_groq_key"),
     ):
@@ -136,3 +137,21 @@ async def test_agent_engine_failover_gemini_to_groq():
             assert model == "qwen/qwen3.8-27b"
             assert msg["content"] == "Groq 回覆推薦！"
             assert tokens == 120
+
+
+@pytest.mark.asyncio
+async def test_agent_engine_ollama_primary():
+    engine = AgentEngine()
+
+    with (
+        patch.object(engine, "_is_ollama_online", AsyncMock(return_value=True)),
+        patch.object(
+            engine,
+            "_call_openai_compatible_api",
+            AsyncMock(return_value=({"role": "assistant", "content": "Ollama 本地推薦！"}, 80)),
+        ),
+    ):
+        msg, model, tokens = await engine.call_llm_with_failover([{"role": "user", "content": "hi"}])
+        assert "ollama" in model
+        assert msg["content"] == "Ollama 本地推薦！"
+        assert tokens == 80
