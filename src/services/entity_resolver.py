@@ -117,9 +117,12 @@ class EntityResolver:
         return self._agent_engine
 
     async def resolve_entity(
-        self, google_store: dict[str, Any], tabelog_candidates: list[dict[str, Any]]
+        self,
+        google_store: dict[str, Any],
+        tabelog_candidates: list[dict[str, Any]],
+        allow_llm: bool = True,
     ) -> dict[str, Any]:
-        """電話優先 + 店名正規化 + LLM 灰區判定之實體匹配流程"""
+        """電話優先 + 店名正規化 + LLM 灰區判定之實體匹配流程 (預熱模式下 allow_llm=False 避開 API Key 消耗)"""
         if not tabelog_candidates:
             return {"match_found": False, "match_method": "no_candidates", "confidence": 0.0}
 
@@ -175,17 +178,28 @@ class EntityResolver:
                 "reason": f"店名極高度相似 ({round(best_score, 2)})",
             }
 
-        # Step 3: LLM 灰色地帶判定 (0.60 ~ 0.85)
+        # Step 3: 灰色地帶判定 (0.60 ~ 0.85)
         if best_candidate and 0.60 <= best_score < 0.85:
-            llm_result = await self._verify_with_llm(google_store, best_candidate)
-            if llm_result and llm_result.is_same_store:
-                return {
-                    "match_found": True,
-                    "candidate": best_candidate,
-                    "match_method": "llm_verify",
-                    "confidence": llm_result.confidence,
-                    "reason": llm_result.reason,
-                }
+            if not allow_llm:
+                # 預熱/離線純規則模式：相似度 >= 0.70 直接採納為中等信心匹配，不消耗雲端 LLM API Key
+                if best_score >= 0.70:
+                    return {
+                        "match_found": True,
+                        "candidate": best_candidate,
+                        "match_method": "rule_medium",
+                        "confidence": round(best_score, 2),
+                        "reason": f"預熱純規則中度匹配成功 ({round(best_score, 2)})",
+                    }
+            else:
+                llm_result = await self._verify_with_llm(google_store, best_candidate)
+                if llm_result and llm_result.is_same_store:
+                    return {
+                        "match_found": True,
+                        "candidate": best_candidate,
+                        "match_method": "llm_verify",
+                        "confidence": llm_result.confidence,
+                        "reason": llm_result.reason,
+                    }
 
         return {
             "match_found": False,

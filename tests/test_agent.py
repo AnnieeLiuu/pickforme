@@ -95,7 +95,7 @@ async def test_agent_engine_run_loop_direct_answer():
             "role": "assistant",
             "content": "推薦博多站附近的「一蘭拉麵本店」，Tabelog 評分為 3.65！",
         },
-        "gemini-3.8-flash",
+        "gemini-2.0-flash",
         150,
     )
 
@@ -109,7 +109,7 @@ async def test_agent_engine_run_loop_direct_answer():
         assert "一蘭拉麵本店" in result
         mock_trace.start_run.assert_called_once()
         mock_trace.finish_run.assert_called_once_with(
-            status="completed", model_used="gemini-3.8-flash", total_tokens=150
+            status="completed", model_used="gemini-2.0-flash", total_tokens=150
         )
 
 

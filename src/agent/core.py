@@ -45,18 +45,18 @@ class AgentEngine:
                 msg_resp, tokens = await self._call_openai_compatible_api(
                     url=GEMINI_OPENAI_URL,
                     api_key=settings.GEMINI_API_KEY,
-                    model="gemini-3.8-flash",
+                    model="gemini-2.0-flash",
                     messages=messages,
                     tools=TOOL_SCHEMAS,
                 )
-                return msg_resp, "gemini-3.8-flash", tokens
+                return msg_resp, "gemini-2.0-flash", tokens
             except Exception as e:
                 logger.warning(f"Primary Gemini Flash LLM call failed: {e}. Attempting failover to Groq...")
                 errors.append(f"Gemini: {e}")
 
-        # 2. 備援降級 1：Groq Qwen 3.8 27B (Fallback 1)
+        # 2. 備援降級：Groq 多模型自動順序切換 (Qwen 27B ➡️ Llama 3.3 70B ➡️ Gemma 2 9B)
         if settings.GROQ_API_KEY:
-            for fallback_model in ["qwen/qwen3.8-27b"]:
+            for fallback_model in ["qwen/qwen3.8-27b", "llama-3.3-70b-versatile", "gemma2-9b-it"]:
                 try:
                     msg_resp, tokens = await self._call_openai_compatible_api(
                         url=GROQ_OPENAI_URL,

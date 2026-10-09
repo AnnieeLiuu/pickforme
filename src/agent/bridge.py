@@ -52,9 +52,7 @@ class IDEAgentBridge:
 
         return None
 
-    async def forward_entity_verify_request(
-        self, google_store: dict, tabelog_candidate: dict
-    ) -> Optional[dict]:
+    async def forward_entity_verify_request(self, google_store: dict, tabelog_candidate: dict) -> Optional[dict]:
         """將 Prewarm 比對需求轉發給本地 IDE Agent 大腦"""
         if not await self.is_bridge_available():
             return None

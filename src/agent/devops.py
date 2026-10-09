@@ -69,9 +69,7 @@ class DevOpsSubagent:
             latency_ms = int((time.time() - start_time) * 1000)
 
             return (
-                f"🛠️ **PickForMe 系統診斷報告**\n"
-                f"⏱️ 耗時: `{latency_ms}ms` | 🤖 模型: `{model_used}`\n\n"
-                f"{analysis_text}"
+                f"🛠️ **PickForMe 系統診斷報告**\n⏱️ 耗時: `{latency_ms}ms` | 🤖 模型: `{model_used}`\n\n{analysis_text}"
             )
         except Exception as e:
             logger.error(f"DevOps Subagent error: {e}")

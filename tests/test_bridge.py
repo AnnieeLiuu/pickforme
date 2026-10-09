@@ -15,9 +15,7 @@ async def test_ide_agent_bridge_available():
 @pytest.mark.asyncio
 async def test_devops_subagent_with_bridge_fallback():
     mock_bridge = MagicMock()
-    mock_bridge.forward_diagnosis_request = AsyncMock(
-        return_value="🤖 **[IDE Agent 遠端直連分析]**\n系統一切正常！"
-    )
+    mock_bridge.forward_diagnosis_request = AsyncMock(return_value="🤖 **[IDE Agent 遠端直連分析]**\n系統一切正常！")
 
     devops = DevOpsSubagent(bridge=mock_bridge)
     report = await devops.run_diagnosis("debug")

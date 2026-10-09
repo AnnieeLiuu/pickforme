@@ -8,7 +8,7 @@ Welcome to **PickForMe** — a high-performance Japan Food AI Agent system built
 
 - **`src/main.py`**: FastAPI entrypoint with health check & `/webhook/telegram` endpoints.
 - **`src/bot/handlers.py`**: Telegram Webhook update handler with whitelist check, status streaming, and Markdown format (`parse_mode="Markdown"`).
-- **`src/agent/core.py`**: Custom OpenAI-format LLM Agent Loop with failover (`gemini-3.8-flash` primary ➡️ `qwen/qwen3.8-27b` Groq fallback).
+- **`src/agent/core.py`**: Custom OpenAI-format LLM Agent Loop with failover (`gemini-2.0-flash` primary ➡️ `qwen/qwen3.8-27b` Groq fallback).
 - **`src/agent/tools.py`**: Tool definitions (`geocode_location`, `search_nearby`, `get_tabelog_info`).
 - **`src/services/tabelog_scraper.py`**: Tabelog HTML scraper parsing rating, reviews, budget, phone, `awards`, `hyakumeiten`, `supports_paypay`, and `credit_cards`.
 - **`src/services/entity_resolver.py`**: Match confidence resolver between Google Places and Tabelog search candidates.
