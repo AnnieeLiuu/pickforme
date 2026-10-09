@@ -93,6 +93,11 @@ async def diagnose(req: DiagnosisRequest):
 
 if __name__ == "__main__":
     if sys.platform == "win32":
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-    logger.info("Starting IDE Agent Bridge Server on http://127.0.0.1:8000 ...")
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+        loop = asyncio.WindowsSelectorEventLoopPolicy().new_event_loop()
+        asyncio.set_event_loop(loop)
+        config = uvicorn.Config(app=app, host="127.0.0.1", port=8000, loop="asyncio")
+        server = uvicorn.Server(config)
+        logger.info("Starting IDE Agent Bridge Server with SelectorEventLoop on http://127.0.0.1:8000 ...")
+        loop.run_until_complete(server.serve())
+    else:
+        uvicorn.run(app, host="127.0.0.1", port=8000)
