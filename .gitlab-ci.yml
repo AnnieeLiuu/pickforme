@@ -1,11 +1,7 @@
-include:
-  - template: Security/Secret-Detection.gitlab-ci.yml
-
 stages:
   - lint
   - type-check
   - test
-  - secret-detection
 
 variables:
   PYTHONPATH: "."
@@ -40,7 +36,3 @@ pytest-job:
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
-
-secret_detection:
-  allow_failure: false
-

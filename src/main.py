@@ -28,8 +28,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         # 測試並預熱 DB 連線池 (若有配置)
         if settings.DATABASE_URL:
             await get_db_pool()
+
+        # 註冊 Telegram 選單與指令提示
+        if settings.TELEGRAM_BOT_TOKEN:
+            from src.bot.handlers import TelegramBotHandler
+
+            handler = TelegramBotHandler()
+            await handler.setup_commands()
     except Exception as e:
-        logger.warning(f"Failed to pre-warm database connection pool on startup: {e}")
+        logger.warning(f"Failed to complete startup tasks: {e}")
 
     yield
 

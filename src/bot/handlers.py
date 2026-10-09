@@ -38,6 +38,24 @@ class TelegramBotHandler:
         self.bot = bot or (Bot(token=settings.TELEGRAM_BOT_TOKEN) if settings.TELEGRAM_BOT_TOKEN else None)
         self.devops_subagent = devops_subagent or DevOpsSubagent(agent_engine=self.agent_engine)
 
+    async def setup_commands(self) -> None:
+        """向 Telegram 伺服器註冊選單與指令提示 (Slash Commands Menu)"""
+        if not self.bot:
+            return
+        try:
+            from telegram import BotCommand
+
+            commands = [
+                BotCommand("start", "🍱 歡迎選單與美食指南說明"),
+                BotCommand("status", "📊 系統健康狀態與連線檢測"),
+                BotCommand("logs", "📝 最新 Agent 執行與錯誤 Trace"),
+                BotCommand("debug", "🛠️ DevOps 遠端診斷與自動修復 Subagent"),
+            ]
+            await self.bot.set_my_commands(commands)
+            logger.info("Successfully registered Telegram Bot slash commands menu.")
+        except Exception as e:
+            logger.warning(f"Could not register Telegram bot commands menu: {e}")
+
     async def handle_update(self, update_data: dict[str, Any]) -> None:
         """處理 Telegram Webhook Update 主入口"""
         update_id = update_data.get("update_id")
