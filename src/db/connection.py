@@ -31,8 +31,9 @@ async def get_db_pool() -> AsyncConnectionPool:
             min_size=1,
             max_size=10,
             max_idle=300,
+            timeout=10.0,
             check=AsyncConnectionPool.check_connection,
-            kwargs={"row_factory": dict_row},
+            kwargs={"row_factory": dict_row, "connect_timeout": 10},
         )
         await db_pool.open()
     return db_pool
