@@ -44,7 +44,19 @@ flowchart TD
 - 更新 `process_next_job`：將 `resolve_entity(..., allow_llm=True)` 恢復支援 LLM（當 PC ON 時走 Ollama；PC OFF 時走 Gemini 2.0 Flash）。
 
 ### 4. 單元測試 ([tests/test_agent.py](file:///c:/Users/User/OneDrive/%E6%96%87%E4%BB%B6/2026/PickForMe/tests/test_agent.py))
-- 新增 `test_agent_engine_ollama_primary` 單元測試：驗證在線時優先選擇 Ollama，離線時正確降級。
+- 新增 `test_agent_engine_ollama_primary` 與 `test_agent_engine_groq_primary` 單元測試：驗證依設定檔順序優先選擇對應 LLM，並具備完整多級降級容錯。
+
+---
+
+## 📊 實測基準與架構演進 (Benchmarks & Architectural Evolution)
+
+### 1. 硬體限制與延遲實測 (Intel Iris Xe CPU)
+- **Ollama 7B (純 CPU)**：單輪推論 >90s，觸發超時。
+- **Ollama 3B (純 CPU)**：單輪推論 18~40s，多輪 context 下偶發輸出空白字串問題。
+- **雲端 Groq (qwen3.8-27b)**：推論時間 **0.6 ~ 0.8s**，秒級極速回應，配額充沛 (999+ requests/day)。
+
+### 2. 最終決策 (Architecture Decision)
+- 將 `LLM_PRIMARY_PROVIDER` 預設設為 `"groq"`，在保證極致使用者體驗（<2秒回傳卡片）的前提下，保留本機 Ollama 作為離線/斷網時的保底備援大腦。
 
 ---
 
@@ -56,4 +68,4 @@ python -m ruff check src/ tests/
 python -m mypy src/
 pytest
 ```
-- 單元測試結果：`30 passed in 1.88s` (100% 通過)
+- 單元測試結果：`35 passed in 3.77s` (100% 通過)

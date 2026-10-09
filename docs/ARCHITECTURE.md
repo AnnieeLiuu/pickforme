@@ -91,6 +91,7 @@ CREATE TABLE prewarm_jobs (
     area_name VARCHAR(100) NOT NULL,
     status VARCHAR(20) DEFAULT 'pending',     -- 'pending', 'processing', 'completed', 'failed'
     target_count INT DEFAULT 20,
+    chat_id BIGINT,                           -- 任務完成時主動推播通知的 Telegram Chat ID
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -166,7 +167,8 @@ CREATE TABLE restaurant_insights (
   - 匹配失敗：標註「無 Tabelog 資料」，堅守 Precision 優先原則。
 
 ### C. 預熱與防封鎖機制
-- **預熱佇列**：使用 Neon `prewarm_jobs` 表搭配 `FOR UPDATE SKIP LOCKED`。
+- **預熱佇列**：使用 Neon `prewarm_jobs` 表搭配 `FOR UPDATE SKIP LOCKED`，支援分散式 Worker 平行認領不撞單。
+- **觸發與推播**：使用者可透過 Telegram 傳送 `/prewarm <地名> [分類]`（或 `預熱 <地名>`）直接發起預熱。Worker 完成後會透過記錄的 `chat_id` 主動推播「🎉 預熱完成！已快取 N 家熱門餐廳」通知卡片。
 
 ### D. 完整 Agent 決策、大腦選擇與工具呼叫流程圖 (Agent Decision & Tool Execution Flowchart)
 
@@ -183,18 +185,18 @@ flowchart TD
     %% 2. 美食搜尋 Agent Loop 路徑
     CheckType -- "美食搜尋 / 預熱任務" --> AgentLoop["PickForMe Agent Loop / src/agent/core.py"]
 
-    subgraph LLMEngineChoice ["LLM 引擎優先權決策 (0 API Cost 優先)"]
-        AgentLoop --> PingOllama{"0.5s Ping 本地 Ollama<br/>GET http://localhost:11434/api/tags"}
+    subgraph LLMEngineChoice ["LLM 引擎動態優先決策 (LLM_PRIMARY_PROVIDER: groq/gemini/ollama)"]
+        AgentLoop --> CheckProvider{"優先級判定<br/>預設: groq"}
         
-        PingOllama -- "🟢 在線 (PC ON)" --> OllamaLLM["調用 Ollama Local LLM<br/>Model: qwen2.5:7b<br/>0 API Key 消耗 / 0 費用"]
-        OllamaLLM -- 成功 --> StepLLMResult["LLM 思考完成: 回傳 Prompt / Tool Calls"]
-
-        PingOllama -- "🔴 離線 / 超時 (PC OFF)" --> GeminiLLM["1. 調用 Gemini 3.8 Flash<br/>Google AI Studio 每日免費層"]
-        OllamaLLM -- 失敗 / 異常 --> GeminiLLM
-
-        GeminiLLM -- 成功 --> StepLLMResult
-        GeminiLLM -- 429 Rate Limit / 503 Overload --> GroqFailover["2. 調用 Groq 多模型降級鏈<br/>qwen3.8-27b ➔ gpt-oss-120b ➔ gpt-oss-20b"]
-        GroqFailover --> StepLLMResult
+        CheckProvider -- "1. 雲端極速主力 (Groq)" --> GroqPrimary["Groq qwen/qwen3.8-27b<br/>推論延遲 ~0.7s (極速回應)"]
+        GroqPrimary -- 成功 --> StepLLMResult["LLM 思考完成: 回傳 Prompt / Tool Calls"]
+        
+        GroqPrimary -- 429 / 異常 --> GeminiFallback["2. 雲端備援: Gemini 3.8 Flash<br/>Google AI Studio 每日免費額度"]
+        GeminiFallback -- 成功 --> StepLLMResult
+        
+        GeminiFallback -- 429 額度耗盡 / 斷網 --> OllamaFallback{"3. 離線保底: 本地 Ollama<br/>0.5s Ping http://localhost:11434"}
+        OllamaFallback -- 在線 (PC ON) --> OllamaLocal["Ollama Local (qwen2.5:3b)<br/>0 API 消耗 / 離線運算保底"]
+        OllamaLocal -- 成功 --> StepLLMResult
     end
 
     StepLLMResult --> CheckToolCall{"LLM 決策: 是否發起 Tool Calls?"}

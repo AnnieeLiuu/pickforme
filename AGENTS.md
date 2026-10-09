@@ -8,7 +8,7 @@ Welcome to **PickForMe** — a high-performance Japan Food AI Agent system built
 
 - **`src/main.py`**: FastAPI entrypoint with health check & `/webhook/telegram` endpoints.
 - **`src/bot/handlers.py`**: Telegram Webhook update handler with whitelist check, status streaming, and Markdown format (`parse_mode="Markdown"`).
-- **`src/agent/core.py`**: Custom OpenAI-format LLM Agent Loop with failover (`gemini-2.0-flash` primary ➡️ `qwen/qwen3.8-27b` Groq fallback).
+- **`src/agent/core.py`**: Custom OpenAI-format LLM Agent Loop with dynamic multi-level failover (`LLM_PRIMARY_PROVIDER`: Groq primary ➡️ Gemini 3.8 Flash ➡️ Ollama local fallback).
 - **`src/agent/tools.py`**: Tool definitions (`geocode_location`, `search_nearby`, `get_tabelog_info`).
 - **`src/services/tabelog_scraper.py`**: Tabelog HTML scraper parsing rating, reviews, budget, phone, `awards`, `hyakumeiten`, `supports_paypay`, and `credit_cards`.
 - **`src/services/entity_resolver.py`**: Match confidence resolver between Google Places and Tabelog search candidates.
@@ -18,6 +18,7 @@ Welcome to **PickForMe** — a high-performance Japan Food AI Agent system built
 
 ## 📚 Key Documentation Files
 
+- **`docs/ARCHITECTURE.md`**: Master architectural blueprint, system topologies, Neon DB schema DDL, and end-to-end Mermaid flowcharts.
 - **`docs/tabelog_structure.md`**: Detailed HTML DOM structure, CSS selectors, and parsing rules for Tabelog pages.
 - **`config/prompts/agent_system.md`**: System prompt for the Agent, including Telegram Markdown Code Block formatting (`\`寿々喜家 本店\``) for one-tap store name copying.
 
@@ -66,6 +67,20 @@ Whenever designing or implementing a new feature or module, AI Agents and develo
 2. **Environment-Dependent Features (不硬塞進 CI)**:
    - Live local servers (e.g., `agent_bridge_server.py`), real Cloud Postgres DB connections, or live tunnel endpoints are NOT required to run as live services inside GitLab CI runners.
    - Test their integration via mock-backed unit tests instead to keep CI fast and stable.
+
+---
+
+## 📄 Documentation Co-Evolution Guidelines (文件與程式碼同步強制規範)
+
+Whenever modifying code, schemas, configurations, or business logic, AI Agents and developers **MUST** simultaneously review and update all related documentation before completing the task:
+
+1. **Zero Doc Drift (零文件滯後)**:
+   - Never update code without synchronizing related documentation.
+   - Whenever database schemas (`schema.sql`), configuration keys (`config.py`), or agent routing logic change, immediately synchronize [docs/ARCHITECTURE.md](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/ARCHITECTURE.md).
+2. **Mermaid & Diagram Consistency (圖表一致性)**:
+   - If an architectural flow changes (e.g. LLM failover hierarchy, bot command routing), update the Mermaid flowcharts in `docs/ARCHITECTURE.md` to reflect reality.
+3. **Active Plan & Spec Sync (計畫與驗證狀態同步)**:
+   - When completing or adjusting an implementation plan in `docs/plans/`, update its status, benchmarks, and architectural decisions to prevent misleading future agent invocations.
 
 
 
