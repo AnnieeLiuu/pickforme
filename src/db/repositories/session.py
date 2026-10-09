@@ -33,10 +33,17 @@ class SessionRepository:
                 last_location_lng = EXCLUDED.last_location_lng,
                 updated_at = NOW();
         """
-        async with pool.connection() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(sql, (chat_id, lat, lng))
-                await conn.commit()
+        for attempt in range(2):
+            try:
+                async with pool.connection() as conn:
+                    async with conn.cursor() as cur:
+                        await cur.execute(sql, (chat_id, lat, lng))
+                        await conn.commit()
+                return
+            except Exception as e:
+                logger.warning(f"update_location attempt {attempt + 1} failed: {e}")
+                if attempt == 1:
+                    raise
 
     async def add_conversation_turn(
         self, chat_id: int, user_message: str, assistant_response: str, max_turns: int = 3

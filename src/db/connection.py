@@ -1,5 +1,13 @@
+import asyncio
 import logging
+import sys
 from typing import AsyncGenerator
+
+if sys.platform == "win32":
+    try:
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    except Exception:
+        pass
 
 import psycopg
 from psycopg.rows import dict_row
@@ -22,6 +30,8 @@ async def get_db_pool() -> AsyncConnectionPool:
             open=False,
             min_size=1,
             max_size=10,
+            max_idle=300,
+            check=AsyncConnectionPool.check_connection,
             kwargs={"row_factory": dict_row},
         )
         await db_pool.open()
