@@ -47,60 +47,88 @@ class AgentEngine:
         except Exception:
             return False
 
-    async def call_llm_with_failover(self, messages: list[dict[str, Any]]) -> tuple[dict[str, Any], str, int]:
-        """呼叫 LLM (Ollama 本地大腦 ➡️ Gemini Flash 雲端主力 ➡️ Groq 多模型自動降級)"""
-        errors = []
-
-        # 0. 優先嘗試本機 Ollama Local LLM (PC ON 且 Ollama 啟動時，100% 免費 0 API Key 消耗)
-        if await self._is_ollama_online():
-            try:
-                ollama_url = f"{settings.OLLAMA_BASE_URL.rstrip('/')}/v1/chat/completions"
-                msg_resp, tokens = await self._call_openai_compatible_api(
-                    url=ollama_url,
-                    api_key="ollama",
-                    model=settings.OLLAMA_MODEL,
-                    messages=messages,
-                    tools=TOOL_SCHEMAS,
-                    timeout=90.0,
-                )
-                logger.info(f"Successfully processed by local Ollama ({settings.OLLAMA_MODEL})")
-                return msg_resp, f"ollama ({settings.OLLAMA_MODEL})", tokens
-            except Exception as e:
-                logger.warning(f"Ollama local LLM call failed: {e}. Falling back to cloud APIs...")
-                errors.append(f"Ollama ({settings.OLLAMA_MODEL}): {e}")
-
-        # 1. 嘗試 Gemini Flash (Primary)
-        if settings.GEMINI_API_KEY:
+    async def _try_groq(
+        self, messages: list[dict[str, Any]], errors: list[str]
+    ) -> Optional[tuple[dict[str, Any], str, int]]:
+        """嘗試使用雲端 Groq 多模型"""
+        if not settings.GROQ_API_KEY:
+            return None
+        for fallback_model in ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"]:
             try:
                 msg_resp, tokens = await self._call_openai_compatible_api(
-                    url=GEMINI_OPENAI_URL,
-                    api_key=settings.GEMINI_API_KEY,
-                    model="gemini-3.8-flash",
+                    url=GROQ_OPENAI_URL,
+                    api_key=settings.GROQ_API_KEY,
+                    model=fallback_model,
                     messages=messages,
                     tools=TOOL_SCHEMAS,
                     timeout=30.0,
                 )
-                return msg_resp, "gemini-3.8-flash", tokens
+                return msg_resp, fallback_model, tokens
             except Exception as e:
-                logger.warning(f"Primary Gemini Flash LLM call failed: {e}. Attempting failover to Groq...")
-                errors.append(f"Gemini: {e}")
+                logger.warning(f"Groq model {fallback_model} call failed: {e}")
+                errors.append(f"Groq ({fallback_model}): {e}")
+        return None
 
-        # 2. 備援降級：Groq 多模型自動順序切換
-        if settings.GROQ_API_KEY:
-            for fallback_model in ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"]:
-                try:
-                    msg_resp, tokens = await self._call_openai_compatible_api(
-                        url=GROQ_OPENAI_URL,
-                        api_key=settings.GROQ_API_KEY,
-                        model=fallback_model,
-                        messages=messages,
-                        tools=TOOL_SCHEMAS,
-                        timeout=30.0,
-                    )
-                    return msg_resp, fallback_model, tokens
-                except Exception as e:
-                    logger.warning(f"Groq model {fallback_model} call failed: {e}")
-                    errors.append(f"Groq ({fallback_model}): {e}")
+    async def _try_gemini(
+        self, messages: list[dict[str, Any]], errors: list[str]
+    ) -> Optional[tuple[dict[str, Any], str, int]]:
+        """嘗試使用 Google Gemini Flash 雲端主力"""
+        if not settings.GEMINI_API_KEY:
+            return None
+        try:
+            msg_resp, tokens = await self._call_openai_compatible_api(
+                url=GEMINI_OPENAI_URL,
+                api_key=settings.GEMINI_API_KEY,
+                model="gemini-3.8-flash",
+                messages=messages,
+                tools=TOOL_SCHEMAS,
+                timeout=30.0,
+            )
+            return msg_resp, "gemini-3.8-flash", tokens
+        except Exception as e:
+            logger.warning(f"Primary Gemini Flash LLM call failed: {e}. Attempting failover...")
+            errors.append(f"Gemini: {e}")
+        return None
+
+    async def _try_ollama(
+        self, messages: list[dict[str, Any]], errors: list[str]
+    ) -> Optional[tuple[dict[str, Any], str, int]]:
+        """嘗試使用本機 Ollama 離線模型"""
+        if not await self._is_ollama_online():
+            return None
+        try:
+            ollama_url = f"{settings.OLLAMA_BASE_URL.rstrip('/')}/v1/chat/completions"
+            msg_resp, tokens = await self._call_openai_compatible_api(
+                url=ollama_url,
+                api_key="ollama",
+                model=settings.OLLAMA_MODEL,
+                messages=messages,
+                tools=TOOL_SCHEMAS,
+                timeout=90.0,
+            )
+            logger.info(f"Successfully processed by local Ollama ({settings.OLLAMA_MODEL})")
+            return msg_resp, f"ollama ({settings.OLLAMA_MODEL})", tokens
+        except Exception as e:
+            logger.warning(f"Ollama local LLM call failed: {e}. Falling back to other providers...")
+            errors.append(f"Ollama ({settings.OLLAMA_MODEL}): {e}")
+        return None
+
+    async def call_llm_with_failover(self, messages: list[dict[str, Any]]) -> tuple[dict[str, Any], str, int]:
+        """呼叫 LLM (依據 LLM_PRIMARY_PROVIDER 設定排列優先序，自動多級降級容錯)"""
+        errors: list[str] = []
+        primary = getattr(settings, "LLM_PRIMARY_PROVIDER", "groq").lower()
+
+        if primary == "groq":
+            pipeline = [self._try_groq, self._try_gemini, self._try_ollama]
+        elif primary == "ollama":
+            pipeline = [self._try_ollama, self._try_gemini, self._try_groq]
+        else:  # "gemini" or default
+            pipeline = [self._try_gemini, self._try_groq, self._try_ollama]
+
+        for try_fn in pipeline:
+            result = await try_fn(messages, errors)
+            if result is not None:
+                return result
 
         raise RuntimeError(f"All LLM endpoints failed. Errors: {'; '.join(errors)}")
 
