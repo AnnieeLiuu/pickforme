@@ -8,37 +8,37 @@
 
 ```mermaid
 graph TD
-    User([Telegram App / 每次發送位置與問句]) -->|Webhook| Server[FastAPI 後端 @ Cloud Run]
+    User(["Telegram App / 每次發送位置與問句"]) -->|Webhook| Server["FastAPI 後端 @ Cloud Run"]
     
     subgraph Core AI Agent
-        Server --> CoreLoop[自研 OpenAI-Format Agent Loop]
-        CoreLoop -->|System Prompt & Tools| Gemini[Gemini Flash 主力]
-        CoreLoop -.->|429/500 自動降級| Groq[Groq Llama 3.3 備援]
-        CoreLoop -->|OTel 格式 Trace| TraceLogger[Neon agent_runs / agent_steps]
+        Server --> CoreLoop["自研 OpenAI-Format Agent Loop"]
+        CoreLoop -->|System Prompt & Tools| Ollama["Ollama 本地優先 / Gemini 3.8 Flash 主力"]
+        CoreLoop -.->|429/500 自動降級| Groq["Groq 多模型備援"]
+        CoreLoop -->|OTel 格式 Trace| TraceLogger["Neon agent_runs / agent_steps"]
     end
     
     subgraph Tool Executants
-        CoreLoop -->|Tool 1: search_nearby| GoogleAPI[Google Places API (即時座標/營業/Google評分)]
-        CoreLoop -->|Tool 2: get_tabelog_info| TabelogService[Tabelog Resolver & Scraper (含預熱與快取)]
-        CoreLoop -->|Tool 3: search_reviews| VectorSearch[Neon pgvector 語意檢索 (Phase B)]
-        CoreLoop -->|Tool 4: get_dish_insights| DishExtractor[LLM 評論餐點萃取器 (Phase B)]
-        CoreLoop -->|Tool 5: geocode_location| Geocoder[Google Geocoding 地名轉座標]
+        CoreLoop -->|Tool 1: search_nearby| GoogleAPI["Google Places API (即時座標/營業/Google評分)"]
+        CoreLoop -->|Tool 2: get_tabelog_info| TabelogService["Tabelog Resolver & Scraper (含預熱與快取)"]
+        CoreLoop -->|Tool 3: search_reviews| VectorSearch["Neon pgvector 語意檢索 (Phase B)"]
+        CoreLoop -->|Tool 4: get_dish_insights| DishExtractor["LLM 評論餐點萃取器 (Phase B)"]
+        CoreLoop -->|Tool 5: geocode_location| Geocoder["Google Geocoding 地名轉座標"]
     end
     
     subgraph Storage Tiering
-        TabelogService --> EntityMatch[電話號碼優先 ↔ Tabelog 實體匹配器]
-        EntityMatch --> HotDB[(Neon Postgres: 關聯/快取/對話/工作佇列)]
+        TabelogService --> EntityMatch["電話號碼優先 ↔ Tabelog 實體匹配器"]
+        EntityMatch --> HotDB[("Neon Postgres: 關聯/快取/對話/工作佇列")]
         DishExtractor --> HotDB
         VectorSearch --> HotDB
         
-        TabelogService -.->|原始網頁/完整評論歸檔| ColdStorage[(GCS 冷層: Parquet / 壓縮 JSON)]
+        TabelogService -.->|原始網頁/完整評論歸檔| ColdStorage[("GCS 冷層: Parquet / 壓縮 JSON")]
         TraceLogger -.->|過期 Trace 轉檔| ColdStorage
     end
 
     subgraph Async & Background
-        HotDB -->|prewarm_jobs 佇列| LocalWorker[本機 Worker / 家用 IP 批次預熱]
-        ColdStorage -->|DuckDB 分析| Notebook[DS 實驗與 Observability Notebook]
-        EvalHarness[4-Tier Automated Eval] -->|GCS / Replay Fixtures| HotDB
+        HotDB -->|prewarm_jobs 佇列| LocalWorker["本機 Worker / 家用 IP 批次預熱"]
+        ColdStorage -->|DuckDB 分析| Notebook["DS 實驗與 Observability Notebook"]
+        EvalHarness["4-Tier Automated Eval"] -->|GCS / Replay Fixtures| HotDB
     end
 ```
 
