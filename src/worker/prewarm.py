@@ -41,8 +41,15 @@ class PrewarmWorker:
         logger.info(f"Starting prewarm job for area '{area_name}' (target_count={target_count}, job_id={job_id})")
 
         try:
-            # 1. 地名轉座標
-            coords = await self.places_client.geocode_location(area_name)
+            # 1. 支援「地名 食物類別」格式 (例如: "新宿御苑 拉麵")
+            parts = area_name.split()
+            loc_query = parts[0]
+            keyword = " ".join(parts[1:]) if len(parts) > 1 else ""
+
+            # 地名轉座標
+            coords = await self.places_client.geocode_location(loc_query)
+            if not coords:
+                coords = await self.places_client.geocode_location(area_name)
             if not coords:
                 logger.error(f"Geocoding failed for area '{area_name}'")
                 await self.prewarm_repo.update_job_status(job_id, "failed")
@@ -50,10 +57,13 @@ class PrewarmWorker:
 
             lat, lng = coords
 
-            # 2. 檢索週邊餐廳
-            places = await self.places_client.search_nearby(lat=lat, lng=lng, radius=800)
+            # 2. 檢索週邊餐廳 (若有指定食物類別則帶入過濾)
+            if keyword:
+                places = await self.places_client.search_nearby(lat=lat, lng=lng, radius=800, keyword=keyword)
+            else:
+                places = await self.places_client.search_nearby(lat=lat, lng=lng, radius=800)
             target_places = places[:target_count]
-            logger.info(f"Found {len(target_places)} places for area '{area_name}'")
+            logger.info(f"Found {len(target_places)} places for area '{area_name}' (keyword='{keyword}')")
 
             # 3. 逐一進行 Tabelog 匹配與快取
             saved_count = 0

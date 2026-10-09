@@ -56,6 +56,28 @@ class GooglePlacesClient:
 
         if included_types:
             body["includedTypes"] = included_types
+        elif keyword:
+            category_type_map = {
+                "拉麵": ["ramen_restaurant"],
+                "沾麵": ["ramen_restaurant"],
+                "ramen": ["ramen_restaurant"],
+                "壽司": ["sushi_restaurant"],
+                "sushi": ["sushi_restaurant"],
+                "燒肉": ["barbecue_restaurant", "yakiniku_restaurant"],
+                "yakiniku": ["barbecue_restaurant", "yakiniku_restaurant"],
+                "居酒屋": ["japanese_restaurant", "bar"],
+                "izakaya": ["japanese_restaurant", "bar"],
+                "咖啡": ["cafe"],
+                "甜點": ["dessert_shop", "bakery"],
+            }
+            matched_types = []
+            for k, types in category_type_map.items():
+                if k in keyword.lower():
+                    matched_types.extend(types)
+            if matched_types:
+                body["includedTypes"] = list(dict.fromkeys(matched_types))
+            else:
+                body["includedTypes"] = ["restaurant", "japanese_restaurant"]
         else:
             body["includedTypes"] = ["restaurant", "ramen_restaurant", "sushi_restaurant", "japanese_restaurant"]
 

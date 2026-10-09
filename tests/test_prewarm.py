@@ -88,3 +88,24 @@ async def test_prewarm_worker_geocoding_failed():
 
     assert processed is True
     mock_repo.update_job_status.assert_called_once_with("job_fail_123", "failed")
+
+
+@pytest.mark.asyncio
+async def test_prewarm_worker_with_food_category():
+    mock_repo = AsyncMock(spec=PrewarmRepository)
+    mock_repo.get_next_pending_job.return_value = {
+        "id": "job_ramen",
+        "area_name": "新宿御苑 拉麵",
+        "target_count": 5,
+    }
+
+    mock_places_client = AsyncMock()
+    mock_places_client.geocode_location.return_value = (35.685, 139.710)
+    mock_places_client.search_nearby.return_value = []
+
+    worker = PrewarmWorker(prewarm_repo=mock_repo, places_client=mock_places_client)
+    processed = await worker.process_next_job()
+
+    assert processed is True
+    mock_places_client.geocode_location.assert_called_once_with("新宿御苑")
+    mock_places_client.search_nearby.assert_called_once_with(lat=35.685, lng=139.710, radius=800, keyword="拉麵")
