@@ -21,7 +21,7 @@ class AgentEngine:
         self,
         tool_executor: Optional[AgentToolExecutor] = None,
         trace_logger: Optional[AgentTraceLogger] = None,
-        max_steps: int = 6,
+        max_steps: int = 5,
     ):
         self.tool_executor = tool_executor or AgentToolExecutor()
         self.trace_logger = trace_logger or AgentTraceLogger()
@@ -167,8 +167,15 @@ class AgentEngine:
         async with httpx.AsyncClient(timeout=timeout) as client:
             resp = await client.post(url, json=body, headers=headers)
             if resp.status_code == 429:
-                logger.warning(f"LLM API ({model}) 觸發 Rate Limit (429)，等待 2.5 秒後進行自動重試...")
-                await asyncio.sleep(2.5)
+                retry_after_str = resp.headers.get("retry-after")
+                wait_time = 3.0
+                if retry_after_str:
+                    try:
+                        wait_time = max(float(retry_after_str), 3.0)
+                    except ValueError:
+                        pass
+                logger.warning(f"LLM API ({model}) 觸發 Rate Limit (429)，動態等待 {wait_time} 秒後重試...")
+                await asyncio.sleep(wait_time)
                 resp = await client.post(url, json=body, headers=headers)
 
             if resp.status_code >= 400:
