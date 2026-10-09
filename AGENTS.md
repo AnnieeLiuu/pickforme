@@ -44,3 +44,13 @@ pytest
 > [!NOTE]
 > A Git pre-push hook (`.git/hooks/pre-push`) is installed to automatically intercept and prevent pushes if any of the above checks fail locally.
 
+---
+
+## 🔄 Scratch Code Promotion & Graduation SOP
+
+Temporary scripts created in `scratch/` during exploratory phase MUST follow this lifecycle:
+1. **Verification**: Validate the POC script in `scratch/`.
+2. **Promotion (轉正)**: Once verified, refactor core runtime logic into `src/` modules or official CLI utilities into `scripts/` (e.g. `scripts/register_webhook.py`).
+3. **Graduation & Clean-up (退場)**: Immediately clean up temporary files in `scratch/` to prevent repository clutter.
+
+
