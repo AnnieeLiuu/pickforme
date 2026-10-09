@@ -141,7 +141,8 @@ class TelegramBotHandler:
             await self._send_telegram_message(chat_id, log_text)
             return
 
-        if text.startswith("/debug") or "@debug" in text:
+        lowered_text = text.lower()
+        if any(k in lowered_text for k in ["/debug", "@debug", "debug", "排查", "除錯", "診斷"]):
             status_msg_id = await self._send_telegram_message(
                 chat_id, "🛠️ **PickForMe DevOps Subagent 正在為您進行排查與診斷...**"
             )
