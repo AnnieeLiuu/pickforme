@@ -138,6 +138,27 @@ class TabelogScraper:
         name_elem = soup.select_one(".display-name, .rstinfo-table__name")
         name_ja = name_elem.get_text(strip=True) if name_elem else ""
 
+        # 榮譽與標章 (Awards & 百名店)
+        awards = [elem.get_text(strip=True) for elem in soup.select(".rdheader-official-info__award-title, .rdheader-award") if elem.get_text(strip=True)]
+        hyakumeiten = [elem.get_text(strip=True) for elem in soup.select(".hyakumeiten-badge, .rdheader-official-info") if elem.get_text(strip=True)]
+
+        # 支付方式解析 (カード & QRコード)
+        supports_paypay = False
+        credit_cards = []
+        for tr in soup.select(".rstinfo-table tr, #contents-rstdata tr"):
+            th = tr.select_one("th")
+            td = tr.select_one("td")
+            if not th or not td:
+                continue
+            th_text = th.get_text(strip=True)
+            td_text = td.get_text(strip=True)
+
+            if "QRコード" in th_text or "決済" in th_text:
+                if "PayPay" in td_text:
+                    supports_paypay = True
+            elif "カード" in th_text:
+                credit_cards = [card for card in ["VISA", "Master", "JCB", "AMEX", "Diners"] if card in td_text]
+
         return {
             "tabelog_url": tabelog_url,
             "name_ja": name_ja,
@@ -146,4 +167,9 @@ class TabelogScraper:
             "price_lunch": price_lunch,
             "price_dinner": price_dinner,
             "phone": phone,
+            "awards": awards,
+            "hyakumeiten": hyakumeiten,
+            "supports_paypay": supports_paypay,
+            "credit_cards": credit_cards,
         }
+

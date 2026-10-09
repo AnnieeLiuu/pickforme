@@ -129,25 +129,36 @@ class TelegramBotHandler:
             await self._send_telegram_message(chat_id, final_response)
 
     async def _send_telegram_message(self, chat_id: int, text: str) -> Optional[int]:
-        """發送 Telegram 訊息，回傳 message_id"""
+        """發送 Telegram 訊息，支援 Markdown 並含降級機制"""
         if not self.bot:
             logger.warning(f"[Mock Bot Send] chat_id={chat_id}: {text}")
             return None
         try:
-            msg = await self.bot.send_message(chat_id=chat_id, text=text)
+            msg = await self.bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown")
             return int(msg.message_id)
         except TelegramError as e:
-            logger.error(f"Error sending Telegram message: {e}")
-            return None
+            logger.warning(f"Markdown send failed ({e}), falling back to plain text")
+            try:
+                msg = await self.bot.send_message(chat_id=chat_id, text=text)
+                return int(msg.message_id)
+            except TelegramError as err:
+                logger.error(f"Error sending Telegram message: {err}")
+                return None
 
     async def _edit_telegram_message(self, chat_id: int, message_id: int, text: str) -> None:
-        """編輯已發送的 Telegram 訊息以達成串流效果"""
+        """編輯已發送的 Telegram 訊息以達成串流效果，支援 Markdown 並含降級機制"""
         if not self.bot:
             logger.warning(f"[Mock Bot Edit] msg_id={message_id}: {text}")
             return
         try:
-            await self.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text)
+            await self.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text, parse_mode="Markdown")
         except TelegramError as e:
-            # 忽略內容未改變等無害錯誤
-            if "Message is not modified" not in str(e):
-                logger.warning(f"Error editing Telegram message {message_id}: {e}")
+            if "Message is not modified" in str(e):
+                return
+            logger.warning(f"Markdown edit failed ({e}), falling back to plain text")
+            try:
+                await self.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text)
+            except TelegramError as err:
+                if "Message is not modified" not in str(err):
+                    logger.warning(f"Error editing Telegram message {message_id}: {err}")
+
