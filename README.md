@@ -1,93 +1,181 @@
-# PickForMe
+# 🍱 PickForMe - 日本旅遊美食 AI 代理人 (Japan Food AI Agent)
 
+[![Python 3.11](https://img.shields.io/badge/Python-3.11-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-green.svg)](https://fastapi.tiangolo.com/)
+[![Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+[![Type Checked](https://img.shields.io/badge/mypy-checked-blue.svg)](http://mypy-lang.org/)
+[![Tests](https://img.shields.io/badge/pytest-48%20passed-success.svg)](https://docs.pytest.org/)
 
+> **專案定位**：專為日本旅遊打造的高效能智慧美食 Agent 系統。解決遊客外出時「距離近、評分高、有開門、在地評價真實」的痛點。結合 Google Places API、Tabelog 爬蟲與實體比對器、Neon Serverless Postgres 以及 Telegram Bot 介面。
 
-## Getting started
+---
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## 🌟 核心特色 (Core Highlights)
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+1. **確定性 4 階段有限狀態機 (4-Stage FSM Pipeline)**：
+   - 捨棄脆弱、不可控的傳統多輪 LLM Tool-Calling 迴圈，改採 **`FoodRecommendationFSM`** 狀態機流水線。
+   - **State 1 (意圖解析)**：0.3s Micro-LLM 結構化 JSON 提煉（無論地名前後順序或口語句型均可精準解析；若為延續追問則 0.5s 秒答）。
+   - **State 2 (階梯搜尋)**：Google Places 智慧階梯搜尋（800m ➔ 1200m ➔ 1800m）確保精選出至少 3 家營業中高品質餐廳。
+   - **State 3 (平行對齊)**：`asyncio.gather` 平行抓取與 Neon 快取比對，電話優先實體對齊；遇 403 或無評分自動降級為 Google 評價標籤。
+   - **State 4 (單次合成)**：單次 Prompt 生成高美感卡片；內建 **純模板引擎零失敗防護直出**。
+2. **多級雲端+地端 LLM 容錯降級鏈 (Multi-Tier LLM Failover)**：
+   - **主力**：Groq `qwen/qwen3.8-27b`（極速推論，延遲 ~0.7s）。
+   - **備援**：Gemini 3.8 Flash（Google AI Studio 免費額度）。
+   - **離線保底**：本機 Ollama `qwen2.5:3b`（0 API 費用、斷網仍可運行）。
+   - 支援動態讀取 `Retry-After` 標頭之退避重試與全自動降級。
+3. **高精準實體匹配器 (Hybrid Entity Resolver)**：
+   - **電話優先 (Phone-First)**：日文電話號碼完全比對直接獲得 100% 信心度。
+   - **店名正規化**：支援漢字新舊字體轉換（如「藏」轉「蔵」）、半角假名轉換與分店後綴消除。
+   - **灰區裁決**：0.60 ~ 0.85 相似度區間支援微型 Prompt 驗證。
+4. **極致 Telegram 行動端體驗**：
+   - **兩段式即時進度更新**：鎖定地點 ➔ 彙整評分 ➔ 直出卡片，100% 規避 Telegram 429 頻率限制。
+   - **一秒複製店名**：日文原名獨立置於 Code 區塊（例：\`寿々喜家 本店\`），點擊即可複製並切換至 Google Maps 導航。
+   - **歷史記憶與追問**：推薦店家編號即時存入 `chat_sessions` JSONB，支援「那第 2 家有開嗎？」即時問答。
 
-## Add your files
+---
 
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+## 📐 系統架構圖 (Architecture)
 
+```mermaid
+graph TD
+    User(["Telegram App / 每次發送位置與問句"]) -->|Webhook| Server["FastAPI 後端 @ Cloud Run"]
+    
+    subgraph Core AI Agent
+        Server --> FSM["自研 4 階段 FSM 狀態機 (FoodRecommendationFSM)"]
+        FSM --> LLMClient["統一多模型 LLM 客戶端 (Groq ➡️ Gemini ➡️ Ollama)"]
+        FSM --> TraceLogger["Neon agent_runs / agent_steps (OTel 格式 Trace)"]
+    end
+    
+    subgraph Deterministic Pipeline Stages
+        FSM -->|State 1| S1["Micro-LLM 結構化意圖與追問判斷 (0.3s JSON)"]
+        FSM -->|State 2| S2["Google Places 階梯式半徑搜尋 (800m ➔ 1200m ➔ 1800m)"]
+        FSM -->|State 3| S3["Tabelog 雙平台實體對齊 (asyncio.gather 平行處理)"]
+        FSM -->|State 4| S4["單次合成推薦卡片 (含模板容錯直出防護)"]
+    end
+    
+    subgraph Storage Tiering
+        S3 --> EntityMatch["電話號碼優先 ↔ Tabelog 實體匹配器"]
+        EntityMatch --> HotDB[("Neon Postgres: 關聯/快取/對話/工作佇列")]
+        
+        S3 -.->|原始網頁/完整評論歸檔| ColdStorage[("GCS 冷層: Parquet / 壓縮 JSON")]
+        TraceLogger -.->|過期 Trace 轉檔| ColdStorage
+    end
+
+    subgraph Async & Background
+        HotDB -->|prewarm_jobs 佇列| LocalWorker["本機 Worker / 家用 IP 批次預熱"]
+        ColdStorage -->|DuckDB 分析| Notebook["DS 實驗與 Observability Notebook"]
+    end
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/ai_agents8021522/pickforme.git
-git branch -M main
-git push -uf origin main
+
+---
+
+## 📁 專案目錄結構 (Project Layout)
+
+```text
+PickForMe/
+├── config/
+│   └── prompts/            # Agent System Prompt 與比對提示詞
+├── docs/
+│   ├── ARCHITECTURE.md     # 系統主架構圖與 Neon DB Schema DDL
+│   ├── tabelog_structure.md# Tabelog DOM 解析規則與 CSS 選擇器
+│   └── plans/              # 各階段實作計畫書與進度
+├── scripts/
+│   ├── agent_bridge_server.py # IDE Agent 遠端協同橋接伺服器
+│   ├── seed_prewarm_jobs.py   # 日本熱門景點預熱腳本
+│   └── setup_webhook.py       # Telegram Webhook 註冊工具
+├── src/
+│   ├── agent/              # Agent 核心
+│   │   ├── pipeline.py     # 4 階段 FSM 狀態機 (FoodRecommendationFSM)
+│   │   ├── llm_client.py   # 統一多模型 LLM 客戶端 (Groq/Gemini/Ollama)
+│   │   ├── core.py         # AgentEngine Facade 對外入口
+│   │   ├── devops.py       # DevOps 遠端診斷 Subagent
+│   │   ├── tools.py        # 工具註冊與執行輔助
+│   │   └── trace.py        # OTel 格式 Trace 紀錄器
+│   ├── bot/                # Telegram Webhook 與訊息處理
+│   ├── db/                 # Neon Postgres 倉儲層 (Session, Restaurant, Prewarm)
+│   ├── services/           # 外部服務 (Google Places, Tabelog, Entity Resolver)
+│   ├── worker/             # 本機非同步預熱 Worker (SKIP LOCKED 佇列)
+│   ├── config.py           # Pydantic Settings 環境設定
+│   └── main.py             # FastAPI 啟動入口
+├── tests/                  # 48 項單元與整合測試 (Mock 驅動，CI 100% 通過)
+└── pyproject.toml          # Ruff, Mypy 與專案相依設定
 ```
 
-## Integrate with your tools
+---
 
-* [Set up project integrations](https://gitlab.com/ai_agents8021522/pickforme/-/settings/integrations)
+## 🚀 快速上手 (Quick Start)
 
-## Collaborate with your team
+### 1. 安裝環境相依
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+```bash
+# 建議使用 Python 3.11 虛擬環境
+pip install -r requirements.txt
+```
 
-## Test and Deploy
+### 2. 環境變數設定 (`.env`)
 
-Use the built-in continuous integration in GitLab.
+複製 `.env.example` 為 `.env` 並填入憑證：
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+```ini
+# FastAPI
+ENVIRONMENT=development
+PORT=8000
 
-***
+# Neon Serverless Postgres
+DATABASE_URL=postgresql://user:password@ep-cool-cloud.neon.tech/neondb?sslmode=require
 
-# Editing this README
+# LLM Providers (支援自動容錯)
+LLM_PRIMARY_PROVIDER=groq
+GROQ_API_KEY=gsk_...
+GEMINI_API_KEY=AIza...
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=qwen2.5:3b
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+# Google API
+GOOGLE_PLACES_API_KEY=AIza...
 
-## Suggestions for a good README
+# Telegram Bot
+TELEGRAM_BOT_TOKEN=123456:ABC...
+TELEGRAM_ALLOWED_USER_ID=0     # 0 代表允許所有人，或輸入特定 Telegram User ID
+TELEGRAM_WEBHOOK_SECRET=your_secret
+```
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+### 3. 本地啟動伺服器
 
-## Name
-Choose a self-explaining name for your project.
+```bash
+# 啟動 FastAPI 伺服器
+python run_server.py
+```
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+### 4. 執行背景預熱 Worker
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+```bash
+# 本地非同步認領 prewarm_jobs 佇列進行快取預熱
+python -m src.worker.prewarm
+```
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+---
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+## 🛡️ 程式碼品質與 CI 驗證 (Quality Assurance)
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+本專案配置 Git pre-push hook 與 GitLab CI Pipeline，推送前請確保通過以下四大檢查：
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+```bash
+# 1. 程式碼自動格式化
+python -m ruff format src/ tests/
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+# 2. 靜態語法檢查與 Linter
+python -m ruff check src/ tests/
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+# 3. 嚴格型別檢查
+python -m mypy src/
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+# 4. 單元與整合測試套件
+pytest
+```
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+---
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+## 📜 授權條款 (License)
 
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+本專案採用 [MIT License](LICENSE) 授權。

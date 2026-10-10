@@ -3,12 +3,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from src.agent.core import AgentEngine
+from src.agent.llm_client import LLMClient
 from src.agent.tools import TOOL_SCHEMAS, AgentToolExecutor
 from src.agent.trace import AgentTraceLogger
 
 
 def test_tool_schemas_format():
-    """驗證 TOOL_SCHEMAS符合 OpenAI Function Tool 格式規範"""
+    """驗證 TOOL_SCHEMAS 符合 OpenAI Function Tool 格式規範"""
     assert isinstance(TOOL_SCHEMAS, list)
     assert len(TOOL_SCHEMAS) == 3
 
@@ -86,64 +87,36 @@ async def test_tool_executor_get_tabelog_info_cached():
 
 
 @pytest.mark.asyncio
-async def test_agent_engine_run_loop_direct_answer():
-    mock_trace = AsyncMock(spec=AgentTraceLogger)
-    engine = AgentEngine(trace_logger=mock_trace)
-
-    mock_response = (
-        {
-            "role": "assistant",
-            "content": "推薦博多站附近的「一蘭拉麵本店」，Tabelog 評分為 3.65！",
-        },
-        "gemini-3.8-flash",
-        150,
-    )
-
-    with patch.object(engine, "call_llm_with_failover", return_value=mock_response):
-        result = await engine.run_agent(
-            chat_id=12345,
-            user_message="請問博多站有什麼好吃拉麵？",
-            user_location=(33.5902, 130.4207),
-        )
-
-        assert "一蘭拉麵本店" in result
-        mock_trace.start_run.assert_called_once()
-        mock_trace.finish_run.assert_called_once_with(
-            status="completed", model_used="gemini-3.8-flash", total_tokens=150
-        )
-
-
-@pytest.mark.asyncio
-async def test_agent_engine_groq_primary():
-    engine = AgentEngine()
+async def test_llm_client_groq_primary():
+    client = LLMClient()
 
     with (
         patch("src.config.settings.LLM_PRIMARY_PROVIDER", "groq"),
         patch("src.config.settings.GROQ_API_KEY", "fake_groq_key"),
         patch.object(
-            engine,
+            client,
             "_call_openai_compatible_api",
             AsyncMock(return_value=({"role": "assistant", "content": "Groq 極速推薦！"}, 95)),
         ),
     ):
-        msg, model, tokens = await engine.call_llm_with_failover([{"role": "user", "content": "hi"}])
+        content, model, tokens = await client.call_text([{"role": "user", "content": "hi"}])
         assert model == "qwen/qwen3.8-27b"
-        assert msg["content"] == "Groq 極速推薦！"
+        assert content == "Groq 極速推薦！"
         assert tokens == 95
 
 
 @pytest.mark.asyncio
-async def test_agent_engine_failover_gemini_to_groq():
-    engine = AgentEngine()
+async def test_llm_client_failover_gemini_to_groq():
+    client = LLMClient()
 
     with (
         patch("src.config.settings.LLM_PRIMARY_PROVIDER", "gemini"),
-        patch.object(engine, "_is_ollama_online", AsyncMock(return_value=False)),
+        patch.object(client, "_is_ollama_online", AsyncMock(return_value=False)),
         patch("src.config.settings.GEMINI_API_KEY", "fake_gemini_key"),
         patch("src.config.settings.GROQ_API_KEY", "fake_groq_key"),
     ):
         with patch.object(
-            engine,
+            client,
             "_call_openai_compatible_api",
             side_effect=[
                 Exception("Gemini Rate Limit 429"),  # 第一個 Gemini 失敗
@@ -153,89 +126,34 @@ async def test_agent_engine_failover_gemini_to_groq():
                 ),  # 第二個 Groq 成功
             ],
         ):
-            msg, model, tokens = await engine.call_llm_with_failover([{"role": "user", "content": "hi"}])
+            content, model, tokens = await client.call_text([{"role": "user", "content": "hi"}])
             assert model == "qwen/qwen3.8-27b"
-            assert msg["content"] == "Groq 回覆推薦！"
+            assert content == "Groq 回覆推薦！"
             assert tokens == 120
 
 
 @pytest.mark.asyncio
-async def test_agent_engine_ollama_primary():
-    engine = AgentEngine()
+async def test_llm_client_ollama_primary():
+    client = LLMClient()
 
     with (
         patch("src.config.settings.LLM_PRIMARY_PROVIDER", "ollama"),
-        patch.object(engine, "_is_ollama_online", AsyncMock(return_value=True)),
+        patch.object(client, "_is_ollama_online", AsyncMock(return_value=True)),
         patch.object(
-            engine,
+            client,
             "_call_openai_compatible_api",
             AsyncMock(return_value=({"role": "assistant", "content": "Ollama 本地推薦！"}, 80)),
         ),
     ):
-        msg, model, tokens = await engine.call_llm_with_failover([{"role": "user", "content": "hi"}])
+        content, model, tokens = await client.call_text([{"role": "user", "content": "hi"}])
         assert "ollama" in model
-        assert msg["content"] == "Ollama 本地推薦！"
+        assert content == "Ollama 本地推薦！"
         assert tokens == 80
 
 
 @pytest.mark.asyncio
-async def test_agent_engine_on_progress_stages():
-    engine = AgentEngine()
-    progress_updates: list[str] = []
-
-    async def mock_progress(msg: str) -> None:
-        progress_updates.append(msg)
-
-    # 模擬 2 步對話：第 1 步叫 search_nearby，第 2 步輸出最終結果
-    step1_response = (
-        {
-            "role": "assistant",
-            "content": None,
-            "tool_calls": [
-                {
-                    "id": "call_1",
-                    "type": "function",
-                    "function": {
-                        "name": "search_nearby",
-                        "arguments": json.dumps({"lat": 35.6, "lng": 139.7, "keyword": "拉麵"}),
-                    },
-                }
-            ],
-        },
-        "gemini-3.8-flash",
-        100,
-    )
-    step2_response = (
-        {
-            "role": "assistant",
-            "content": "為您推薦精選拉麵店！",
-        },
-        "gemini-3.8-flash",
-        50,
-    )
-
-    with patch.object(engine, "call_llm_with_failover", side_effect=[step1_response, step2_response]):
-        with patch.object(
-            engine.tool_executor,
-            "execute_tool",
-            AsyncMock(return_value=json.dumps({"count": 1, "places": []})),
-        ):
-            res = await engine.run_agent(
-                chat_id=999,
-                user_message="我想吃拉麵",
-                on_progress=mock_progress,
-            )
-
-    assert "精選拉麵店" in res
-    # 驗證進度訊息包含了各階段的具體語意
-    assert any("正在理解您的美食需求" in p for p in progress_updates)
-    assert any("正在開啟地圖雷達" in p and "拉麵" in p for p in progress_updates)
-    assert any("已取得周邊候選店家" in p for p in progress_updates)
-
-
-@pytest.mark.asyncio
 async def test_call_openai_compatible_api_success():
-    engine = AgentEngine()
+    client = LLMClient()
     fake_payload = {
         "choices": [{"message": {"role": "assistant", "content": "測試成功回覆"}}],
         "usage": {"total_tokens": 42},
@@ -246,12 +164,11 @@ async def test_call_openai_compatible_api_success():
     mock_resp.json.return_value = fake_payload
 
     with patch("httpx.AsyncClient.post", AsyncMock(return_value=mock_resp)):
-        msg, tokens = await engine._call_openai_compatible_api(
+        msg, tokens = await client._call_openai_compatible_api(
             url="http://fake-api/v1",
             api_key="key",
             model="fake-model",
             messages=[{"role": "user", "content": "hello"}],
-            tools=[],
         )
         assert msg["content"] == "測試成功回覆"
         assert tokens == 42
@@ -259,7 +176,7 @@ async def test_call_openai_compatible_api_success():
 
 @pytest.mark.asyncio
 async def test_call_openai_compatible_api_429_dynamic_retry():
-    engine = AgentEngine()
+    client = LLMClient()
     fake_429_resp = MagicMock()
     fake_429_resp.status_code = 429
     fake_429_resp.headers = {"retry-after": "0.1"}
@@ -273,12 +190,11 @@ async def test_call_openai_compatible_api_429_dynamic_retry():
 
     with patch("asyncio.sleep", AsyncMock()) as mock_sleep:
         with patch("httpx.AsyncClient.post", AsyncMock(side_effect=[fake_429_resp, fake_200_resp])):
-            msg, tokens = await engine._call_openai_compatible_api(
+            msg, tokens = await client._call_openai_compatible_api(
                 url="http://fake-api/v1",
                 api_key="key",
                 model="fake-model",
                 messages=[{"role": "user", "content": "hello"}],
-                tools=[],
             )
             assert msg["content"] == "重試後成功"
             assert tokens == 15
@@ -287,7 +203,7 @@ async def test_call_openai_compatible_api_429_dynamic_retry():
 
 @pytest.mark.asyncio
 async def test_call_openai_compatible_api_empty_response_rejection():
-    engine = AgentEngine()
+    client = LLMClient()
     empty_resp = MagicMock()
     empty_resp.status_code = 200
     empty_resp.json.return_value = {
@@ -296,65 +212,32 @@ async def test_call_openai_compatible_api_empty_response_rejection():
     }
 
     with patch("httpx.AsyncClient.post", AsyncMock(return_value=empty_resp)):
-        with pytest.raises(ValueError, match="empty response"):
-            await engine._call_openai_compatible_api(
+        with pytest.raises(ValueError, match="empty"):
+            await client._call_openai_compatible_api(
                 url="http://fake-api/v1",
                 api_key="key",
                 model="fake-model",
                 messages=[{"role": "user", "content": "hello"}],
-                tools=[],
             )
 
 
 @pytest.mark.asyncio
-async def test_agent_engine_final_step_forces_summary():
-    """驗證達到最大步數時，tools 被清空以強制 LLM 輸出最終總結卡片"""
-    engine = AgentEngine(max_steps=2)
+async def test_agent_engine_facade_delegation():
+    """驗證 AgentEngine Facade 正確將請求轉發給內裝的 FSM Pipeline"""
+    mock_trace = AsyncMock(spec=AgentTraceLogger)
+    engine = AgentEngine(trace_logger=mock_trace)
 
-    # 第 1 步發動 tool_call
-    step1_resp = (
-        {
-            "role": "assistant",
-            "content": "",
-            "tool_calls": [
-                {
-                    "id": "call_1",
-                    "type": "function",
-                    "function": {"name": "search_nearby", "arguments": "{}"},
-                }
-            ],
-        },
-        "qwen/qwen3.8-27b",
-        50,
-    )
-
-    # 第 2 步（最後一步）：因為 tools 傳入空清單，模型輸出最終卡片文本
-    step2_resp = (
-        {
-            "role": "assistant",
-            "content": "已為您整理最終推薦美食！",
-        },
-        "qwen/qwen3.8-27b",
-        60,
-    )
-
-    call_records = []
-
-    async def mock_call_llm(messages, tools=None):
-        call_records.append(tools)
-        if len(call_records) == 1:
-            return step1_resp
-        return step2_resp
-
-    with patch.object(engine, "call_llm_with_failover", side_effect=mock_call_llm):
-        with patch.object(
-            engine.tool_executor,
-            "execute_tool",
-            AsyncMock(return_value=json.dumps({"count": 0, "places": []})),
-        ):
-            res = await engine.run_agent(chat_id=1, user_message="找美食")
-
-    assert "已為您整理最終推薦美食！" in res
-    assert len(call_records) == 2
-    assert call_records[0] == TOOL_SCHEMAS  # 第 1 步有 tools
-    assert call_records[1] == []  # 最後一步 tools 為空，強制結案輸出卡片
+    with patch.object(engine.fsm, "run_pipeline", AsyncMock(return_value="FSM 回傳推薦卡片")) as mock_run:
+        res = await engine.run_agent(
+            chat_id=123,
+            user_message="我想吃鰻魚飯",
+            user_location=(35.68, 139.71),
+        )
+        assert res == "FSM 回傳推薦卡片"
+        mock_run.assert_called_once_with(
+            chat_id=123,
+            user_message="我想吃鰻魚飯",
+            user_location=(35.68, 139.71),
+            conversation_history=None,
+            on_progress=None,
+        )

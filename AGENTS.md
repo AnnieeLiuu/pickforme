@@ -8,8 +8,10 @@ Welcome to **PickForMe** — a high-performance Japan Food AI Agent system built
 
 - **`src/main.py`**: FastAPI entrypoint with health check & `/webhook/telegram` endpoints.
 - **`src/bot/handlers.py`**: Telegram Webhook update handler with whitelist check, status streaming, and Markdown format (`parse_mode="Markdown"`).
-- **`src/agent/core.py`**: Custom OpenAI-format LLM Agent Loop with dynamic multi-level failover (`LLM_PRIMARY_PROVIDER`: Groq primary ➡️ Gemini 3.8 Flash ➡️ Ollama local fallback).
-- **`src/agent/tools.py`**: Tool definitions (`geocode_location`, `search_nearby`, `get_tabelog_info`).
+- **`src/agent/pipeline.py`**: Deterministic 4-Stage FSM Pipeline (`FoodRecommendationFSM`) executing intent extraction, ladder Places search, parallel Tabelog enrichment, and template fallback card synthesis.
+- **`src/agent/llm_client.py`**: Multi-provider LLM client with dynamic failover (`LLM_PRIMARY_PROVIDER`: Groq primary ➡️ Gemini 3.8 Flash ➡️ Ollama local fallback), 429 Retry-After backoff, `call_text`, and `call_structured_json`.
+- **`src/agent/core.py`**: Clean Facade interface delegating incoming requests to `FoodRecommendationFSM`.
+- **`src/agent/tools.py`**: Agent tool helper and schema definitions (`geocode_location`, `search_nearby`, `get_tabelog_info`).
 - **`src/services/tabelog_scraper.py`**: Tabelog HTML scraper parsing rating, reviews, budget, phone, `awards`, `hyakumeiten`, `supports_paypay`, and `credit_cards`.
 - **`src/services/entity_resolver.py`**: Match confidence resolver between Google Places and Tabelog search candidates.
 - **`src/db/schema.sql`**: Neon Postgres database DDL schema (`restaurants`, `tabelog_cache`, `chat_sessions`, `prewarm_jobs`, `agent_runs`, `agent_steps`).

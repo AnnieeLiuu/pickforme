@@ -11,27 +11,23 @@ graph TD
     User(["Telegram App / 每次發送位置與問句"]) -->|Webhook| Server["FastAPI 後端 @ Cloud Run"]
     
     subgraph Core AI Agent
-        Server --> CoreLoop["自研 OpenAI-Format Agent Loop"]
-        CoreLoop -->|System Prompt & Tools| Ollama["Ollama 本地優先 / Gemini 3.8 Flash 主力"]
-        CoreLoop -.->|429/500 自動降級| Groq["Groq 多模型備援"]
-        CoreLoop -->|OTel 格式 Trace| TraceLogger["Neon agent_runs / agent_steps"]
+        Server --> FSM["自研 4 階段 FSM 狀態機 (FoodRecommendationFSM)"]
+        FSM --> LLMClient["統一多模型 LLM 客戶端 (Groq ➡️ Gemini ➡️ Ollama)"]
+        FSM --> TraceLogger["Neon agent_runs / agent_steps (OTel 格式 Trace)"]
     end
     
-    subgraph Tool Executants
-        CoreLoop -->|Tool 1: search_nearby| GoogleAPI["Google Places API (即時座標/營業/Google評分)"]
-        CoreLoop -->|Tool 2: get_tabelog_info| TabelogService["Tabelog Resolver & Scraper (含預熱與快取)"]
-        CoreLoop -->|Tool 3: search_reviews| VectorSearch["Neon pgvector 語意檢索 (Phase B)"]
-        CoreLoop -->|Tool 4: get_dish_insights| DishExtractor["LLM 評論餐點萃取器 (Phase B)"]
-        CoreLoop -->|Tool 5: geocode_location| Geocoder["Google Geocoding 地名轉座標"]
+    subgraph Deterministic Pipeline Stages
+        FSM -->|State 1| S1["Micro-LLM 結構化意圖與追問判斷 (0.3s JSON)"]
+        FSM -->|State 2| S2["Google Places 階梯式半徑搜尋 (800m ➔ 1200m ➔ 1800m)"]
+        FSM -->|State 3| S3["Tabelog 雙平台實體對齊 (asyncio.gather 平行處理)"]
+        FSM -->|State 4| S4["單次合成推薦卡片 (含模板容錯直出防護)"]
     end
     
     subgraph Storage Tiering
-        TabelogService --> EntityMatch["電話號碼優先 ↔ Tabelog 實體匹配器"]
+        S3 --> EntityMatch["電話號碼優先 ↔ Tabelog 實體匹配器"]
         EntityMatch --> HotDB[("Neon Postgres: 關聯/快取/對話/工作佇列")]
-        DishExtractor --> HotDB
-        VectorSearch --> HotDB
         
-        TabelogService -.->|原始網頁/完整評論歸檔| ColdStorage[("GCS 冷層: Parquet / 壓縮 JSON")]
+        S3 -.->|原始網頁/完整評論歸檔| ColdStorage[("GCS 冷層: Parquet / 壓縮 JSON")]
         TraceLogger -.->|過期 Trace 轉檔| ColdStorage
     end
 
@@ -170,7 +166,7 @@ CREATE TABLE restaurant_insights (
 - **預熱佇列**：使用 Neon `prewarm_jobs` 表搭配 `FOR UPDATE SKIP LOCKED`，支援分散式 Worker 平行認領不撞單。
 - **觸發與推播**：使用者可透過 Telegram 傳送 `/prewarm <地名> [分類]`（或 `預熱 <地名>`）直接發起預熱。Worker 完成後會透過記錄的 `chat_id` 主動推播「🎉 預熱完成！已快取 N 家熱門餐廳」通知卡片。
 
-### D. 完整 Agent 決策、大腦選擇與工具呼叫流程圖 (Agent Decision & Tool Execution Flowchart)
+### D. 完整 Agent 決策、大腦選擇與 4 階段 FSM 流程圖 (Agent Decision & 4-Stage FSM Flowchart)
 
 ```mermaid
 flowchart TD
@@ -182,63 +178,61 @@ flowchart TD
     DevOpsPath --> CheckEnvKeys["檢查 API Keys 狀態"]
     DevOpsPath --> DevOpsReport["輸出 IDE Agent 遠端診斷報告卡片"] --> EndResponse(["完成回應 Telegram"])
 
-    %% 2. 美食搜尋 Agent Loop 路徑
-    CheckType -- "美食搜尋 / 預熱任務" --> AgentLoop["PickForMe Agent Loop / src/agent/core.py"]
+    %% 2. 確定性 4 階段 FSM 狀態機流水線
+    CheckType -- "美食搜尋 / 推薦 / 追問" --> FSMInit["FoodRecommendationFSM (src/agent/pipeline.py)"]
 
-    subgraph LLMEngineChoice ["LLM 引擎動態優先決策 (LLM_PRIMARY_PROVIDER: groq/gemini/ollama)"]
-        AgentLoop --> CheckProvider{"優先級判定<br/>預設: groq"}
-        
-        CheckProvider -- "1. 雲端極速主力 (Groq)" --> GroqPrimary["Groq qwen/qwen3.8-27b<br/>推論延遲 ~0.7s (極速回應)"]
-        GroqPrimary -- 成功 --> StepLLMResult["LLM 思考完成: 回傳 Prompt / Tool Calls"]
-        
-        GroqPrimary -- 429 / 異常 --> GeminiFallback["2. 雲端備援: Gemini 3.8 Flash<br/>Google AI Studio 每日免費額度"]
-        GeminiFallback -- 成功 --> StepLLMResult
-        
-        GeminiFallback -- 429 額度耗盡 / 斷網 --> OllamaFallback{"3. 離線保底: 本地 Ollama<br/>0.5s Ping http://localhost:11434"}
-        OllamaFallback -- 在線 (PC ON) --> OllamaLocal["Ollama Local (qwen2.5:3b)<br/>0 API 消耗 / 離線運算保底"]
-        OllamaLocal -- 成功 --> StepLLMResult
+    subgraph State1 ["State 1: 使用者意圖與地點解析 (Micro-LLM / Follow-up)"]
+        FSMInit --> CheckFollowUp{"是否為追問句?<br/>(例: 第2家有開嗎?)"}
+        CheckFollowUp -- "是追問" --> AnswerDirect["由 chat_sessions 歷史候選資料直接回答<br/>0.5s 秒答，不重複調用 Places"] --> EndResponse
+        CheckFollowUp -- "全新搜尋" --> ParseIntent["Micro-LLM 結構化解析 (0.3s JSON)<br/>提煉 location, cuisine, sort_by"]
+        ParseIntent --> CheckCoord{"有無地理座標?"}
+        CheckCoord -- "無座標" --> Geocode["Google Geocoding API<br/>地名轉 (lat, lng)"]
+        CheckCoord -- "已有座標" --> S1Done["鎖定座標與料理分類"]
+        Geocode --> S1Done
     end
 
-    StepLLMResult --> CheckToolCall{"LLM 決策: 是否發起 Tool Calls?"}
+    S1Done --> Progress1["Telegram 狀態推播 1:<br/>🔍 已鎖定 地點，正在搜尋評價優質的 種類 餐廳..."]
 
-    %% 3. 無 Tool Call 直出最終答案
-    CheckToolCall -- "無 Tool Call (最終回答)" --> FormatResponse["套用 Markdown Code Block 複製格式"] --> EndResponse
-
-    %% 4. 有 Tool Call 執行工具鏈
-    CheckToolCall -- "有 Tool Call" --> ToolSelect{"選擇要執行的 Tool"}
-
-    ToolSelect -- "geocode_location" --> ToolGeocode["Google Geocoding API<br/>地名轉經緯度座標 (lat, lng)"] --> StepLLMResult
-    ToolSelect -- "search_nearby" --> ToolNearby["Google Places New API<br/>檢索週邊 800m 美食餐廳"] --> StepLLMResult
-    ToolSelect -- "get_tabelog_info" --> ToolTabelog["Tabelog Resolver & Scraper"]
-
-    subgraph TabelogResolution ["Tabelog 店家比對與快取流程"]
-        ToolTabelog --> CheckCache{"Neon DB tabelog_cache 有快取?"}
-        CheckCache -- "🟢 有快取 (TTL <= 7天)" --> ReturnCache["直接回傳快取評分與詳細資料"]
-        
-        CheckCache -- "🔴 無快取" --> ScrapeSearch["TabelogScraper 抓取搜尋候選頁"]
-        ScrapeSearch --> EntityResolver["EntityResolver 實體比對"]
-        
-        EntityResolver --> PhoneCheck{"1. 電話號碼完全比對?"}
-        PhoneCheck -- Yes --> MatchPhone["phone_exact: 100% 信心度"]
-        
-        PhoneCheck -- No --> ScoreCheck{"2. 店名相似度 - 距離懲罰"}
-        ScoreCheck -- "Score >= 0.85" --> MatchHigh["rule_high: 高信心度直通"]
-        ScoreCheck -- "0.60 <= Score < 0.85" --> LLMVerify["3. LLM 灰色地帶判定 / _verify_with_llm"]
-        ScoreCheck -- "Score < 0.60" --> NoMatch["no_match: 無對應 Tabelog"]
-
-        LLMVerify --> MatchResult{"LLM 判定同店家?"}
-        MatchResult -- Yes --> MatchLLM["llm_verify: 判定同店家"]
-        MatchResult -- No --> NoMatch
-
-        MatchPhone --> ScrapeDetails["TabelogScraper 爬取內頁詳細資料<br/>評分/評價數/預算/信用卡/PayPay/百名店"]
-        MatchHigh --> ScrapeDetails
-        MatchLLM --> ScrapeDetails
-
-        ScrapeDetails --> SaveDB["寫入 Neon DB: restaurants & tabelog_cache"] --> ReturnCache
-        NoMatch --> SaveDB
+    subgraph State2 ["State 2: Google Places 智慧階梯搜尋 (Ladder Search)"]
+        Progress1 --> Search800["第 1 階: 半徑 800m 搜尋"]
+        Search800 --> CheckCount1{"店家數 >= 3?"}
+        CheckCount1 -- Yes --> S2Select["依評分/營業中篩選 Top 3 候選店"]
+        CheckCount1 -- No --> Search1200["第 2 階: 擴大半徑至 1200m"]
+        Search1200 --> CheckCount2{"店家數 >= 3?"}
+        CheckCount2 -- Yes --> S2Select
+        CheckCount2 -- No --> Search1800["第 3 階: 擴大半徑至 1800m"]
+        Search1800 --> S2Select
     end
 
-    ReturnCache --> StepLLMResult
+    S2Select --> Progress2["Telegram 狀態推播 2:<br/>📊 正在彙整 Google 與 Tabelog 雙平台評分卡片..."]
+
+    subgraph State3 ["State 3: Tabelog 平行實體對齊 (Parallel Enrichment)"]
+        Progress2 --> ParallelGather["asyncio.gather 平行對齊 3 家候選店"]
+        
+        subgraph PerStore ["每家候選店對齊邏輯"]
+            ParallelGather --> CheckCache{"Neon tabelog_cache 快取?"}
+            CheckCache -- "🟢 快取命中 (TTL <= 7天)" --> HitCache["直接載入 Tabelog 評分"]
+            CheckCache -- "🔴 快取未命中" --> FetchTabelog["TabelogScraper 抓取搜尋清單"]
+            FetchTabelog --> EntityResolver["EntityResolver (電話優先 ➔ 店名相似度)"]
+            EntityResolver --> MatchCheck{"比對成功?"}
+            MatchCheck -- Yes --> ScrapeDetail["爬取內頁評分/百名店/支付方式"] --> SaveCache["寫入 Neon DB 快取"]
+            MatchCheck -- No / 403 --> FallbackGoogle["標註「Tabelog 暫無評分，以 Google 為依據」"]
+        end
+    end
+
+    HitCache --> S3Done["3 家店家雙平台資料彙整完成<br/>寫入 chat_sessions.last_recommended_ids"]
+    SaveCache --> S3Done
+    FallbackGoogle --> S3Done
+
+    subgraph State4 ["State 4: 單次合成推薦卡片 (Synthesis & Template Fallback)"]
+        S3Done --> LLMSynthesis["LLMClient 單次生成高美感卡片<br/>(Groq ➡️ Gemini ➡️ Ollama Failover)"]
+        LLMSynthesis --> CheckLLMResult{"LLM 生成成功?"}
+        CheckLLMResult -- 成功 --> FinalCard["輸出精選卡片<br/>店名獨立 Code Block 供 1 秒複製"]
+        CheckLLMResult -- 失敗 / 空回覆 --> TemplateFallback["純模板引擎自動防護直出<br/>徽章: ⚠️ AI 語意模型連線異常，已為您自動載入直出卡片"]
+    end
+
+    FinalCard --> EndResponse
+    TemplateFallback --> EndResponse
 ```
 
 ### E. 工程維護品質與軟體最佳實踐 (Engineering & Maintainability Practices)

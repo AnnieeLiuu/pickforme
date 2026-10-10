@@ -45,6 +45,21 @@ class SessionRepository:
                 if attempt == 1:
                     raise
 
+    async def update_recommended_ids(self, chat_id: int, recommended_ids: list[dict[str, Any]]) -> None:
+        """更新使用者最後一次推薦的店家清單 (支援後續追問)"""
+        pool = await get_db_pool()
+        sql = """
+            INSERT INTO chat_sessions (chat_id, last_recommended_ids, updated_at)
+            VALUES (%s, %s, NOW())
+            ON CONFLICT (chat_id) DO UPDATE SET
+                last_recommended_ids = EXCLUDED.last_recommended_ids,
+                updated_at = NOW();
+        """
+        async with pool.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(sql, (chat_id, json.dumps(recommended_ids, ensure_ascii=False)))
+                await conn.commit()
+
     async def add_conversation_turn(
         self, chat_id: int, user_message: str, assistant_response: str, max_turns: int = 3
     ) -> None:

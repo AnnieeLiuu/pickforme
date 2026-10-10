@@ -113,12 +113,14 @@ class TelegramBotHandler:
             gemini_status = "🟢 已設定" if settings.GEMINI_API_KEY else "🔴 未設定"
             groq_status = "🟢 已設定" if settings.GROQ_API_KEY else "🔴 未設定"
             google_status = "🟢 已設定" if settings.GOOGLE_PLACES_API_KEY else "🔴 未設定"
+            primary = settings.LLM_PRIMARY_PROVIDER.upper()
 
             status_text = (
                 "📊 **PickForMe 系統健康狀態總覽**\n\n"
                 "🗄️ **資料庫**：🟢 正常 (Neon Cloud Postgres)\n"
-                f"🧠 **Gemini API**：{gemini_status}\n"
-                f"⚡ **Groq Fallback**：{groq_status}\n"
+                f"🧠 **主力推論引擎**：`{primary}`\n"
+                f"⚡ **Groq API**：{groq_status}\n"
+                f"🌟 **Gemini API**：{gemini_status}\n"
                 f"🗺️ **Google Places API**：{google_status}\n\n"
                 "💡 輸入 `/logs` 可查看最近一次 Agent 執行與錯誤 Trace。"
             )
@@ -210,7 +212,7 @@ class TelegramBotHandler:
             if status_msg_id:
                 await self._edit_telegram_message(chat_id, status_msg_id, status_text)
 
-        # 執行 Agent Loop (支援本機 Ollama 優先、雲端模型自動容錯與即時進度回傳)
+        # 執行 4 階段 FSM Pipeline (支援階梯搜尋、平行對齊、多模型容錯與即時進度推播)
         final_response = await self.agent_engine.run_agent(
             chat_id=chat_id,
             user_message=text,

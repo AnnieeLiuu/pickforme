@@ -1,6 +1,8 @@
 # 🍱 PickForMe - Phase A3 實作計畫：自研 Agent Engine 與 Telegram Bot 介面
 
-> **目標**：開發無框架限制的 OpenAI 格式代理人迴圈 (Gemini Flash + Groq Llama 3.3 雙模型自動降級)、Agent 工具註冊器 (`tools.py`)、OTel 格式 Trace 紀錄器 (`trace.py`)，以及 Telegram Bot Webhook 介面 (含地點/問句接收、白名單過濾、`update_id` 去重與 `editMessageText` 動態進度串流)。
+> **狀態更新 [2026-10-10]**：本計畫初始的動態 `tool_calls` 多輪迴圈已正式轉正並重構畢業為 **確定性 4 階段 FSM 狀態機流水線 (`FoodRecommendationFSM`)**，以狀態驅動階梯式搜尋、平行爬蟲對齊與零失敗模板降級，徹底消除 `max_steps` 邊界中斷與多次 LLM 來回延遲。完整新架構請參閱 [docs/ARCHITECTURE.md](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/ARCHITECTURE.md)。
+
+> **原計畫目標**：開發無框架限制的 OpenAI 格式代理人迴圈 (Gemini Flash + Groq Llama 3.3 雙模型自動降級)、Agent 工具註冊器 (`tools.py`)、OTel 格式 Trace 紀錄器 (`trace.py`)，以及 Telegram Bot Webhook 介面 (含地點/問句接收、白名單過濾、`update_id` 去重與 `editMessageText` 動態進度串流)。
 
 ---
 
