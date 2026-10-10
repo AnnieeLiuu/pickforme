@@ -248,15 +248,15 @@ async def test_fsm_walking_distance_and_prompt_loader(mock_fsm):
     mock_fsm.places_client.search_nearby.return_value = [
         {"google_place_id": "p1", "name": "近距離拉麵", "lat": 35.686, "lng": 139.711}
     ]
-    candidates = await mock_fsm.execute_state_2_places_ladder(35.685, 139.710, "拉麵")
+    candidates = await mock_fsm.execute_state_2_places_ladder(35.685, 139.710, "拉麵", origin_name="橫濱棒球場")
     assert len(candidates) == 1
     assert "distance_meters" in candidates[0]
     assert "walk_time_minutes" in candidates[0]
-    assert "步行約" in candidates[0]["walking_desc"]
+    assert "從「橫濱棒球場」步行約" in candidates[0]["walking_desc"]
 
     # 3. 測試保底卡片排版有加入步行距離
     fallback_card = mock_fsm._render_template_fallback_card(candidates, "拉麵")
-    assert "🚶 **步行距離**" in fallback_card
+    assert "🚶 **步行距離**：從「橫濱棒球場」步行約" in fallback_card
 
 
 def test_guardrail_sanitizes_rating_drift(mock_fsm):

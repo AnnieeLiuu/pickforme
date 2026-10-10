@@ -48,7 +48,7 @@ RECOMMENDATION_CARD_SYSTEM_PROMPT = """你是一位專業、熱情的日本美�
 1. 請依據候選資料推薦 3 ~ 5 家精選餐廳（預設呈現 3 ~ 4 家差異化風格名店，如歷史老舖、平價排隊名店、特色專門店）。
 2. 每家餐廳排版格式規範（嚴格依序）：
    - 🍱 **店名**：請務必將「日文原名」單獨放在 Code 區塊中（例如：`寿々喜家 本店`），方便 Telegram 一鍵點擊複製！
-   - 🚶 **步行距離（緊接在店名最前排）**：例如 `🚶 步行約 3 分鐘 (240m)`，提供遊客直覺的步行時間與距離。
+   - 🚶 **步行距離（緊接在店名最前排）**：必須明確標明起點地標，例如：`🚶 **步行距離**：從「新宿御苑」步行約 3 分鐘 (240m)`（若為 GPS 定位則為 `從「您目前位置」步行約...`），提供遊客最明確直覺的腳程參考！
    - ⭐️ **雙平台評分與老饕評價（嚴格遵守優先級）**：
      - 若有 Tabelog 評分：標註「⭐️ Tabelog X.XX 分 (XXX 則評價) / Google X.X」，且必須優先提煉 Tabelog 在地老饕對口感、湯頭、麵條、肉質或必點招牌小菜的深入點評！
      - 若 Tabelog 暫無資料：標註「⭐️ Google X.X 分 (XXX 則評價) ｜ Tabelog 暫無評分」，並提煉 Google 網友的普遍好評亮點（排隊熱度、招牌特色）。
@@ -176,10 +176,12 @@ class FoodRecommendationFSM:
         lat: float,
         lng: float,
         keyword: str,
+        origin_name: Optional[str] = None,
     ) -> list[dict[str, Any]]:
         """State 2: Google Places 智慧階梯檢索 (800m ➔ 1200m ➔ 1800m)"""
         t0 = time.time()
         candidates: list[dict[str, Any]] = []
+        origin_prefix = f"從「{origin_name}」" if origin_name else "從「您目前位置」"
 
         radii = [800, 1200, 1800]
         for r in radii:
@@ -195,7 +197,8 @@ class FoodRecommendationFSM:
                         walk_mins = max(1, math.ceil(dist_m / 80))
                         p["distance_meters"] = dist_m
                         p["walk_time_minutes"] = walk_mins
-                        p["walking_desc"] = f"步行約 {walk_mins} 分鐘 ({dist_m}m)"
+                        p["origin_name"] = origin_name or "您目前位置"
+                        p["walking_desc"] = f"{origin_prefix}步行約 {walk_mins} 分鐘 ({dist_m}m)"
                     candidates.append(p)
                     existing_ids.add(p["google_place_id"])
 
@@ -581,10 +584,11 @@ class FoodRecommendationFSM:
             f"目標地點：{location_name or '指定區域'}\n美食類別：{cuisine or '熱門美食'}\n\n候選餐廳詳細數據如下：\n"
         )
         for idx, s in enumerate(stores, 1):
+            origin_label = location_name or "您目前位置"
             walk_str = s.get("walking_desc") or (
-                f"步行約 {s.get('walk_time_minutes', 3)} 分鐘 ({s.get('distance_meters', 200)}m)"
+                f"從「{origin_label}」步行約 {s.get('walk_time_minutes', 3)} 分鐘 ({s.get('distance_meters', 200)}m)"
                 if s.get("walk_time_minutes")
-                else "步行約 3~5 分鐘"
+                else f"從「{origin_label}」步行約 3~5 分鐘"
             )
             pay_desc = s.get("payment_methods_desc") or format_payment_methods(
                 s.get("supports_paypay"), s.get("credit_cards")
@@ -765,7 +769,9 @@ class FoodRecommendationFSM:
                 await on_progress(f"🧭 正在為您鎖定 {target_desc} 並檢索週邊熱門美食與食べログ評分...")
 
             # 2. State 2: 候選店家智慧階梯檢索
-            candidates = await self.execute_state_2_places_ladder(lat=lat, lng=lng, keyword=cuisine)
+            candidates = await self.execute_state_2_places_ladder(
+                lat=lat, lng=lng, keyword=cuisine, origin_name=loc_name
+            )
             if not candidates:
                 await self.trace_logger.finish_run(status="completed")
                 return f"抱歉，在 {loc_name or '該地點'} 週邊暫時未檢索到符合「{cuisine}」的高評價餐廳，建議可放寬關鍵字或擴大範圍再次搜尋。"
