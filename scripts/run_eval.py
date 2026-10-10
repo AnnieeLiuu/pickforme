@@ -61,9 +61,82 @@ async def main() -> int:
         f.write(md_report)
     print(f"📝 Markdown 評測報告已儲存至: {md_path.resolve()}")
 
-    # 3. 輸出 HTML 儀表板
+    # 3. 嘗試讀取真實線上對話 Traces (優先 Live DB 1.5s 逾時保護，備援 DuckDB 冷層 Parquet)
+    live_runs = None
+    live_steps = None
+    try:
+        from scripts.analyze_traces import fetch_live_data_from_db
+
+        live_runs, live_steps = await asyncio.wait_for(fetch_live_data_from_db(limit=15), timeout=1.5)
+    except Exception:
+        pass
+
+    # 若 Live DB 未連線，嘗試從冷層 Parquet 讀取
+    if not live_runs:
+        try:
+            import duckdb
+
+            cold_dir = Path("data/cold_archive")
+            runs_pattern = str(cold_dir / "**" / "agent_runs_*.parquet")
+            steps_pattern = str(cold_dir / "**" / "agent_steps_*.parquet")
+            if list(cold_dir.glob("**/agent_runs_*.parquet")):
+                con = duckdb.connect()
+                recent_sql = f"""
+                    SELECT run_id, user_query, status, latency_ms, model_used, total_tokens, created_at
+                    FROM '{runs_pattern}'
+                    ORDER BY created_at DESC
+                    LIMIT 15;
+                """
+                raw_runs = con.execute(recent_sql).fetchall()
+                live_runs = [
+                    {
+                        "run_id": str(r[0]),
+                        "user_query": r[1],
+                        "status": r[2],
+                        "latency_ms": r[3],
+                        "model_used": r[4],
+                        "total_tokens": r[5],
+                        "created_at": str(r[6]),
+                    }
+                    for r in raw_runs
+                ]
+                if live_runs:
+                    live_steps = {}
+                    r_ids = [r["run_id"] for r in live_runs]
+                    ids_clause = ", ".join(f"'{rid}'" for rid in r_ids)
+                    steps_sql = f"""
+                        SELECT step_id, run_id, step_number, action_type, tool_name, tool_input, tool_output, latency_ms
+                        FROM '{steps_pattern}'
+                        WHERE run_id IN ({ids_clause})
+                        ORDER BY step_number ASC;
+                    """
+                    raw_steps = con.execute(steps_sql).fetchall()
+                    for s in raw_steps:
+                        rid = str(s[1])
+                        live_steps.setdefault(rid, []).append(
+                            {
+                                "step_id": str(s[0]),
+                                "run_id": rid,
+                                "step_number": s[2],
+                                "action_type": s[3],
+                                "tool_name": s[4],
+                                "tool_input": s[5],
+                                "tool_output": s[6],
+                                "latency_ms": s[7],
+                            }
+                        )
+                con.close()
+        except Exception:
+            pass
+
+    # 4. 輸出 HTML 儀表板
     html_path = Path(args.output_html)
-    generate_html_dashboard(summary, html_path)
+    generate_html_dashboard(
+        summary,
+        html_path,
+        live_runs=live_runs,
+        live_steps_by_run=live_steps,
+    )
     print(f"🌐 GitLab Pages HTML 儀表板已生成至: {html_path.resolve()}")
 
     if summary.all_passed_gate:
