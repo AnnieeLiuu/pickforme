@@ -81,9 +81,19 @@ def _render_aligned_stores_cards(stores: list[dict[str, Any]]) -> str:
         elif sample_revs and isinstance(sample_revs, list) and len(sample_revs) > 0:
             first_rev = sample_revs[0]
             txt = ""
-            rev_src = "食べログ 口コミ" if (isinstance(first_rev, dict) and first_rev.get("source") == "tabelog") else "在地饕客評價"
+            rev_src = (
+                "食べログ 口コミ"
+                if (isinstance(first_rev, dict) and first_rev.get("source") == "tabelog")
+                else "在地饕客評價"
+            )
             if isinstance(first_rev, dict):
-                txt = first_rev.get("text") or first_rev.get("original_text") or first_rev.get("zh") or first_rev.get("ja") or ""
+                txt = (
+                    first_rev.get("text")
+                    or first_rev.get("original_text")
+                    or first_rev.get("zh")
+                    or first_rev.get("ja")
+                    or ""
+                )
             else:
                 txt = str(first_rev)
             txt = txt.strip().replace("\n", " ")
@@ -109,7 +119,7 @@ def _render_aligned_stores_cards(stores: list[dict[str, Any]]) -> str:
     return f"""
     <div class="aligned-stores-section">
         <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 ({len(stores)} 間):</div>
-        <div class="aligned-stores-grid">{''.join(cards)}</div>
+        <div class="aligned-stores-grid">{"".join(cards)}</div>
     </div>
     """
 
@@ -128,9 +138,7 @@ def _format_step_card(
         f'<div class="kv-item"><span class="kv-key">{k}:</span><span class="kv-val">{v}</span></div>'
         for k, v in kv_pairs
     )
-    raw_json_str = (
-        html.escape(json.dumps(raw_data, ensure_ascii=False, indent=2, default=str)) if raw_data else "{}"
-    )
+    raw_json_str = html.escape(json.dumps(raw_data, ensure_ascii=False, indent=2, default=str)) if raw_data else "{}"
 
     return f"""
     <div class="pipeline-step-card">

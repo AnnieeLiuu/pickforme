@@ -343,7 +343,9 @@ class FoodRecommendationFSM:
                     "credit_cards": cards_list,
                 }
                 # 評論向量化：優先使用 Tabelog 老饕食評，Google 評論保底
-                chosen_reviews = details.get("sample_reviews") or cand.get("sample_reviews") or place.get("reviews") or []
+                chosen_reviews = (
+                    details.get("sample_reviews") or cand.get("sample_reviews") or place.get("reviews") or []
+                )
 
                 saved_id = None
                 try:
