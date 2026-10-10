@@ -2,7 +2,7 @@ import asyncio
 import logging
 import sys
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
@@ -63,3 +63,19 @@ async def root() -> dict[str, str]:
 @app.get("/health")
 async def health_check() -> dict[str, str]:
     return {"status": "ok", "environment": settings.ENVIRONMENT}
+
+
+@app.post("/api/admin/archive")
+async def trigger_archive(
+    days: int = 14,
+    keep_hot: bool = False,
+) -> dict[str, Any]:
+    """手動或雲端排程 (GCP Cloud Scheduler) 觸發冷儲存歸檔"""
+    from src.services.cold_storage import ColdStorageArchiver
+
+    archiver = ColdStorageArchiver()
+    result = await archiver.archive_traces(
+        retention_days=days,
+        delete_after_archive=not keep_hot,
+    )
+    return result

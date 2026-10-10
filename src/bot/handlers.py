@@ -52,6 +52,7 @@ class TelegramBotHandler:
                 BotCommand("start", "🍱 歡迎選單與美食指南說明"),
                 BotCommand("status", "📊 系統健康狀態與對話 Trace"),
                 BotCommand("prewarm", "♨️ 觸發地區熱門美食快取預熱"),
+                BotCommand("archive", "📦 歷史 Trace 轉檔 Parquet 冷儲存歸檔"),
             ]
             await self.bot.set_my_commands(commands)
             logger.info("Successfully registered Telegram Bot slash commands menu.")
@@ -179,6 +180,33 @@ class TelegramBotHandler:
                 "💡 **發動指令**：在對話中直接輸入 `預熱 新宿御苑` 或 `/prewarm 新宿御苑`，Agent 即會啟動該地標的精準預熱！"
             )
             await self._send_telegram_message(chat_id, prewarm_msg)
+            return
+
+        if text.startswith("/archive") or text.startswith("歸檔"):
+            from pathlib import Path
+
+            from src.services.cold_storage import ColdStorageArchiver
+
+            status_msg_id = await self._send_telegram_message(
+                chat_id, "📦 **正在將 14 天前的歷史 Trace 壓縮轉檔至 Parquet 冷層儲存...**"
+            )
+            archiver = ColdStorageArchiver()
+            res = await archiver.archive_traces(retention_days=14, delete_after_archive=True)
+            if res.get("status") == "skipped":
+                reply = "ℹ️ 目前熱層中尚無超過 14 天之歷史 Trace，無需歸檔。\n\n💡 系統將持續保護 Neon 1GB 額度安全。"
+            else:
+                files_str = "\n".join([f"• `{Path(p).name}`" for p in res.get("parquet_files", [])])
+                reply = (
+                    f"🎉 **冷儲存歸檔作業完成！**\n\n"
+                    f"📊 **歸檔總量**：`{res.get('runs_archived', 0)}` 筆 Runs / `{res.get('steps_archived', 0)}` 筆 Steps\n"
+                    f"🗄️ **儲存目標**：`{res.get('destination')}` (Apache Parquet Snappy)\n"
+                    f"📁 **產生檔案**：\n{files_str}\n\n"
+                    f"🧹 **熱層清理**：已自 Neon DB 釋出舊紀錄，守護 1GB 免費額度！"
+                )
+            if status_msg_id:
+                await self._edit_telegram_message(chat_id, status_msg_id, reply)
+            else:
+                await self._send_telegram_message(chat_id, reply)
             return
 
         lowered_text = text.lower()

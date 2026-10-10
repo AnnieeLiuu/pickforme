@@ -68,14 +68,26 @@ USING hnsw (embedding halfvec_cosine_ops);
 
 ---
 
-## 🗄️ 里程碑 2：冷熱儲存分層與 DuckDB OLAP 分析 (Hot/Cold Tiering)
+## 🗄️ 里程碑 2：冷熱儲存分層與 DuckDB OLAP 分析 (Hot/Cold Tiering) [Status: Completed / 已完工]
 
 ### 1. 痛點與架構
-* **痛點**：長期運行的原始網頁 HTML 與 Trace 日誌若全堆在 Neon Postgres，會導致資料庫膨脹並增加雲端託管成本。
+* **痛點**：長期運行的 Trace 日誌 (`agent_runs`, `agent_steps`) 若全堆在 Neon Postgres，會導致資料庫膨脹並侵蝕 1GB 免費託管額度。
 * **解法**：
-  * **熱層 (Hot Tier)**：Neon Postgres 保留 7~30 天內的活躍餐廳快取與對話 Session。
-  * **冷層 (Cold Tier)**：定時將歷史 Trace 與原始網頁壓縮匯出為 Apache Parquet 檔案，上傳至 GCS（Google Cloud Storage）。
-  * **極速分析 (OLAP)**：本機或維運工具以 DuckDB 直接查詢 GCS Parquet，0 資料庫負載產出報表。
+  * **熱層 (Hot Tier)**：Neon Postgres 保留最近 14 天內之活躍 Trace 與對話 Session。
+  * **冷層 (Cold Tier)**：定時將歷史 Trace 壓縮匯出為 Apache Parquet (Snappy 壓縮)，支援本機目錄與 GCS 雙模上傳。
+  * **極速分析 (OLAP)**：本機或維運工具以 DuckDB 直接查詢冷層 Parquet，0 資料庫負載產出報表。
+
+### 2. 模組落地與成果
+* `src/services/cold_storage.py`：實作 `ColdStorageArchiver`，提供 `archive_traces(retention_days=14)` 與 `analyze_traces_duckdb`，支援自動偵測 GCS 與降級本機目錄雙模儲存。
+* `scripts/archive_to_cold.py`：獨立 CLI 歸檔排程工具，支援 `--days` 與 `--keep-hot` 參數。
+* `scripts/analyze_traces.py`：基於 DuckDB 的極速 OLAP 分析工具，一秒讀取多份 Parquet，產出「請求總量/成功率」、「各模型 Tokens/延遲分佈」與「Tool/Action 調用統計」三合一營運報表。
+* `src/main.py` & `src/bot/handlers.py`：
+  - 提供 `/api/admin/archive` 端點（供 GCP Cloud Scheduler 雲端排程定時呼叫）。
+  - Telegram Bot 註冊 `/archive` 指令，管理員在手機上隨時可一鍵歸檔並取得總覽報告。
+* **實測檢驗指標**：
+  - 實地歸檔驗證：成功匯出 50 筆 Runs、228 筆 Steps 至 `data/cold_archive/year=2026/month=10/`。
+  - DuckDB 報表實測：極速分析出總計 97,501 Tokens、P50 延遲 5,627ms、Gemini 32% / Qwen 18% 分佈。
+  - 單元測試套件：新增 `tests/test_cold_storage.py`，全套 63/63 測試 100% 通過。
 
 ---
 

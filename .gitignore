@@ -24,3 +24,8 @@ coverage.xml
 .idea/
 .DS_Store
 Thumbs.db
+
+# 冷儲存 Parquet 歸檔二進位檔案
+data/cold_archive/**/*.parquet
+data/cold_archive/*.parquet
+

@@ -136,11 +136,7 @@ async def diagnose(req: DiagnosisRequest):
         content = msg_obj.get("content", "系統運作正常。")
         latency = int((time.time() - start_time) * 1000)
 
-        report = (
-            "🤖 **[IDE Agent 遠端直連分析]**\n"
-            f"⏱️ 耗時: `{latency}ms` | 🧠 運算模型: `{model}`\n\n"
-            f"{content}"
-        )
+        report = f"🤖 **[IDE Agent 遠端直連分析]**\n⏱️ 耗時: `{latency}ms` | 🧠 運算模型: `{model}`\n\n{content}"
         return {"status": "ok", "report": report}
     except Exception as e:
         return {
