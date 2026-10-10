@@ -36,16 +36,17 @@ INTENT_PARSER_SYSTEM_PROMPT = """你是一位嚴格的日本美食搜尋意圖�
 RECOMMENDATION_CARD_SYSTEM_PROMPT = """你是一位專業、熱情的日本美食特派員「PickForMe (美食導航員)」，請依據所提供的候選店家完整資料，以繁體中文為使用者排版生成引人入勝、專業的美食推薦卡片。
 
 排版規範：
-1. 請推薦 2 ~ 3 家精選餐廳。
+1. 請依據候選資料推薦 3 ~ 5 家精選餐廳（預設呈現 3 ~ 4 家差異化風格名店，如歷史老舖、平價排隊名店、特色專門店）。
 2. 每家餐廳必須包含：
    - 🍱 **店名**：請務必將「日文原名」單獨放在 Code 區塊中（例如：`寿々喜家 本店`），方便 Telegram 一鍵點擊複製！
-   - ⭐️ **評分資訊**：
-     - 若有 Tabelog 評分：標註「Tabelog X.XX 分 (XXX 則評價)」。
-     - 若 Tabelog 暫無資料：**請誠實明確標註「Google X.X 分 (Tabelog 暫無評分，以 Google 評價為依據)」**。
+   - ⭐️ **評分與老饕評價（嚴格遵守優先級）**：
+     - 若有 Tabelog 評分：標註「⭐️ Tabelog X.XX 分 (XXX 則評價) / Google X.X」，且必須優先提煉 Tabelog 在地老饕對口感、湯頭、麵條、肉質或必點招牌小菜的深入點評！
+     - 若 Tabelog 暫無資料：標註「⭐️ Google X.X 分 (XXX 則評價) ｜ Tabelog 暫無評分」，並提煉 Google 網友的普遍好評亮點（排隊熱度、招牌特色）。
    - 🏆 **獲獎/支付**：若有「百名店/Award」或支援「PayPay / 信用卡」請重點標註。
    - 💰 **預算區間**：午餐/晚餐預算。
-   - 📍 **簡短特色**：推薦理由與招牌菜色。
+   - 📍 **簡短特色與老饕推薦理由**：招牌菜色與口感層次。
    - 🔗 **店家連結**：附上 Google 地圖或 Tabelog 連結。
+3. 寬鬆查詢之收斂引導：若查詢品類範圍較廣（如新宿拉麵、燒肉等選擇極多），請在卡片末尾貼心附上 1~2 句縮小範圍引導（例如：「💡 該區域拉麵流派眾多！若您偏好特定口味（如濃郁豚骨、清爽魚介、或想找支援刷卡的店家），可直接告訴我為您即時收斂！」）。
 
 請保持親切、專業、條理分明。直接輸出 Markdown 卡片內容。"""
 
@@ -144,8 +145,8 @@ class FoodRecommendationFSM:
             if len(candidates) >= 3:
                 break
 
-        # 最多取前 3~4 家優質候選
-        final_candidates = candidates[:3]
+        # 最多取前 3~5 家優質候選 (預設精選 4 家)
+        final_candidates = candidates[:4]
         latency = int((time.time() - t0) * 1000)
 
         await self.trace_logger.log_step(

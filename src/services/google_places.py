@@ -8,12 +8,66 @@ from src.config import settings
 logger = logging.getLogger(__name__)
 
 PLACES_API_NEW_URL = "https://places.googleapis.com/v1/places:searchNearby"
+PLACES_API_TEXT_SEARCH_URL = "https://places.googleapis.com/v1/places:searchText"
 GEOCODING_API_URL = "https://maps.googleapis.com/maps/api/geocode/json"
 
 
 class GooglePlacesClient:
     def __init__(self, api_key: Optional[str] = None):
         self.api_key = api_key or settings.GOOGLE_PLACES_API_KEY
+
+    async def search_by_text(
+        self,
+        query: str,
+        lat: Optional[float] = None,
+        lng: Optional[float] = None,
+        radius: int = 1500,
+        max_results: int = 10,
+    ) -> list[dict[str, Any]]:
+        """呼叫 Google Places API (New) Text Search 搜尋專門餐廳"""
+        if not self.api_key:
+            logger.warning("GOOGLE_PLACES_API_KEY is not set. Returning empty list.")
+            return []
+
+        headers = {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": self.api_key,
+            "X-Goog-FieldMask": (
+                "places.id,"
+                "places.displayName,"
+                "places.nationalPhoneNumber,"
+                "places.internationalPhoneNumber,"
+                "places.location,"
+                "places.rating,"
+                "places.userRatingCount,"
+                "places.formattedAddress,"
+                "places.regularOpeningHours"
+            ),
+        }
+
+        body: dict[str, Any] = {
+            "textQuery": query,
+            "maxResultCount": min(max_results, 20),
+        }
+
+        if lat is not None and lng is not None:
+            body["locationBias"] = {
+                "circle": {
+                    "center": {"latitude": lat, "longitude": lng},
+                    "radius": float(radius),
+                }
+            }
+
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            try:
+                response = await client.post(PLACES_API_TEXT_SEARCH_URL, json=body, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+                raw_places = data.get("places", [])
+                return [self._format_place_item(item) for item in raw_places]
+            except Exception as e:
+                logger.error(f"Error fetching Google Places TextSearch: {e}")
+                return []
 
     async def search_nearby(
         self,
@@ -53,6 +107,12 @@ class GooglePlacesClient:
             },
             "maxResultCount": 20,
         }
+
+        # 若指定了美食/料理關鍵字，優先使用 TextSearch 確保精準命中專門店 (杜絕百貨公司或無關地標)
+        if keyword and not included_types:
+            text_results = await self.search_by_text(query=keyword, lat=lat, lng=lng, radius=radius, max_results=20)
+            if text_results:
+                return text_results
 
         if included_types:
             body["includedTypes"] = included_types
