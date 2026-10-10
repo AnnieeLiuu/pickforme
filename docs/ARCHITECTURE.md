@@ -20,29 +20,32 @@ graph TD
     end
 
     subgraph DeterministicPipeline ["⚡ 確定性 4 階段狀態機流水線"]
-        FSM -->|1. 意圖辨識| S1["State 1: 使用者意圖與追問判斷"]
-        S1 -->|2. 地圖搜尋| S2["State 2: Google Places 智慧階梯搜尋<br/>(TextSearch 專門店 ➔ 800m~1800m)"]
-        S2 -->|3. 雙平台對齊| S3["State 3: Tabelog 雙平台實體對齊<br/>(asyncio.gather 3~5家平行處理)"]
-        S3 -->|4. 生成卡片| S4["State 4: 最終美食卡片排版合成<br/>(日文店名Code區塊 + 老饕評價)"]
+        FSM -->|1. 意圖辨識| S1["State 1: 使用者意圖與追問判斷<br/>(繼承歷史/換一批/modifier 抽取)"]
+        S1 -->|2. 地圖搜尋| S2["State 2: Google Places 智慧階梯搜尋<br/>(800m~1800m ➔ 2500m 擴圈 + 累積排除已看過)"]
+        S2 -->|3. 雙平台對齊| S3["State 3: Tabelog 雙平台實體對齊<br/>(asyncio.gather 平行處理 + 支付標記 + pgvector 重排)"]
+        S3 -->|4. 生成卡片| S4["State 4: 最終美食卡片排版合成<br/>(日文店名Code區塊 + 🚶起點步行距離 + 💳支付)"]
         
         %% 明確標註 LLM 在哪裡被調用
         S1 ==>|"【LLM 呼叫 1】0.3s Micro-LLM 結構化意圖抽取"| MultiTierLLM
         S3 -.->|"【LLM 呼叫 2 (可選)】灰區 0.6~0.85 實體比對裁決"| MultiTierLLM
         S4 ==>|"【LLM 呼叫 3】單次 Prompt 高美感推薦卡片生成"| MultiTierLLM
         
+        S4 --> Guardrail["🛡️ Scoped Anchor 毫秒級防偽護欄<br/>(0.1ms 數值校驗與自動矯正)"]
+        Guardrail --> OutputCard["輸出零幻覺推薦卡片"]
         S4 -.->|LLM全斷線防護| Fallback["純 Python 模板引擎直出保底"]
     end
     
-    subgraph StorageTiering ["🗄️ 冷熱資料儲存分層"]
+    subgraph StorageTiering ["🗄️ 冷熱資料儲存分層與向量引擎"]
         S3 --> HotDB[("Neon Postgres 熱層: 快取/餐廳/對話歷史")]
-        S3 -.->|原始網頁存檔| ColdStorage[("GCS 冷層: Parquet / 壓縮 JSON")]
+        S3 --> VectorDB[("pgvector: halfvec(768) 評論向量重排")]
         FSM -->|OTel 格式 Trace| HotDB
+        HotDB -.->|背景歸檔 (Parquet)| ColdStorage[("本機/GCS 冷層: Parquet 壓縮檔")]
+        ColdStorage --> DuckDBEngine["🦆 DuckDB OLAP 分析引擎 (analyze_traces.py)"]
     end
 
     subgraph AsyncWorker ["⚙️ 背景非同步處理"]
         HotDB -->|prewarm_jobs 佇列| LocalWorker["本機 Worker / 家用 IP 批次預熱"]
-        ColdStorage -->|DuckDB 分析| Notebook["DS 實驗與 Observability Notebook"]
-        EvalHarness["4-Tier Automated Eval"] -->|GCS / Replay Fixtures| HotDB
+        DuckDBEngine --> TraceDeepDive["Pipeline 耗時瀑布流與 Deep-Dive"]
     end
 ```
 

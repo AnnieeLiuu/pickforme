@@ -45,9 +45,72 @@ class SessionRepository:
                 if attempt == 1:
                     raise
 
-    async def update_recommended_ids(self, chat_id: int, recommended_ids: list[dict[str, Any]]) -> None:
-        """更新使用者最後一次推薦的店家清單 (支援後續追問)"""
+    async def get_last_recommended_stores(self, chat_id: int) -> list[dict[str, Any]]:
+        """取得當前最後一輪推薦的店家清單 (供 follow_up 目標 1, 2, 3 追問使用)"""
+        session = await self.get_session(chat_id)
+        if not session:
+            return []
+        raw = session.get("last_recommended_ids")
+        if not raw:
+            return []
+        if isinstance(raw, list):
+            return raw
+        if isinstance(raw, dict):
+            curr = raw.get("current")
+            if isinstance(curr, list):
+                return curr
+        return []
+
+    async def get_seen_place_ids(self, chat_id: int) -> set[str]:
+        """取得該使用者對話累積看過的所有 google_place_id"""
+        session = await self.get_session(chat_id)
+        if not session:
+            return set()
+        raw = session.get("last_recommended_ids")
+        if not raw:
+            return set()
+
+        seen: set[str] = set()
+        if isinstance(raw, list):
+            for item in raw:
+                if isinstance(item, dict) and item.get("google_place_id"):
+                    seen.add(str(item["google_place_id"]))
+        elif isinstance(raw, dict):
+            acc = raw.get("accumulated_seen_ids")
+            if isinstance(acc, list):
+                seen.update(str(x) for x in acc)
+            curr = raw.get("current")
+            if isinstance(curr, list):
+                for item in curr:
+                    if isinstance(item, dict) and item.get("google_place_id"):
+                        seen.add(str(item["google_place_id"]))
+        return seen
+
+    async def update_recommended_ids(
+        self,
+        chat_id: int,
+        recommended_ids: list[dict[str, Any]],
+        accumulate: bool = True,
+    ) -> None:
+        """更新推薦店家清單，預設累積更新歷史看過的店家 ID"""
         pool = await get_db_pool()
+        accumulated_seen_ids: list[str] = []
+
+        if accumulate:
+            existing_seen = await self.get_seen_place_ids(chat_id)
+            for r in recommended_ids:
+                pid = r.get("google_place_id")
+                if pid:
+                    existing_seen.add(str(pid))
+            accumulated_seen_ids = list(existing_seen)
+        else:
+            accumulated_seen_ids = [str(r["google_place_id"]) for r in recommended_ids if r.get("google_place_id")]
+
+        data_to_store = {
+            "current": recommended_ids,
+            "accumulated_seen_ids": accumulated_seen_ids,
+        }
+
         sql = """
             INSERT INTO chat_sessions (chat_id, last_recommended_ids, updated_at)
             VALUES (%s, %s, NOW())
@@ -57,7 +120,7 @@ class SessionRepository:
         """
         async with pool.connection() as conn:
             async with conn.cursor() as cur:
-                await cur.execute(sql, (chat_id, json.dumps(recommended_ids, ensure_ascii=False)))
+                await cur.execute(sql, (chat_id, json.dumps(data_to_store, ensure_ascii=False)))
                 await conn.commit()
 
     async def add_conversation_turn(

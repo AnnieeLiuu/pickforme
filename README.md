@@ -4,7 +4,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-green.svg)](https://fastapi.tiangolo.com/)
 [![Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Type Checked](https://img.shields.io/badge/mypy-checked-blue.svg)](http://mypy-lang.org/)
-[![Tests](https://img.shields.io/badge/pytest-54%20passed-success.svg)](https://docs.pytest.org/)
+[![Tests](https://img.shields.io/badge/pytest-71%20passed-success.svg)](https://docs.pytest.org/)
 
 > **專案定位**：專為日本旅遊打造的高效能智慧美食 Agent 系統。解決遊客外出時「距離近、評分高、有開門、在地評價真實」的痛點。結合 Google Places API、Tabelog 爬蟲與實體比對器、Neon Serverless Postgres 以及 Telegram Bot 介面。
 
@@ -18,22 +18,26 @@
    - **State 2 (階梯搜尋)**：Google Places 智慧階梯搜尋（800m ➔ 1200m ➔ 1800m）並精算步行距離與分鐘數。
    - **State 3 (平行對齊)**：`asyncio.gather` 平行抓取與 Neon 快取比對，遇 403 WAF 阻擋秒級降級至 Web Grounding 備援取得真實評分與百名店標章。
    - **State 4 (單次合成)**：單次 Prompt 生成高美感卡片，日文原名 Code 區塊與步行距離置頂。
-2. **零幻覺確定性數值護欄與防漂移合約測試 (Deterministic Guardrail & Contract Testing)**：
-   - **Scoped Anchor 區塊錨點隔離**：自主研發 <0.5ms 毫秒級確定性護欄，按店家獨立切割片段並以前後強語境錨點精確核對校正，確保評分與距離 100% 精準無幻覺，徹底杜絕內文非評分數值誤傷。
-   - **CI Prompt-Code 合約測試**：在 CI Pipeline 實作雙向合約檢核，若提示詞範本演更引發關鍵字漂移，自動報警阻擋 Commit，根除傳統正則護欄隨時間腐化的維護盲點。
-3. **多級雲端+地端 LLM 容錯降級鏈 (Multi-Tier LLM Failover)**：
+2. **多輪推薦換批、去重防撞店與自適應擴圈 (Multi-Turn Exploration & Deduplication)**：
+   - **已看過店家累積排除**：當使用者詢問「還有更多推薦嗎」或「換一批」時，系統自 `chat_sessions` 自動累積歷史看過之 Place ID，新清單保證不撞店。
+   - **偏好修飾詞疊加繼承**：使用者表達「我想找更在地的老店」或「更平價一點」時，自動繼承上一輪地標與料理主軸，並將修飾詞疊加至關鍵字檢索與評論向量重排。
+   - **自適應 2500m 擴圈保底**：當原始半徑內候選店家已推薦完畢時，自動擴展搜尋至 2500m，確保旅人不中斷探索。
+3. **pgvector Halfvec (768 維) 語意評論重排 (Vector RAG Re-ranking)**：
+   - 整合 Neon Postgres `halfvec(768)` 向量儲存，儲存 Tabelog 在地老饕評論嵌入。
+   - 支援依使用者個人化口感/偏好修飾詞，進行混合語意相似度加權重排。
+4. **冷熱儲存分層與 DuckDB OLAP 追蹤深潛 (Cold Storage & Deep-Dive Analytics)**：
+   - **分層歸檔**：線上交易資料留存 Neon 熱層，歷史 Trace 自動排程壓縮轉存至 Parquet 冷層。
+   - **終端分析報表**：透過 `scripts/analyze_traces.py` 整合 DuckDB OLAP 引擎，支援一鍵檢視管線總耗時、Token 統計、以及完整 Pipeline 瀑布流（包含各階段 Input, Output, 各自耗時深潛）。
+5. **雙平台支付方式標記 (Payment Badges)**：
+   - 即時擷取並結構化標註 PayPay、信用卡支援狀況，或友善提醒「現金為主 (建議備足日圓現鈔)」，避免旅人結帳尷尬。
+6. **零幻覺確定性數值護欄與防漂移合約測試 (Deterministic Guardrail & Contract Testing)**：
+   - **Scoped Anchor 區塊錨點隔離**：自主研發 <0.5ms 毫秒級確定性護欄，按店家獨立切割片段並以前後強語境錨點精確核對校正，確保評分與距離 100% 精準無幻覺。
+   - **CI Prompt-Code 合約測試**：在 CI Pipeline 實作雙向合約檢核，若提示詞範本演更引發關鍵字漂移，自動報警阻擋 Commit。
+7. **多級雲端+地端 LLM 容錯降級鏈 (Multi-Tier LLM Failover)**：
    - **主力**：Groq `qwen/qwen3.8-27b`（極速推論，延遲 ~0.7s）。
    - **備援**：Gemini 3.8 Flash（Google AI Studio 免費額度）。
    - **離線保底**：本機 Ollama `qwen2.5:3b`（0 API 費用、斷網仍可運行）。
    - 支援動態讀取 `Retry-After` 標頭之退避重試與全自動降級。
-4. **高精準實體匹配器 (Hybrid Entity Resolver)**：
-   - **電話優先 (Phone-First)**：日文電話號碼完全比對直接獲得 100% 信心度。
-   - **店名正規化**：支援漢字新舊字體轉換（如「藏」轉「蔵」、「之」轉「の」）、半角假名轉換與分店後綴消除。
-   - **灰區裁決**：0.60 ~ 0.85 相似度區間支援微型 Prompt 驗證。
-5. **極致 Telegram 行動端體驗**：
-   - **兩段式即時進度更新**：鎖定地點 ➔ 彙整評分 ➔ 直出卡片，100% 規避 Telegram 429 頻率限制。
-   - **一秒複製店名**：日文原名獨立置於 Code 區塊（例：\`寿々喜家 本店\`），點擊即可複製並切換至 Google Maps 導航。
-   - **歷史記憶與追問**：推薦店家編號即時存入 `chat_sessions` JSONB，支援「那第 2 家有開嗎？」即時問答。
 
 ---
 
@@ -53,12 +57,11 @@ graph TD
     end
 
     subgraph DeterministicPipeline ["⚡ 確定性 4 階段狀態機流水線"]
-        FSM -->|1. 意圖辨識| S1["State 1: 使用者意圖與追問判斷"]
-        S1 -->|2. 地圖搜尋| S2["State 2: Google Places 智慧階梯搜尋<br/>(TextSearch 專門店 ➔ 800m~1800m)"]
-        S2 -->|3. 雙平台對齊| S3["State 3: Tabelog 雙平台實體對齊<br/>(asyncio.gather 3~5家平行處理 + Grounding 備援)"]
-        S3 -->|4. 生成卡片| S4["State 4: 最終美食卡片排版合成<br/>(日文店名Code區塊 + 🚶步行距離)"]
+        FSM -->|1. 意圖辨識| S1["State 1: 使用者意圖與追問判斷 (繼承歷史/換批/modifier)"]
+        S1 -->|2. 地圖搜尋| S2["State 2: Google Places 智慧階梯搜尋<br/>(800m~1800m ➔ 2500m 擴圈保底 + 排除已看過)"]
+        S2 -->|3. 雙平台對齊| S3["State 3: Tabelog 雙平台實體對齊<br/>(asyncio.gather 平行處理 + 支付標記 + pgvector 重排)"]
+        S3 -->|4. 生成卡片| S4["State 4: 最終美食卡片排版合成<br/>(日文店名Code區塊 + 🚶起點步行距離 + 💳支付)"]
         
-        %% 明確標註 LLM 在哪裡被調用
         S1 ==>|"【LLM 呼叫 1】0.3s Micro-LLM 結構化意圖抽取"| MultiTierLLM
         S3 -.->|"【LLM 呼叫 2 (可選)】灰區 0.6~0.85 實體比對裁決"| MultiTierLLM
         S4 ==>|"【LLM 呼叫 3】單次 Prompt 高美感推薦卡片生成"| MultiTierLLM
@@ -68,10 +71,12 @@ graph TD
         S4 -.->|LLM全斷線防護| Fallback["純 Python 模板引擎直出保底"]
     end
     
-    subgraph StorageTiering ["🗄️ 冷熱資料儲存分層"]
+    subgraph StorageTiering ["🗄️ 冷熱資料儲存分層與向量引擎"]
         S3 --> HotDB[("Neon Postgres 熱層: 快取/餐廳/對話歷史")]
-        S3 -.->|原始網頁存檔| ColdStorage[("GCS 冷層: Parquet / 壓縮 JSON")]
+        S3 --> VectorDB[("pgvector: halfvec(768) 評論語意索引")]
         FSM -->|OTel 格式 Trace| HotDB
+        HotDB -.->|背景歸檔 (Parquet)| ColdStorage[("本機/GCS 冷層: Parquet 壓縮檔")]
+        ColdStorage --> DuckDBEngine["🦆 DuckDB OLAP 分析引擎 (analyze_traces.py)"]
     end
 
     subgraph AsyncWorker ["⚙️ 背景非同步處理"]
@@ -93,6 +98,8 @@ PickForMe/
 │   └── plans/              # 各階段實作計畫書與進度
 ├── scripts/
 │   ├── agent_bridge_server.py # IDE Agent 遠端協同橋接伺服器
+│   ├── analyze_traces.py      # DuckDB OLAP 分析與 Pipeline 深潛報表
+│   ├── archive_cold_storage.py# 冷資料 Parquet 批次歸檔工具
 │   ├── seed_prewarm_jobs.py   # 日本熱門景點預熱腳本
 │   └── setup_webhook.py       # Telegram Webhook 註冊工具
 ├── src/
@@ -100,16 +107,17 @@ PickForMe/
 │   │   ├── pipeline.py     # 4 階段 FSM 狀態機 (FoodRecommendationFSM)
 │   │   ├── llm_client.py   # 統一多模型 LLM 客戶端 (Groq/Gemini/Ollama)
 │   │   ├── core.py         # AgentEngine Facade 對外入口
+│   │   ├── guardrail.py    # 確定性數值護欄
 │   │   ├── devops.py       # DevOps 遠端診斷 Subagent
 │   │   ├── tools.py        # 工具註冊與執行輔助
 │   │   └── trace.py        # OTel 格式 Trace 紀錄器
 │   ├── bot/                # Telegram Webhook 與訊息處理
-│   ├── db/                 # Neon Postgres 倉儲層 (Session, Restaurant, Prewarm)
-│   ├── services/           # 外部服務 (Google Places, Tabelog, Entity Resolver)
+│   ├── db/                 # Neon Postgres 倉儲層 (Session, Restaurant, Vector, Prewarm)
+│   ├── services/           # 外部服務 (Google Places, Tabelog, Embedding, Entity Resolver)
 │   ├── worker/             # 本機非同步預熱 Worker (SKIP LOCKED 佇列)
 │   ├── config.py           # Pydantic Settings 環境設定
 │   └── main.py             # FastAPI 啟動入口
-├── tests/                  # 48 項單元與整合測試 (Mock 驅動，CI 100% 通過)
+├── tests/                  # 71 項單元與整合測試 (Mock 驅動，CI 100% 通過)
 └── pyproject.toml          # Ruff, Mypy 與專案相依設定
 ```
 
@@ -159,11 +167,14 @@ TELEGRAM_WEBHOOK_SECRET=your_secret
 python run_server.py
 ```
 
-### 4. 執行背景預熱 Worker
+### 4. 執行背景預熱 Worker 與效能追蹤分析
 
 ```bash
 # 本地非同步認領 prewarm_jobs 佇列進行快取預熱
 python -m src.worker.prewarm
+
+# 檢視最新一次推薦的管線各步驟詳細耗時與 Input/Output
+python scripts/analyze_traces.py --latest
 ```
 
 ---
@@ -174,10 +185,10 @@ python -m src.worker.prewarm
 
 ```bash
 # 1. 程式碼自動格式化
-python -m ruff format src/ tests/
+python -m ruff format src/ tests/ scripts/
 
 # 2. 靜態語法檢查與 Linter
-python -m ruff check src/ tests/
+python -m ruff check src/ tests/ scripts/
 
 # 3. 嚴格型別檢查
 python -m mypy src/

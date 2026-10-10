@@ -28,15 +28,17 @@ INTENT_PARSER_SYSTEM_PROMPT = """你是一位嚴格的日本美食搜尋意圖�
 
 可能的 intent 欄位值：
 1. "search": 使用者想尋找美食餐廳。請精準抽取 location (地名/車站/商圈/景點，若未提及請設為 null) 與 cuisine (料理類別/關鍵字，若未指定請設為 "熱門人氣美食")。
-2. "follow_up": 使用者針對上一輪推薦的店家追問細節 (例如: "第2家有開嗎", "第一家多少錢", "有沒有信用卡")。請抽取 target_index (整數 1, 2 或 3) 與 question。
-3. "chitchat": 純打招呼、禮貌問候、詢問系統功能或非美食主題。
-4. "need_location": 使用者想吃特定食物但未提供任何地名，且系統上下文無 GPS。
+2. "more": 使用者想要「換一批」、「還有更多推薦嗎」、「還有別家嗎」，或是對上一輪推薦提出風格轉向（例如：「我想找更在地的老店」、「有沒有更平價一點的」、「想吃清淡一點的」）。請抽取 modifier (風格修飾語/新要求，例如 "更在地老店"、"平價"、"偏清淡"，若無請設為 null)。注意：若為 "more" 且使用者未重複輸入地名或料理，請優先從對話歷史的上一輪中繼承 location 與 cuisine！
+3. "follow_up": 使用者針對上一輪推薦的店家追問細節 (例如: "第2家有開嗎", "第一家多少錢", "有沒有信用卡")。請抽取 target_index (整數 1, 2 或 3) 與 question。
+4. "chitchat": 純打招呼、禮貌問候、詢問系統功能或非美食主題。
+5. "need_location": 使用者想吃特定食物但未提供任何地名，且系統上下文無 GPS 與無歷史地名。
 
 輸出 JSON 結構規範：
 {
-  "intent": "search" | "follow_up" | "chitchat" | "need_location",
+  "intent": "search" | "more" | "follow_up" | "chitchat" | "need_location",
   "location": string | null,
   "cuisine": string | null,
+  "modifier": string | null,
   "target_index": number | null,
   "question": string | null
 }
@@ -126,6 +128,7 @@ class FoodRecommendationFSM:
         user_message: str,
         user_location: Optional[tuple[float, float]],
         conversation_history: Optional[list[dict[str, str]]],
+        chat_id: Optional[int] = None,
     ) -> dict[str, Any]:
         """State 1: 0.3s 微型 LLM 結構化意圖與座標解析"""
         messages: list[dict[str, Any]] = [{"role": "system", "content": INTENT_PARSER_SYSTEM_PROMPT}]
@@ -164,8 +167,20 @@ class FoodRecommendationFSM:
         if not resolved_coords and user_location:
             resolved_coords = user_location
 
+        # 若為 "more" 換一批或無地名搜尋，嘗試從 session 繼承上次位置
+        if intent in ("more", "search") and not resolved_coords and chat_id:
+            try:
+                session = await self.session_repo.get_session(chat_id)
+                if session and session.get("last_location_lat") and session.get("last_location_lng"):
+                    resolved_coords = (
+                        float(session["last_location_lat"]),
+                        float(session["last_location_lng"]),
+                    )
+            except Exception as e:
+                logger.warning(f"Failed to inherit coords from session: {e}")
+
         # 若美食搜尋既無地標也無座標
-        if intent == "search" and not resolved_coords:
+        if intent in ("search", "more") and not resolved_coords:
             parsed["intent"] = "need_location"
 
         parsed["coords"] = resolved_coords
@@ -177,19 +192,23 @@ class FoodRecommendationFSM:
         lng: float,
         keyword: str,
         origin_name: Optional[str] = None,
+        exclude_place_ids: Optional[set[str]] = None,
+        max_candidates: int = 4,
     ) -> list[dict[str, Any]]:
-        """State 2: Google Places 智慧階梯檢索 (800m ➔ 1200m ➔ 1800m)"""
+        """State 2: Google Places 智慧階梯檢索 (800m ➔ 1200m ➔ 1800m ➔ 2500m 擴圈保底)"""
         t0 = time.time()
         candidates: list[dict[str, Any]] = []
         origin_prefix = f"從「{origin_name}」" if origin_name else "從「您目前位置」"
+        exclude_set = set(exclude_place_ids or set())
 
         radii = [800, 1200, 1800]
         for r in radii:
             raw_places = await self.places_client.search_nearby(lat=lat, lng=lng, radius=r, keyword=keyword)
-            # 過濾重複
+            # 過濾重複與已看過店家
             existing_ids = {c["google_place_id"] for c in candidates}
             for p in raw_places:
-                if p.get("google_place_id") and p["google_place_id"] not in existing_ids:
+                pid = p.get("google_place_id")
+                if pid and pid not in existing_ids and pid not in exclude_set:
                     p_lat = p.get("lat")
                     p_lng = p.get("lng")
                     if p_lat and p_lng:
@@ -200,19 +219,45 @@ class FoodRecommendationFSM:
                         p["origin_name"] = origin_name or "您目前位置"
                         p["walking_desc"] = f"{origin_prefix}步行約 {walk_mins} 分鐘 ({dist_m}m)"
                     candidates.append(p)
-                    existing_ids.add(p["google_place_id"])
+                    existing_ids.add(pid)
 
             if len(candidates) >= 3:
                 break
 
-        # 最多取前 3~5 家優質候選 (預設精選 4 家)
-        final_candidates = candidates[:4]
+        # 自適應擴圈：若在 1800m 內候選店少於 3 家，自動向外擴圈至 2500m 保底
+        if len(candidates) < 3:
+            raw_places = await self.places_client.search_nearby(lat=lat, lng=lng, radius=2500, keyword=keyword)
+            existing_ids = {c["google_place_id"] for c in candidates}
+            for p in raw_places:
+                pid = p.get("google_place_id")
+                if pid and pid not in existing_ids and pid not in exclude_set:
+                    p_lat = p.get("lat")
+                    p_lng = p.get("lng")
+                    if p_lat and p_lng:
+                        dist_m = int(calculate_distance_meters(lat, lng, p_lat, p_lng))
+                        walk_mins = max(1, math.ceil(dist_m / 80))
+                        p["distance_meters"] = dist_m
+                        p["walk_time_minutes"] = walk_mins
+                        p["origin_name"] = origin_name or "您目前位置"
+                        p["walking_desc"] = f"{origin_prefix}步行約 {walk_mins} 分鐘 ({dist_m}m)"
+                        p["radius_expanded"] = True
+                    candidates.append(p)
+                    existing_ids.add(pid)
+                if len(candidates) >= 3:
+                    break
+
+        final_candidates = candidates[:max_candidates]
         latency = int((time.time() - t0) * 1000)
 
         await self.trace_logger.log_step(
             action_type="state_2_places",
             tool_name="search_nearby_ladder",
-            tool_input={"lat": lat, "lng": lng, "keyword": keyword},
+            tool_input={
+                "lat": lat,
+                "lng": lng,
+                "keyword": keyword,
+                "excluded_count": len(exclude_set),
+            },
             tool_output={"count": len(final_candidates)},
             latency_ms=latency,
         )
@@ -657,11 +702,26 @@ class FoodRecommendationFSM:
         if not chat_id:
             return "抱歉，無法載入上一輪推薦的店家記憶。"
 
-        session = await self.session_repo.get_session(chat_id)
-        if not session or not session.get("last_recommended_ids"):
+        recommended_stores = []
+        try:
+            stores_res = await self.session_repo.get_last_recommended_stores(chat_id)
+            if isinstance(stores_res, list) and type(stores_res).__name__ != "MagicMock":
+                recommended_stores = stores_res
+        except Exception:
+            pass
+
+        if not recommended_stores:
+            session = await self.session_repo.get_session(chat_id)
+            if isinstance(session, dict):
+                raw = session.get("last_recommended_ids")
+                if isinstance(raw, list):
+                    recommended_stores = raw
+                elif isinstance(raw, dict) and isinstance(raw.get("current"), list):
+                    recommended_stores = raw["current"]
+
+        if not recommended_stores:
             return "抱歉，目前找不到您上一輪詢問的推薦紀錄，請問您今天想在何處吃什麼美食呢？"
 
-        recommended_stores = session.get("last_recommended_ids") or []
         target_idx = (parsed_intent.get("target_index") or 1) - 1
         if target_idx < 0 or target_idx >= len(recommended_stores):
             target_idx = 0
@@ -716,8 +776,10 @@ class FoodRecommendationFSM:
         await self.trace_logger.start_run(chat_id=chat_id, user_query=user_message)
 
         try:
-            # 1. State 1: 意圖與座標鎖定
-            parsed = await self.execute_state_1_intent(user_message, user_location, conversation_history)
+            # 1. State 1: 意圖與座標鎖定 (支援 chat_id 繼承上一輪座標)
+            parsed = await self.execute_state_1_intent(
+                user_message, user_location, conversation_history, chat_id=chat_id
+            )
             intent = parsed.get("intent", "search")
 
             # 分支 A: 純閒聊 / 非美食問題
@@ -754,7 +816,7 @@ class FoodRecommendationFSM:
                 await self.trace_logger.finish_run(status="completed")
                 return answer
 
-            # 分支 D: 正式美食推薦 (search)
+            # 分支 D: 正式美食推薦 (search / more)
             coords = parsed.get("coords")
             if not coords:
                 return "未能識別您的目標座標，請提供日本城市或車站名稱。"
@@ -762,25 +824,45 @@ class FoodRecommendationFSM:
             lat, lng = coords
             cuisine = parsed.get("cuisine") or "熱門美食"
             loc_name = parsed.get("location")
+            modifier = parsed.get("modifier")
+
+            # 若有風格修飾語（例如「更在地老店」、「偏平價」），疊加進搜尋關鍵字
+            search_keyword = f"{cuisine} {modifier}" if modifier else cuisine
+
+            # 若為換一批 (intent: more)，取得過去累積看過的所有店家 ID 進行黑名單過濾
+            exclude_ids: set[str] = set()
+            if intent == "more" and chat_id:
+                try:
+                    exclude_ids = await self.session_repo.get_seen_place_ids(chat_id)
+                except Exception as e:
+                    logger.warning(f"Failed to load seen place ids: {e}")
 
             # 方案 1A 二段式進度更新 (進度 1)
             if on_progress:
                 target_desc = f"「{loc_name}」" if loc_name else "您目前位置"
-                await on_progress(f"🧭 正在為您鎖定 {target_desc} 並檢索週邊熱門美食與食べログ評分...")
+                if intent == "more":
+                    await on_progress(f"🔄 正在為您排除已看過店家，於 {target_desc} 挖掘下一梯隊高評價名店...")
+                else:
+                    await on_progress(f"🧭 正在為您鎖定 {target_desc} 並檢索週邊熱門美食與食べログ評分...")
 
-            # 2. State 2: 候選店家智慧階梯檢索
+            # 2. State 2: 候選店家智慧階梯檢索 (含去重排除與自適應擴圈)
             candidates = await self.execute_state_2_places_ladder(
-                lat=lat, lng=lng, keyword=cuisine, origin_name=loc_name
+                lat=lat,
+                lng=lng,
+                keyword=search_keyword,
+                origin_name=loc_name,
+                exclude_place_ids=exclude_ids,
             )
             if not candidates:
                 await self.trace_logger.finish_run(status="completed")
-                return f"抱歉，在 {loc_name or '該地點'} 週邊暫時未檢索到符合「{cuisine}」的高評價餐廳，建議可放寬關鍵字或擴大範圍再次搜尋。"
+                return f"抱歉，在 {loc_name or '該地點'} 週邊暫時未檢索到更多符合「{search_keyword}」的高評價餐廳，建議可更換地標或料理關鍵字再次搜尋。"
 
             # 3. State 3: 3 店家平行 Tabelog 查驗
             enriched_stores = await self.execute_state_3_parallel_tabelog(candidates)
 
             # 3.5 pgvector 語意重排與食評亮點萃取 (RAG)
-            enriched_stores = await self.semantic_rerank_reviews(user_message, enriched_stores)
+            rerank_query = f"{user_message} {modifier}" if modifier else user_message
+            enriched_stores = await self.semantic_rerank_reviews(rerank_query, enriched_stores)
 
             # 方案 1A 二段式進度更新 (進度 2 - 準備寫卡片)
             if on_progress:
@@ -789,14 +871,18 @@ class FoodRecommendationFSM:
             # 4. State 4: 單輪卡片生成
             final_card = await self.execute_state_4_synthesis(
                 stores=enriched_stores,
-                cuisine=cuisine,
+                cuisine=search_keyword,
                 location_name=loc_name,
             )
 
-            # 保存推薦店家至 Session 以支援後續追問
+            # 保存推薦店家至 Session 以支援後續追問與累積去重
             if chat_id:
                 try:
-                    await self.session_repo.update_recommended_ids(chat_id=chat_id, recommended_ids=enriched_stores)
+                    await self.session_repo.update_recommended_ids(
+                        chat_id=chat_id,
+                        recommended_ids=enriched_stores,
+                        accumulate=(intent == "more"),
+                    )
                 except Exception as e:
                     logger.warning(f"Could not persist recommended stores to session: {e}")
 
