@@ -304,6 +304,7 @@ class FoodRecommendationFSM:
                     "supports_paypay": cached.get("supports_paypay"),
                     "credit_cards": pay_cards,
                     "payment_methods_desc": pay_desc,
+                    "sample_reviews": place.get("reviews") or [],
                     "rating_source": "Tabelog",
                 }
 
@@ -388,6 +389,7 @@ class FoodRecommendationFSM:
         except Exception:
             pass
 
+        fallback_reviews = place.get("reviews") or []
         return {
             **place,
             "restaurant_id": str(fallback_id) if fallback_id else None,
@@ -401,6 +403,7 @@ class FoodRecommendationFSM:
             "supports_paypay": None,
             "credit_cards": [],
             "payment_methods_desc": "現金為主 (建議備足日圓現鈔)",
+            "sample_reviews": fallback_reviews,
             "rating_source": "Google",
         }
 

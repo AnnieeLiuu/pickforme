@@ -250,11 +250,17 @@ async def fetch_live_data_from_db(limit: int = 15) -> tuple[list[dict[str, Any]]
                 step_3 = next((s for s in st_list if s.get("step_number") == 3), None)
                 if not step_3:
                     continue
-                # 檢查 step_3 是否缺少 aligned_stores
+                # 檢查 step_3 是否缺少 aligned_stores 或缺少 sample_reviews
                 out_val = step_3.get("tool_output")
                 needs_enrichment = False
-                if isinstance(out_val, dict) and not out_val.get("aligned_stores"):
-                    needs_enrichment = True
+                if isinstance(out_val, dict):
+                    al_stores = out_val.get("aligned_stores")
+                    if not al_stores:
+                        needs_enrichment = True
+                    elif isinstance(al_stores, list) and len(al_stores) > 0:
+                        # 如果店家沒有 sample_reviews，進行補強注入
+                        if not any("sample_reviews" in st for st in al_stores):
+                            needs_enrichment = True
                 elif isinstance(out_val, str) and "aligned_stores" not in out_val:
                     needs_enrichment = True
 
