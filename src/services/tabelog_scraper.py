@@ -87,7 +87,7 @@ class TabelogScraper:
                 continue
 
             name_ja = re.split(r"[（\(\-\|\:\[]", raw_title)[0].strip()
-            name_ja = re.sub(r"の(?:ご)?予約$", "", name_ja).strip()
+            name_ja = re.sub(r"(?:の(?:ご)?予約|(?i)\s*(?:online\s*)?reservation)$", "", name_ja).strip()
             if not name_ja or "食べログ" in name_ja:
                 name_ja = store_name
 

@@ -86,15 +86,61 @@ def calculate_distance_meters(lat1: float, lng1: float, lat2: float, lng2: float
     return r * c
 
 
+STORE_STOP_WORDS = {
+    "restaurant",
+    "restaurants",
+    "cafe",
+    "bar",
+    "dining",
+    "kitchen",
+    "bistro",
+    "grill",
+    "pub",
+    "curry",
+    "bakery",
+    "shop",
+    "store",
+    "reservation",
+    "south",
+    "north",
+    "east",
+    "west",
+    "indian",
+    "japanese",
+    "chinese",
+    "italian",
+    "food",
+    "foods",
+    "lounge",
+    "house",
+    "spot",
+}
+
+
 def calculate_string_similarity(s1: str, s2: str) -> float:
-    """字串相似度比例 (0.0 ~ 1.0)"""
+    """字串相似度比例 (0.0 ~ 1.0)，支援子字串包含與核心品牌詞 Token 比對"""
     norm1 = normalize_store_name(s1)
     norm2 = normalize_store_name(s2)
     if not norm1 or not norm2:
         return 0.0
     if norm1 in norm2 or norm2 in norm1:
         return 0.90
-    return SequenceMatcher(None, norm1, norm2).ratio()
+
+    base_ratio = SequenceMatcher(None, norm1, norm2).ratio()
+
+    # 核心品牌詞比對 (排除通用料理/餐廳品類詞，如 NAKSHATRA vs Nakshatra Restaurant)
+    raw_tokens1 = re.findall(r"[a-z0-9]+", s1.lower())
+    raw_tokens2 = re.findall(r"[a-z0-9]+", s2.lower())
+    core1 = {t for t in raw_tokens1 if t not in STORE_STOP_WORDS and len(t) >= 3}
+    core2 = {t for t in raw_tokens2 if t not in STORE_STOP_WORDS and len(t) >= 3}
+
+    if core1 and core2:
+        if core1 == core2:
+            return max(base_ratio, 0.90)
+        if core1.issubset(core2) or core2.issubset(core1):
+            return max(base_ratio, 0.88)
+
+    return base_ratio
 
 
 class EntityResolver:
