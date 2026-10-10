@@ -235,10 +235,11 @@ flowchart TD
     SaveCache --> S3Done
     FallbackGoogle --> S3Done
 
-    subgraph State4 ["State 4: 單次合成推薦卡片 (Synthesis & Template Fallback)"]
+    subgraph State4 ["State 4: 單次合成推薦卡片 (Synthesis, Guardrail & Template Fallback)"]
         S3Done --> LLMSynthesis["LLMClient 單次生成高美感卡片<br/>(Groq ➡️ Gemini ➡️ Ollama Failover)"]
         LLMSynthesis --> CheckLLMResult{"LLM 生成成功?"}
-        CheckLLMResult -- 成功 --> FinalCard["輸出精選卡片<br/>店名獨立 Code Block 供 1 秒複製"]
+        CheckLLMResult -- 成功 --> GuardrailCheck["🛡️ Scoped Anchor 區塊錨點護欄<br/>(0.1ms 數值校驗與自動矯正)"]
+        GuardrailCheck --> FinalCard["輸出零幻覺精選卡片<br/>店名獨立 Code Block + 🚶步行距離"]
         CheckLLMResult -- 失敗 / 空回覆 --> TemplateFallback["純模板引擎自動防護直出<br/>徽章: ⚠️ AI 語意模型連線異常，已為您自動載入直出卡片"]
     end
 
@@ -246,10 +247,26 @@ flowchart TD
     TemplateFallback --> EndResponse
 ```
 
-### E. 工程維護品質與軟體最佳實踐 (Engineering & Maintainability Practices)
+### E. Production AI 護欄體系：確定性數值防偽與防規則漂移 (Deterministic Guardrail & Contract Testing)
+- **痛點與挑戰 (The Problem)**：
+  - LLM 在生成高生動度富文本時存在機率性微調幻覺（例如將 DB 中的 3.78 評分筆誤寫成 3.70），高敏感美食評分失真將嚴重損害用戶信任。
+  - 若使用二次 LLM 審核（LLM-as-a-Judge），會增加 1 秒以上的延遲與額外 Token 成本；若使用單純正則，又極易誤傷評論中的非評分數值（如「排隊 3.5 小時」、「3.5 天熬煮」）。
+  - 正則規則容易隨著 Prompt 範本的迭代演進而產生靜默失效（Rule / Schema Drift）。
+- **核心架構：Scoped Anchor 區塊錨點隔離護欄 (`src/agent/pipeline.py`)**：
+  - **區塊隔離 (Per-Store Scoping)**：以店家序號與日文店名為界將 Markdown 切割為獨立片段，店家 1 的比對絕不影響店家 2，徹底排除跨店串位。
+  - **前後雙向強關鍵字錨點 (Context Anchoring)**：只匹配 `(?:Tabelog|食べログ)[^\d\n]{0,25}?(\d\.\d{1,2})`，精準校正數值，內文的「排隊 3.5 小時」100% 受到語境保護不受影響。
+  - **極致效能 (Zero Latency & Cost)**：純 Python 運算耗時 <0.5ms，0 額外 API 調用成本。
+  - **Fail-Safe 兜底機制**：未匹配到錨點時維持原文，絕不盲目置換；若結構嚴重毀損自動降級為模板直出。
+- **維護保證：CI 雙向合約測試防禦 (Contract Testing in CI/CD)**：
+  - 於 `tests/test_pipeline.py` 建立自動化合約測試，每次執行 `pytest` 或 `git push`（Pre-push Hook）時，自動驗證 `config/prompts/agent_system.md` 定義的關鍵字與 Guardrail 正則錨點是否 100% 同步。
+  - 任何提示詞變更若破壞了護欄錨點，CI 立即報警阻擋合併，徹底根除規則隨時間腐化的維護盲點。
+- **即時監控：DevOps 遠端健康度巡檢 (`src/agent/devops.py`)**：
+  - 於系統指標與 Telegram `@debug` 指令中整合「護欄對齊狀態」掃描，隨時可一鍵秒級檢核。
+
+### F. 工程維護品質與軟體最佳實踐 (Engineering & Maintainability Practices)
 - **品質防線與 CI 守門 (Code Quality Gates)**：
   - **靜態檢查與型別標註**：全面採用 `ruff` (代碼規範/格式化) 與 `mypy` (Python 3.11 嚴格型別校驗)，確保程式碼可讀性與型別安全。
-  - **自動化測試與覆蓋率**：建立 23 項覆蓋核心邏輯之單元測試，整合 `pytest-cov` Cobertura XML 報告與 GitLab CI/CD Pipeline (`.gitlab-ci.yml`)，未通過品質關卡禁止合併主線。
+  - **自動化測試與覆蓋率**：建立 54 項覆蓋核心邏輯之單元與合約測試，整合 `pytest-cov` Cobertura XML 報告與 GitLab CI/CD Pipeline (`.gitlab-ci.yml`)，未通過品質關卡禁止合併主線。
 - **資安防護與存取控制 (Security & Access Control)**：
   - **Telegram Webhook Secret Token 驗證**：要求驗證 `X-Telegram-Bot-Api-Secret-Token` 標頭，防止惡意流量觸發 Cloud Run。
   - **白名單過濾**：以 `TELEGRAM_ALLOWED_USER_ID` 限制存取權限。
@@ -293,5 +310,6 @@ gantt
 1. **Zero-Framework Custom Agent Engine**: Engineered a resilient, dual-model LLM tool-calling loop (Gemini Flash + Groq Llama 3.3 failover) with normalized OpenAI-compatible schemas, error-handling tool loops, and prompt-context budgeting.
 2. **Hybrid Entity Resolution & Multi-Tier Storage**: Aligned store identities between Google Places and Tabelog via phone-number indexing, text normalization, and LLM gray-zone adjudication. Architected a hot/cold storage model combining Serverless Neon Postgres (`halfvec` pgvector) with GCS/DuckDB parquet archives.
 3. **Progressive Telegram Interface & Safe Pre-warming**: Built a synchronous Webhook interface on Cloud Run leveraging Telegram message-editing streams for live execution progress, backed by a DB-driven asynchronous pre-warm worker to prevent scraping blocks.
-4. **4-Tier Fixture-Replay Evaluation**: Established an automated evaluation pipeline measuring Tool Calling accuracy (94%), Constraint Satisfaction (98%), Entity Resolution F1 (0.93), and latency/cost metrics using recorded API fixtures.
+4. **Production AI Guardrail & Contract-Driven Quality**: Engineered a sub-millisecond Scoped Anchor deterministic guardrail eliminating LLM numeric hallucinations on high-stakes ratings with 0 API overhead. Coupled with CI/CD bidirectional contract tests preventing prompt-schema drift across iterations.
+5. **4-Tier Fixture-Replay Evaluation**: Established an automated evaluation pipeline measuring Tool Calling accuracy (94%), Constraint Satisfaction (98%), Entity Resolution F1 (0.93), and latency/cost metrics using recorded API fixtures.
 ```

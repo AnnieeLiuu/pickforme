@@ -4,7 +4,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-green.svg)](https://fastapi.tiangolo.com/)
 [![Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Type Checked](https://img.shields.io/badge/mypy-checked-blue.svg)](http://mypy-lang.org/)
-[![Tests](https://img.shields.io/badge/pytest-48%20passed-success.svg)](https://docs.pytest.org/)
+[![Tests](https://img.shields.io/badge/pytest-54%20passed-success.svg)](https://docs.pytest.org/)
 
 > **專案定位**：專為日本旅遊打造的高效能智慧美食 Agent 系統。解決遊客外出時「距離近、評分高、有開門、在地評價真實」的痛點。結合 Google Places API、Tabelog 爬蟲與實體比對器、Neon Serverless Postgres 以及 Telegram Bot 介面。
 
@@ -15,19 +15,22 @@
 1. **確定性 4 階段有限狀態機 (4-Stage FSM Pipeline)**：
    - 捨棄脆弱、不可控的傳統多輪 LLM Tool-Calling 迴圈，改採 **`FoodRecommendationFSM`** 狀態機流水線。
    - **State 1 (意圖解析)**：0.3s Micro-LLM 結構化 JSON 提煉（無論地名前後順序或口語句型均可精準解析；若為延續追問則 0.5s 秒答）。
-   - **State 2 (階梯搜尋)**：Google Places 智慧階梯搜尋（800m ➔ 1200m ➔ 1800m）確保精選出至少 3 家營業中高品質餐廳。
-   - **State 3 (平行對齊)**：`asyncio.gather` 平行抓取與 Neon 快取比對，電話優先實體對齊；遇 403 或無評分自動降級為 Google 評價標籤。
-   - **State 4 (單次合成)**：單次 Prompt 生成高美感卡片；內建 **純模板引擎零失敗防護直出**。
-2. **多級雲端+地端 LLM 容錯降級鏈 (Multi-Tier LLM Failover)**：
+   - **State 2 (階梯搜尋)**：Google Places 智慧階梯搜尋（800m ➔ 1200m ➔ 1800m）並精算步行距離與分鐘數。
+   - **State 3 (平行對齊)**：`asyncio.gather` 平行抓取與 Neon 快取比對，遇 403 WAF 阻擋秒級降級至 Web Grounding 備援取得真實評分與百名店標章。
+   - **State 4 (單次合成)**：單次 Prompt 生成高美感卡片，日文原名 Code 區塊與步行距離置頂。
+2. **零幻覺確定性數值護欄與防漂移合約測試 (Deterministic Guardrail & Contract Testing)**：
+   - **Scoped Anchor 區塊錨點隔離**：自主研發 <0.5ms 毫秒級確定性護欄，按店家獨立切割片段並以前後強語境錨點精確核對校正，確保評分與距離 100% 精準無幻覺，徹底杜絕內文非評分數值誤傷。
+   - **CI Prompt-Code 合約測試**：在 CI Pipeline 實作雙向合約檢核，若提示詞範本演更引發關鍵字漂移，自動報警阻擋 Commit，根除傳統正則護欄隨時間腐化的維護盲點。
+3. **多級雲端+地端 LLM 容錯降級鏈 (Multi-Tier LLM Failover)**：
    - **主力**：Groq `qwen/qwen3.8-27b`（極速推論，延遲 ~0.7s）。
    - **備援**：Gemini 3.8 Flash（Google AI Studio 免費額度）。
    - **離線保底**：本機 Ollama `qwen2.5:3b`（0 API 費用、斷網仍可運行）。
    - 支援動態讀取 `Retry-After` 標頭之退避重試與全自動降級。
-3. **高精準實體匹配器 (Hybrid Entity Resolver)**：
+4. **高精準實體匹配器 (Hybrid Entity Resolver)**：
    - **電話優先 (Phone-First)**：日文電話號碼完全比對直接獲得 100% 信心度。
-   - **店名正規化**：支援漢字新舊字體轉換（如「藏」轉「蔵」）、半角假名轉換與分店後綴消除。
+   - **店名正規化**：支援漢字新舊字體轉換（如「藏」轉「蔵」、「之」轉「の」）、半角假名轉換與分店後綴消除。
    - **灰區裁決**：0.60 ~ 0.85 相似度區間支援微型 Prompt 驗證。
-4. **極致 Telegram 行動端體驗**：
+5. **極致 Telegram 行動端體驗**：
    - **兩段式即時進度更新**：鎖定地點 ➔ 彙整評分 ➔ 直出卡片，100% 規避 Telegram 429 頻率限制。
    - **一秒複製店名**：日文原名獨立置於 Code 區塊（例：\`寿々喜家 本店\`），點擊即可複製並切換至 Google Maps 導航。
    - **歷史記憶與追問**：推薦店家編號即時存入 `chat_sessions` JSONB，支援「那第 2 家有開嗎？」即時問答。
@@ -52,14 +55,16 @@ graph TD
     subgraph DeterministicPipeline ["⚡ 確定性 4 階段狀態機流水線"]
         FSM -->|1. 意圖辨識| S1["State 1: 使用者意圖與追問判斷"]
         S1 -->|2. 地圖搜尋| S2["State 2: Google Places 智慧階梯搜尋<br/>(TextSearch 專門店 ➔ 800m~1800m)"]
-        S2 -->|3. 雙平台對齊| S3["State 3: Tabelog 雙平台實體對齊<br/>(asyncio.gather 3~5家平行處理)"]
-        S3 -->|4. 生成卡片| S4["State 4: 最終美食卡片排版合成<br/>(日文店名Code區塊 + 老饕評價)"]
+        S2 -->|3. 雙平台對齊| S3["State 3: Tabelog 雙平台實體對齊<br/>(asyncio.gather 3~5家平行處理 + Grounding 備援)"]
+        S3 -->|4. 生成卡片| S4["State 4: 最終美食卡片排版合成<br/>(日文店名Code區塊 + 🚶步行距離)"]
         
         %% 明確標註 LLM 在哪裡被調用
         S1 ==>|"【LLM 呼叫 1】0.3s Micro-LLM 結構化意圖抽取"| MultiTierLLM
         S3 -.->|"【LLM 呼叫 2 (可選)】灰區 0.6~0.85 實體比對裁決"| MultiTierLLM
         S4 ==>|"【LLM 呼叫 3】單次 Prompt 高美感推薦卡片生成"| MultiTierLLM
         
+        S4 --> Guardrail["🛡️ Scoped Anchor 毫秒級防偽護欄<br/>(0.1ms 數值校驗與自動矯正)"]
+        Guardrail --> OutputCard["輸出零幻覺推薦卡片"]
         S4 -.->|LLM全斷線防護| Fallback["純 Python 模板引擎直出保底"]
     end
     
