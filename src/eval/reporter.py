@@ -104,7 +104,9 @@ def _format_step_card(
         f'<div class="kv-item"><span class="kv-key">{k}:</span><span class="kv-val">{v}</span></div>'
         for k, v in kv_pairs
     )
-    raw_json_str = html.escape(json.dumps(raw_data, ensure_ascii=False, indent=2)) if raw_data else "{}"
+    raw_json_str = (
+        html.escape(json.dumps(raw_data, ensure_ascii=False, indent=2, default=str)) if raw_data else "{}"
+    )
 
     return f"""
     <div class="pipeline-step-card">
@@ -349,8 +351,8 @@ def generate_html_dashboard(
                 s_out = s.get("tool_output")
 
                 step_extra = ""
-                # 如果是 state_3_tabelog
-                if action == "state_3_tabelog" or tool == "parallel_tabelog_enrichment":
+                # 如果是第 3 步（Tabelog 雙平台實體對齊）
+                if s_num == 3 or "state_3" in action or "tabelog" in action.lower() or "tabelog" in tool.lower():
                     stores_to_render = []
                     if isinstance(s_out, dict) and s_out.get("aligned_stores"):
                         stores_to_render = s_out["aligned_stores"]

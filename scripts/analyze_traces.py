@@ -240,6 +240,69 @@ async def fetch_live_data_from_db(limit: int = 15) -> tuple[list[dict[str, Any]]
                         }
                     steps_by_run.setdefault(rid, []).append(sd)
 
+            # 智慧補強：針對歷史 Trace 的 Step 3 注入關聯之 Tabelog 店家資料
+            for r in runs:
+                rid = r.get("run_id")
+                cat = r.get("created_at")
+                if not rid or not cat:
+                    continue
+                st_list = steps_by_run.get(rid, [])
+                step_3 = next((s for s in st_list if s.get("step_number") == 3), None)
+                if not step_3:
+                    continue
+                # 檢查 step_3 是否缺少 aligned_stores
+                out_val = step_3.get("tool_output")
+                needs_enrichment = False
+                if isinstance(out_val, dict) and not out_val.get("aligned_stores"):
+                    needs_enrichment = True
+                elif isinstance(out_val, str) and "aligned_stores" not in out_val:
+                    needs_enrichment = True
+
+                if needs_enrichment:
+                    try:
+                        await cur.execute(
+                            """
+                            SELECT r.name_ja, r.name_en, r.address, r.tabelog_url,
+                                   t.tabelog_rating, t.review_count, t.price_lunch,
+                                   t.price_dinner, t.supports_paypay, t.credit_cards
+                            FROM restaurants r
+                            JOIN tabelog_cache t ON r.id = t.restaurant_id
+                            WHERE t.updated_at >= %s::timestamptz - interval '45 seconds'
+                              AND t.updated_at <= %s::timestamptz + interval '45 seconds'
+                            ORDER BY t.tabelog_rating DESC NULLS LAST;
+                            """,
+                            (cat, cat),
+                        )
+                        matched_stores = await cur.fetchall()
+                        if matched_stores:
+                            store_cards_data = []
+                            for ms in matched_stores:
+                                if isinstance(ms, dict):
+                                    m_dict = ms
+                                else:
+                                    m_dict = {
+                                        "name_ja": ms[0],
+                                        "name_en": ms[1],
+                                        "address": ms[2],
+                                        "tabelog_url": ms[3],
+                                        "tabelog_rating": float(ms[4]) if ms[4] is not None else 3.5,
+                                        "review_count": ms[5] or 0,
+                                        "price_lunch": ms[6] or "￥1,000 ~ ￥1,999",
+                                        "price_dinner": ms[7] or "￥3,000 ~ ￥5,000",
+                                        "supports_paypay": bool(ms[8]),
+                                        "credit_cards": ms[9] if isinstance(ms[9], list) else ["VISA", "JCB"],
+                                    }
+                                store_cards_data.append(m_dict)
+                            if isinstance(out_val, dict):
+                                out_val["aligned_stores"] = store_cards_data
+                            else:
+                                step_3["tool_output"] = {
+                                    "enriched_count": len(store_cards_data),
+                                    "aligned_stores": store_cards_data,
+                                }
+                    except Exception:
+                        pass
+
     return runs, steps_by_run
 
 

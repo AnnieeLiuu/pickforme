@@ -1417,7 +1417,7 @@
             <td class="text-center"><span class="pill pill-green">PASS</span></td>
             <td class="text-center"><span class="pill pill-green">PASS</span></td>
             <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
-            <td class="text-right latency-text">0 ms</td>
+            <td class="text-right latency-text">1 ms</td>
         </tr>
         <tr id="case-eval_008" class="stepper-drawer" style="display: none;">
             <td colspan="8">
@@ -3392,6 +3392,47 @@
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2411 ms</span></div></div>
             
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (3 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 燒肉內臟Araiya澀谷</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.70 (952 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 Janomeya</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.50 (217 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 Shabu Shabu Japanese cuisineKisojiBashamichi ten</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.20 (119 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3399,7 +3440,45 @@
     &quot;stores_count&quot;: 4
   },
   &quot;output&quot;: {
-    &quot;enriched_count&quot;: 4
+    &quot;enriched_count&quot;: 4,
+    &quot;aligned_stores&quot;: [
+      {
+        &quot;name_ja&quot;: &quot;燒肉內臟Araiya澀谷&quot;,
+        &quot;name_en&quot;: &quot;Araiya&quot;,
+        &quot;address&quot;: &quot;Japan, 〒231-0002 Kanagawa, Yokohama, Naka Ward, Kaigandōri, 4-chōme−２３ 海岸通４丁目市街地住宅 １階&quot;,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1303/A130301/13237382/&quot;,
+        &quot;tabelog_rating&quot;: &quot;3.70&quot;,
+        &quot;review_count&quot;: 952,
+        &quot;price_lunch&quot;: null,
+        &quot;price_dinner&quot;: null,
+        &quot;supports_paypay&quot;: false,
+        &quot;credit_cards&quot;: []
+      },
+      {
+        &quot;name_ja&quot;: &quot;Janomeya&quot;,
+        &quot;name_en&quot;: &quot;Janomeya&quot;,
+        &quot;address&quot;: &quot;Japan, 〒231-0045 Kanagawa, Yokohama, Naka Ward, Isezakichō, 5-chōme−１２６ シャンボール伊勢佐木&quot;,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140306/14001121/&quot;,
+        &quot;tabelog_rating&quot;: &quot;3.50&quot;,
+        &quot;review_count&quot;: 217,
+        &quot;price_lunch&quot;: null,
+        &quot;price_dinner&quot;: null,
+        &quot;supports_paypay&quot;: false,
+        &quot;credit_cards&quot;: []
+      },
+      {
+        &quot;name_ja&quot;: &quot;Shabu Shabu Japanese cuisineKisojiBashamichi ten&quot;,
+        &quot;name_en&quot;: &quot;Kisoji Bashamichiten&quot;,
+        &quot;address&quot;: &quot;Japan, 〒231-0011 Kanagawa, Yokohama, Naka Ward, Ōtamachi, 4-chōme−５５ 横浜馬車道ビル B1&quot;,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140104/14001619/&quot;,
+        &quot;tabelog_rating&quot;: &quot;3.20&quot;,
+        &quot;review_count&quot;: 119,
+        &quot;price_lunch&quot;: null,
+        &quot;price_dinner&quot;: null,
+        &quot;supports_paypay&quot;: false,
+        &quot;credit_cards&quot;: []
+      }
+    ]
   }
 }</code></pre>
             </details>
@@ -3530,6 +3609,23 @@
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2263 ms</span></div></div>
             
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (1 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 テクニシャン</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.20 (24 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3537,7 +3633,21 @@
     &quot;stores_count&quot;: 4
   },
   &quot;output&quot;: {
-    &quot;enriched_count&quot;: 4
+    &quot;enriched_count&quot;: 4,
+    &quot;aligned_stores&quot;: [
+      {
+        &quot;name_ja&quot;: &quot;テクニシャン&quot;,
+        &quot;name_en&quot;: &quot;テクニシャン&quot;,
+        &quot;address&quot;: &quot;1-chōme-10-11 Shinjuku, Shinjuku City, Tokyo 160-0022, Japan&quot;,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130402/13322583/&quot;,
+        &quot;tabelog_rating&quot;: &quot;3.20&quot;,
+        &quot;review_count&quot;: 24,
+        &quot;price_lunch&quot;: null,
+        &quot;price_dinner&quot;: null,
+        &quot;supports_paypay&quot;: false,
+        &quot;credit_cards&quot;: []
+      }
+    ]
   }
 }</code></pre>
             </details>
@@ -3668,6 +3778,35 @@
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">1952 ms</span></div></div>
             
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (2 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 Spaghetti noPan Cho Okachimachi ten</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.50 (457 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 Spaghetti noPan ChoShinjukuten</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.20 (262 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3675,7 +3814,33 @@
     &quot;stores_count&quot;: 4
   },
   &quot;output&quot;: {
-    &quot;enriched_count&quot;: 4
+    &quot;enriched_count&quot;: 4,
+    &quot;aligned_stores&quot;: [
+      {
+        &quot;name_ja&quot;: &quot;Spaghetti noPan Cho Okachimachi ten&quot;,
+        &quot;name_en&quot;: &quot;Spaghetti no Pancho&quot;,
+        &quot;address&quot;: &quot;Japan, 〒151-0053 Tokyo, Shibuya, Yoyogi, 2-chōme−9−５ FPG links SHINJUKU Terrace, B1F&quot;,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1311/A131101/13219386/&quot;,
+        &quot;tabelog_rating&quot;: &quot;3.50&quot;,
+        &quot;review_count&quot;: 457,
+        &quot;price_lunch&quot;: null,
+        &quot;price_dinner&quot;: null,
+        &quot;supports_paypay&quot;: false,
+        &quot;credit_cards&quot;: []
+      },
+      {
+        &quot;name_ja&quot;: &quot;Spaghetti noPan ChoShinjukuten&quot;,
+        &quot;name_en&quot;: &quot;Spaghetti no Pancho Shinjuku branch&quot;,
+        &quot;address&quot;: &quot;Japan, 〒160-0022 Tokyo, Shinjuku City, Shinjuku, 3-chōme−35−１２ 新東ビル B1F&quot;,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13216070/&quot;,
+        &quot;tabelog_rating&quot;: &quot;3.20&quot;,
+        &quot;review_count&quot;: 262,
+        &quot;price_lunch&quot;: null,
+        &quot;price_dinner&quot;: null,
+        &quot;supports_paypay&quot;: false,
+        &quot;credit_cards&quot;: []
+      }
+    ]
   }
 }</code></pre>
             </details>
@@ -3806,6 +3971,59 @@
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2375 ms</span></div></div>
             
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (4 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 STREET PASTA COMPANY</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.50 (398 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 Mugi to Tamago</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.50 (483 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 JINJIN 新宿二丁目店</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.50 (208 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 スパゲティーnokishita</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.50 (705 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3813,7 +4031,57 @@
     &quot;stores_count&quot;: 4
   },
   &quot;output&quot;: {
-    &quot;enriched_count&quot;: 4
+    &quot;enriched_count&quot;: 4,
+    &quot;aligned_stores&quot;: [
+      {
+        &quot;name_ja&quot;: &quot;STREET PASTA COMPANY&quot;,
+        &quot;name_en&quot;: &quot;STREET PASTA COMPANY&quot;,
+        &quot;address&quot;: &quot;Japan, 〒151-0053 Tokyo, Shibuya, Yoyogi, 1-chōme−37−１ 大善 ビル 1F&quot;,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130403/13170138/&quot;,
+        &quot;tabelog_rating&quot;: &quot;3.50&quot;,
+        &quot;review_count&quot;: 398,
+        &quot;price_lunch&quot;: null,
+        &quot;price_dinner&quot;: null,
+        &quot;supports_paypay&quot;: false,
+        &quot;credit_cards&quot;: []
+      },
+      {
+        &quot;name_ja&quot;: &quot;Mugi to Tamago&quot;,
+        &quot;name_en&quot;: &quot;Mugi to Tamago&quot;,
+        &quot;address&quot;: &quot;Japan, 〒160-0022 Tokyo, Shinjuku City, Shinjuku, 3-chōme−1−２６ マルイアネックス ８F&quot;,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1302/A130201/13278957/&quot;,
+        &quot;tabelog_rating&quot;: &quot;3.50&quot;,
+        &quot;review_count&quot;: 483,
+        &quot;price_lunch&quot;: null,
+        &quot;price_dinner&quot;: null,
+        &quot;supports_paypay&quot;: false,
+        &quot;credit_cards&quot;: []
+      },
+      {
+        &quot;name_ja&quot;: &quot;JINJIN 新宿二丁目店&quot;,
+        &quot;name_en&quot;: &quot;JINJIN 新宿2丁目店&quot;,
+        &quot;address&quot;: &quot;Japan, 〒160-0022 Tokyo, Shinjuku City, Shinjuku, 2-chōme−6−３ コープビル 1階&quot;,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13266939/&quot;,
+        &quot;tabelog_rating&quot;: &quot;3.50&quot;,
+        &quot;review_count&quot;: 208,
+        &quot;price_lunch&quot;: null,
+        &quot;price_dinner&quot;: null,
+        &quot;supports_paypay&quot;: false,
+        &quot;credit_cards&quot;: []
+      },
+      {
+        &quot;name_ja&quot;: &quot;スパゲティーnokishita&quot;,
+        &quot;name_en&quot;: &quot;Nokishita&quot;,
+        &quot;address&quot;: &quot;Japan, 〒160-0022 Tokyo, Shinjuku City, Shinjuku, 3-chōme−7−７ 十字屋ビル B1F&quot;,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13012182/&quot;,
+        &quot;tabelog_rating&quot;: &quot;3.50&quot;,
+        &quot;review_count&quot;: 705,
+        &quot;price_lunch&quot;: null,
+        &quot;price_dinner&quot;: null,
+        &quot;supports_paypay&quot;: false,
+        &quot;credit_cards&quot;: []
+      }
+    ]
   }
 }</code></pre>
             </details>
@@ -3944,6 +4212,47 @@
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2653 ms</span></div></div>
             
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (3 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 NikutoTamago Shinjuku Branch</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.50 (317 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 NikutoTamago Shinjuku-East-Exit Branch</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.30 (156 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 Wagyu (Halal) Steak HamBurger &amp; Ramen (Japanese food) Harajuku Shibuya Restaurant 5W-Tokyo 1962</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Google 4.0 (3 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3951,7 +4260,45 @@
     &quot;stores_count&quot;: 4
   },
   &quot;output&quot;: {
-    &quot;enriched_count&quot;: 4
+    &quot;enriched_count&quot;: 4,
+    &quot;aligned_stores&quot;: [
+      {
+        &quot;name_ja&quot;: &quot;NikutoTamago Shinjuku Branch&quot;,
+        &quot;name_en&quot;: &quot;NikutoTamago Shinjuku Branch&quot;,
+        &quot;address&quot;: &quot;Japan, 〒160-0022 Tokyo, Shinjuku City, Shinjuku, 3-chōme−34−３ 第31東京ビル 1階&quot;,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13279721/&quot;,
+        &quot;tabelog_rating&quot;: &quot;3.50&quot;,
+        &quot;review_count&quot;: 317,
+        &quot;price_lunch&quot;: null,
+        &quot;price_dinner&quot;: null,
+        &quot;supports_paypay&quot;: false,
+        &quot;credit_cards&quot;: []
+      },
+      {
+        &quot;name_ja&quot;: &quot;NikutoTamago Shinjuku-East-Exit Branch&quot;,
+        &quot;name_en&quot;: &quot;NikutoTamago Shinjuku-East-Exit Branch&quot;,
+        &quot;address&quot;: &quot;Japan, 〒160-0022 Tokyo, Shinjuku City, Shinjuku, 3-chōme−20−３ ニューサンパークビル 地下1階&quot;,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13294940/&quot;,
+        &quot;tabelog_rating&quot;: &quot;3.30&quot;,
+        &quot;review_count&quot;: 156,
+        &quot;price_lunch&quot;: null,
+        &quot;price_dinner&quot;: null,
+        &quot;supports_paypay&quot;: false,
+        &quot;credit_cards&quot;: []
+      },
+      {
+        &quot;name_ja&quot;: &quot;Wagyu (Halal) Steak HamBurger &amp; Ramen (Japanese food) Harajuku Shibuya Restaurant 5W-Tokyo 1962&quot;,
+        &quot;name_en&quot;: &quot;Wagyu (Halal) Steak HamBurger &amp; Ramen (Japanese food) Harajuku Shibuya Restaurant 5W-Tokyo 1962&quot;,
+        &quot;address&quot;: &quot;Japan, 〒150-0001 Tokyo, Shibuya, Jingūmae, 1-chōme−8−２５ BU1825 原宿 202&quot;,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1313/A131301/13308586/&quot;,
+        &quot;tabelog_rating&quot;: null,
+        &quot;review_count&quot;: 3,
+        &quot;price_lunch&quot;: null,
+        &quot;price_dinner&quot;: null,
+        &quot;supports_paypay&quot;: false,
+        &quot;credit_cards&quot;: []
+      }
+    ]
   }
 }</code></pre>
             </details>
