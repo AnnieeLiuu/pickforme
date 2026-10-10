@@ -107,6 +107,22 @@ class TabelogScraper:
             hyaku_matches = re.findall(r"([^\s\"\'\>]+ 百名店 \d{4})", text)
             hyakumeiten = list(dict.fromkeys(hyaku_matches))
 
+            # 口コミ評論摘錄 (由 Web Grounding 摘要卡片中提煉日文老饕食評)
+            sample_reviews: list[dict[str, Any]] = []
+            desc_tag = item.select_one(".sw-Card__description, .sw-Card__summary, p")
+            desc_text = desc_tag.get_text(" ", strip=True) if desc_tag else text
+            # 清理導航字眼與評分雜訊
+            clean_desc = re.sub(r"https?://\S+|評価[：:\s]+[0-9\.]+|[0-9,]+件のレビュー", "", desc_text).strip()
+            if len(clean_desc) > 20:
+                sample_reviews.append(
+                    {
+                        "source": "tabelog",
+                        "title": "食べログ 評判・口コミ",
+                        "text": clean_desc,
+                        "original_text": clean_desc,
+                    }
+                )
+
             candidates.append(
                 {
                     "tabelog_url": clean_url,
@@ -115,6 +131,7 @@ class TabelogScraper:
                     "review_count": review_count,
                     "hyakumeiten": hyakumeiten,
                     "awards": hyakumeiten,
+                    "sample_reviews": sample_reviews,
                     "phone": "",
                     "address": "",
                 }
@@ -163,6 +180,7 @@ class TabelogScraper:
                     "hyakumeiten": fallback_candidate.get("hyakumeiten", []),
                     "supports_paypay": fallback_candidate.get("supports_paypay", False),
                     "credit_cards": fallback_candidate.get("credit_cards", []),
+                    "sample_reviews": fallback_candidate.get("sample_reviews", []),
                 }
             return {}
 
@@ -288,6 +306,24 @@ class TabelogScraper:
             elif "カード" in th_text:
                 credit_cards = [card for card in ["VISA", "Master", "JCB", "AMEX", "Diners"] if card in td_text]
 
+        # 口コミ評論摘錄 (解析詳細頁面首頁之熱門食評列表)
+        sample_reviews = []
+        for rvw_item in soup.select(".rstdtl-top-rvwlst__item, .rvw-item, .js-rvw-item")[:3]:
+            title_elem = rvw_item.select_one(".rstdtl-top-rvwlst__comment-title, .rvw-item__title")
+            body_elem = rvw_item.select_one(".rstdtl-top-rvwlst__comment, .rvw-item__rvw-comment")
+            t_txt = title_elem.get_text(strip=True) if title_elem else ""
+            b_txt = body_elem.get_text(strip=True) if body_elem else ""
+            combined_txt = f"{t_txt}：{b_txt}" if t_txt and b_txt else (t_txt or b_txt)
+            if combined_txt:
+                sample_reviews.append(
+                    {
+                        "source": "tabelog",
+                        "title": t_txt,
+                        "text": combined_txt,
+                        "original_text": combined_txt,
+                    }
+                )
+
         return {
             "tabelog_url": tabelog_url,
             "name_ja": name_ja,
@@ -300,4 +336,5 @@ class TabelogScraper:
             "hyakumeiten": hyakumeiten,
             "supports_paypay": supports_paypay,
             "credit_cards": credit_cards,
+            "sample_reviews": sample_reviews,
         }

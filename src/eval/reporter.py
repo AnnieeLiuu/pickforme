@@ -69,23 +69,28 @@ def _render_aligned_stores_cards(stores: list[dict[str, Any]]) -> str:
         awards = s.get("awards") or []
         award_badge = f'<span class="award-tag">🏆 {awards[0]}</span>' if awards else ""
 
-        # 老饕評論亮點 (Phase B pgvector 與即時食評摘錄)
+        # 老饕評論亮點 (Phase B pgvector 與即時食評摘錄，支援 Tabelog / Google 標註)
         sample_revs = s.get("sample_reviews") or []
         foodie_hl = s.get("foodie_review_highlight")
         review_snippet = ""
         if foodie_hl:
             hl_text = foodie_hl.strip().replace("\n", " ")
-            if len(hl_text) > 80:
-                hl_text = hl_text[:78] + "..."
-            review_snippet = f'<div class="review-snippet">💬 <em>「{html.escape(hl_text)}」</em></div>'
+            if len(hl_text) > 85:
+                hl_text = hl_text[:83] + "..."
+            review_snippet = f'<div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「{html.escape(hl_text)}」</em></div>'
         elif sample_revs and isinstance(sample_revs, list) and len(sample_revs) > 0:
             first_rev = sample_revs[0]
-            txt = (first_rev.get("zh") or first_rev.get("ja") or "") if isinstance(first_rev, dict) else str(first_rev)
+            txt = ""
+            rev_src = "食べログ 口コミ" if (isinstance(first_rev, dict) and first_rev.get("source") == "tabelog") else "在地饕客評價"
+            if isinstance(first_rev, dict):
+                txt = first_rev.get("text") or first_rev.get("original_text") or first_rev.get("zh") or first_rev.get("ja") or ""
+            else:
+                txt = str(first_rev)
             txt = txt.strip().replace("\n", " ")
-            if len(txt) > 80:
-                txt = txt[:78] + "..."
+            if len(txt) > 85:
+                txt = txt[:83] + "..."
             if txt:
-                review_snippet = f'<div class="review-snippet">💬 <em>「{html.escape(txt)}」</em></div>'
+                review_snippet = f'<div class="review-snippet"><span class="rev-source">{rev_src}</span> 💬 <em>「{html.escape(txt)}」</em></div>'
 
         cards.append(f"""
         <div class="store-mini-card">
@@ -770,6 +775,17 @@ def generate_html_dashboard(
             line-height: 1.4;
         }}
         .review-snippet em {{ color: #e2e8f0; font-style: normal; }}
+        .rev-source {{
+            display: inline-block;
+            background: rgba(249, 115, 22, 0.15);
+            color: #fb923c;
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            font-size: 10px;
+            font-weight: 600;
+            padding: 1px 5px;
+            border-radius: 4px;
+            margin-right: 4px;
+        }}
 
         footer {{
             margin-top: 40px;

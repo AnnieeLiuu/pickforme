@@ -44,6 +44,7 @@ class GooglePlacesClient:
                 "places.regularOpeningHours,"
                 "places.reviews"
             ),
+            "X-Goog-LanguageCode": "ja",
         }
 
         body: dict[str, Any] = {
@@ -98,6 +99,7 @@ class GooglePlacesClient:
                 "places.regularOpeningHours,"
                 "places.reviews"
             ),
+            "X-Goog-LanguageCode": "ja",
         }
 
         body: dict[str, Any] = {

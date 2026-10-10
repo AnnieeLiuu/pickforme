@@ -342,6 +342,9 @@ class FoodRecommendationFSM:
                     "supports_paypay": paypay_val,
                     "credit_cards": cards_list,
                 }
+                # 評論向量化：優先使用 Tabelog 老饕食評，Google 評論保底
+                chosen_reviews = details.get("sample_reviews") or cand.get("sample_reviews") or place.get("reviews") or []
+
                 saved_id = None
                 try:
                     saved_id = await self.restaurant_repo.save_restaurant_with_tabelog(
@@ -350,8 +353,8 @@ class FoodRecommendationFSM:
                         match_confidence=match_res.get("confidence", 0.9),
                         match_method=match_res.get("match_method", "rule_high"),
                     )
-                    if saved_id and place.get("reviews"):
-                        asyncio.create_task(self._index_store_reviews(saved_id, place["reviews"]))
+                    if saved_id and chosen_reviews:
+                        asyncio.create_task(self._index_store_reviews(saved_id, chosen_reviews))
                 except Exception as e:
                     logger.warning(f"Failed to upsert tabelog cache: {e}")
 
@@ -368,6 +371,7 @@ class FoodRecommendationFSM:
                     "supports_paypay": paypay_val,
                     "credit_cards": cards_list,
                     "payment_methods_desc": pay_desc,
+                    "sample_reviews": chosen_reviews,
                     "rating_source": "Tabelog",
                 }
         except Exception as e:
@@ -516,6 +520,7 @@ class FoodRecommendationFSM:
                 "credit_cards": s.get("credit_cards") or [],
                 "awards": s.get("awards") or [],
                 "tabelog_url": s.get("tabelog_url"),
+                "sample_reviews": s.get("sample_reviews") or [],
                 "rating_source": s.get("rating_source", "Tabelog"),
             }
             for s in enriched_results
