@@ -70,7 +70,9 @@ class TabelogScraper:
             link_tag = item.select_one("a[href*='tabelog.com']")
             if not link_tag:
                 continue
-            raw_href = link_tag.get("href", "")
+            raw_href = link_tag.get("href")
+            if not isinstance(raw_href, str):
+                continue
             clean_url = self._clean_tabelog_url(raw_href)
             if not clean_url.startswith("https://tabelog.com/") or clean_url in seen_urls:
                 continue
