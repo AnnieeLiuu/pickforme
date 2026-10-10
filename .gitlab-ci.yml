@@ -2,6 +2,7 @@ stages:
   - lint
   - type-check
   - test
+  - deploy
 
 variables:
   PYTHONPATH: "."
@@ -16,8 +17,8 @@ default:
 lint-job:
   stage: lint
   script:
-    - ruff check src/ tests/
-    - ruff format --check src/ tests/
+    - ruff check src/ tests/ scripts/
+    - ruff format --check src/ tests/ scripts/
 
 typecheck-job:
   stage: type-check
@@ -36,3 +37,13 @@ pytest-job:
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
+
+pages:
+  stage: deploy
+  script:
+    - python scripts/run_eval.py --output-html public/index.html
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"

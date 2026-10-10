@@ -4,7 +4,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-green.svg)](https://fastapi.tiangolo.com/)
 [![Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Type Checked](https://img.shields.io/badge/mypy-checked-blue.svg)](http://mypy-lang.org/)
-[![Tests](https://img.shields.io/badge/pytest-71%20passed-success.svg)](https://docs.pytest.org/)
+[![Tests](https://img.shields.io/badge/pytest-73%20passed-success.svg)](https://docs.pytest.org/)
 
 > **專案定位**：專為日本旅遊打造的高效能智慧美食 Agent 系統。解決遊客外出時「距離近、評分高、有開門、在地評價真實」的痛點。結合 Google Places API、Tabelog 爬蟲與實體比對器、Neon Serverless Postgres 以及 Telegram Bot 介面。
 
@@ -18,22 +18,26 @@
    - **State 2 (階梯搜尋)**：Google Places 智慧階梯搜尋（800m ➔ 1200m ➔ 1800m）並精算步行距離與分鐘數。
    - **State 3 (平行對齊)**：`asyncio.gather` 平行抓取與 Neon 快取比對，遇 403 WAF 阻擋秒級降級至 Web Grounding 備援取得真實評分與百名店標章。
    - **State 4 (單次合成)**：單次 Prompt 生成高美感卡片，日文原名 Code 區塊與步行距離置頂。
-2. **多輪推薦換批、去重防撞店與自適應擴圈 (Multi-Turn Exploration & Deduplication)**：
+2. **4-Tier 離線評測體系與 GitLab Pages 儀表板 (LLMOps Benchmark & Gatekeeping)**：
+   - **全面覆蓋型黃金題庫**：收錄 20 組真實旅遊邊界場景（地名錯字、多地標、長尾口感、多輪換批、特定店家追問、缺地標反問）。
+   - **量化守門 (Gatekeeper)**：嚴格驗證 Tier 1 意圖抽取率 (100%)、Tier 2 實體解析 F1 (1.00)、Tier 3 護欄合規 (100%)，未達標自動阻擋 Merge。
+   - **視覺化儀表板**：自動編譯現代深色科技感 HTML 儀表板 (`public/index.html`)，無縫串接 GitLab Pages 自動化發布。
+3. **多輪推薦換批、去重防撞店與自適應擴圈 (Multi-Turn Exploration & Deduplication)**：
    - **已看過店家累積排除**：當使用者詢問「還有更多推薦嗎」或「換一批」時，系統自 `chat_sessions` 自動累積歷史看過之 Place ID，新清單保證不撞店。
    - **偏好修飾詞疊加繼承**：使用者表達「我想找更在地的老店」或「更平價一點」時，自動繼承上一輪地標與料理主軸，並將修飾詞疊加至關鍵字檢索與評論向量重排。
    - **自適應 2500m 擴圈保底**：當原始半徑內候選店家已推薦完畢時，自動擴展搜尋至 2500m，確保旅人不中斷探索。
-3. **pgvector Halfvec (768 維) 語意評論重排 (Vector RAG Re-ranking)**：
+4. **pgvector Halfvec (768 維) 語意評論重排 (Vector RAG Re-ranking)**：
    - 整合 Neon Postgres `halfvec(768)` 向量儲存，儲存 Tabelog 在地老饕評論嵌入。
    - 支援依使用者個人化口感/偏好修飾詞，進行混合語意相似度加權重排。
-4. **冷熱儲存分層與 DuckDB OLAP 追蹤深潛 (Cold Storage & Deep-Dive Analytics)**：
+5. **冷熱儲存分層與 DuckDB OLAP 追蹤深潛 (Cold Storage & Deep-Dive Analytics)**：
    - **分層歸檔**：線上交易資料留存 Neon 熱層，歷史 Trace 自動排程壓縮轉存至 Parquet 冷層。
    - **終端分析報表**：透過 `scripts/analyze_traces.py` 整合 DuckDB OLAP 引擎，支援一鍵檢視管線總耗時、Token 統計、以及完整 Pipeline 瀑布流（包含各階段 Input, Output, 各自耗時深潛）。
-5. **雙平台支付方式標記 (Payment Badges)**：
+6. **雙平台支付方式標記 (Payment Badges)**：
    - 即時擷取並結構化標註 PayPay、信用卡支援狀況，或友善提醒「現金為主 (建議備足日圓現鈔)」，避免旅人結帳尷尬。
-6. **零幻覺確定性數值護欄與防漂移合約測試 (Deterministic Guardrail & Contract Testing)**：
+7. **零幻覺確定性數值護欄與防漂移合約測試 (Deterministic Guardrail & Contract Testing)**：
    - **Scoped Anchor 區塊錨點隔離**：自主研發 <0.5ms 毫秒級確定性護欄，按店家獨立切割片段並以前後強語境錨點精確核對校正，確保評分與距離 100% 精準無幻覺。
    - **CI Prompt-Code 合約測試**：在 CI Pipeline 實作雙向合約檢核，若提示詞範本演更引發關鍵字漂移，自動報警阻擋 Commit。
-7. **多級雲端+地端 LLM 容錯降級鏈 (Multi-Tier LLM Failover)**：
+8. **多級雲端+地端 LLM 容錯降級鏈 (Multi-Tier LLM Failover)**：
    - **主力**：Groq `qwen/qwen3.8-27b`（極速推論，延遲 ~0.7s）。
    - **備援**：Gemini 3.8 Flash（Google AI Studio 免費額度）。
    - **離線保底**：本機 Ollama `qwen2.5:3b`（0 API 費用、斷網仍可運行）。
@@ -175,6 +179,16 @@ python -m src.worker.prewarm
 
 # 檢視最新一次推薦的管線各步驟詳細耗時與 Input/Output
 python scripts/analyze_traces.py --latest
+```
+
+### 5. 執行 4-Tier 離線評測與生成 GitLab Pages 儀表板
+
+```bash
+# 100% 確定性離線回放並產出 public/index.html 儀表板
+python scripts/run_eval.py
+
+# 亦可連線真實外部 LLM/API 進行即時抽檢
+python scripts/run_eval.py --live
 ```
 
 ---

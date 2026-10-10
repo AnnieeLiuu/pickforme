@@ -1,0 +1,570 @@
+[
+  {
+    "id": "eval_001",
+    "category": "typo_colloquial",
+    "description": "地名錯字與口語化拉麵搜尋 (歌舞妓町 -> 歌舞伎町)",
+    "user_message": "新宿歌舞妓町有啥開很晚的拉麵，不要太油",
+    "conversation_history": [],
+    "session_context": {},
+    "expected": {
+      "intent": "search",
+      "location": "新宿歌舞伎町",
+      "cuisine": "拉麵",
+      "modifier": "深夜營業/清爽"
+    },
+    "entity_match_sample": {
+      "place_name": "Ramen Nagi Shinjuku Golden-gai Honkan",
+      "place_phone": "03-3205-1925",
+      "tabelog_name": "すごい煮干ラーメン凪 新宿ゴールデン街店本館",
+      "tabelog_phone": "03-3205-1925",
+      "expected_confidence": 1.0,
+      "expected_method": "phone_exact"
+    },
+    "guardrail_rules": {
+      "require_code_block": true,
+      "require_walking_distance": true,
+      "require_payment_badge": true
+    }
+  },
+  {
+    "id": "eval_002",
+    "category": "multi_landmark",
+    "description": "多地標複合描述 (橫濱棒球場或橫濱車站)",
+    "user_message": "想要在橫濱棒球場或橫濱車站附近的壽喜燒",
+    "conversation_history": [],
+    "session_context": {},
+    "expected": {
+      "intent": "search",
+      "location": "橫濱",
+      "cuisine": "壽喜燒",
+      "modifier": null
+    },
+    "entity_match_sample": {
+      "place_name": "Arai-ya Ban-kokubashi",
+      "place_phone": "045-221-5220",
+      "tabelog_name": "荒井屋 万国橋店",
+      "tabelog_phone": "045-221-5220",
+      "expected_confidence": 1.0,
+      "expected_method": "phone_exact"
+    },
+    "guardrail_rules": {
+      "require_code_block": true,
+      "require_walking_distance": true,
+      "require_payment_badge": true
+    }
+  },
+  {
+    "id": "eval_003",
+    "category": "taste_rag",
+    "description": "長尾口感需求 (麵條偏硬有嚼勁、濃郁豚骨)",
+    "user_message": "池袋 想要麵條偏硬有嚼勁的拉麵",
+    "conversation_history": [],
+    "session_context": {},
+    "expected": {
+      "intent": "search",
+      "location": "池袋",
+      "cuisine": "拉麵",
+      "modifier": "麵條偏硬有嚼勁"
+    },
+    "entity_match_sample": {
+      "place_name": "Mutekiya Ikebukuro",
+      "place_phone": "03-3982-7656",
+      "tabelog_name": "麺創房 無敵家",
+      "tabelog_phone": "03-3982-7656",
+      "expected_confidence": 1.0,
+      "expected_method": "phone_exact"
+    },
+    "guardrail_rules": {
+      "require_code_block": true,
+      "require_walking_distance": true,
+      "require_payment_badge": true
+    }
+  },
+  {
+    "id": "eval_004",
+    "category": "multi_turn_more",
+    "description": "多輪推薦換一批 (繼承橫濱壽喜燒，排除已推薦店家)",
+    "user_message": "還有更多推薦嗎？",
+    "conversation_history": [
+      {"role": "user", "content": "橫濱 壽喜燒"},
+      {"role": "assistant", "content": "為您推薦橫濱名店：`荒井屋 万国橋店`"}
+    ],
+    "session_context": {
+      "last_location": "橫濱",
+      "last_cuisine": "壽喜燒",
+      "last_coords": {"lat": 35.4437, "lng": 139.6380},
+      "seen_place_ids": ["ChIJ_arai_ya_yokohama"]
+    },
+    "expected": {
+      "intent": "more",
+      "location": "橫濱",
+      "cuisine": "壽喜燒",
+      "modifier": null
+    },
+    "entity_match_sample": {
+      "place_name": "Janomeya",
+      "place_phone": "045-251-0832",
+      "tabelog_name": "じゃのめや",
+      "tabelog_phone": "045-251-0832",
+      "expected_confidence": 1.0,
+      "expected_method": "phone_exact"
+    },
+    "guardrail_rules": {
+      "require_code_block": true,
+      "require_walking_distance": true,
+      "disallow_seen_place_ids": ["ChIJ_arai_ya_yokohama"]
+    }
+  },
+  {
+    "id": "eval_005",
+    "category": "multi_turn_more",
+    "description": "多輪風格轉向 (我想找更在地的老店)",
+    "user_message": "我想找更在地的老店",
+    "conversation_history": [
+      {"role": "user", "content": "橫濱 壽喜燒"},
+      {"role": "assistant", "content": "為您推薦壽喜燒名店"}
+    ],
+    "session_context": {
+      "last_location": "橫濱",
+      "last_cuisine": "壽喜燒",
+      "last_coords": {"lat": 35.4437, "lng": 139.6380},
+      "seen_place_ids": ["ChIJ_arai_ya_yokohama"]
+    },
+    "expected": {
+      "intent": "more",
+      "location": "橫濱",
+      "cuisine": "壽喜燒",
+      "modifier": "在地老店"
+    },
+    "entity_match_sample": {
+      "place_name": "Ohta Nawa-noren",
+      "place_phone": "045-261-4380",
+      "tabelog_name": "太田なわのれん",
+      "tabelog_phone": "045-261-4380",
+      "expected_confidence": 1.0,
+      "expected_method": "phone_exact"
+    },
+    "guardrail_rules": {
+      "require_code_block": true,
+      "require_walking_distance": true,
+      "disallow_seen_place_ids": ["ChIJ_arai_ya_yokohama"]
+    }
+  },
+  {
+    "id": "eval_006",
+    "category": "follow_up",
+    "description": "指定序號追問店家營業細節 (第2家有開嗎)",
+    "user_message": "第2家今天有開嗎？",
+    "conversation_history": [
+      {"role": "user", "content": "淺草 鰻魚飯"},
+      {"role": "assistant", "content": "1. `初小川`\n2. `色川`\n3. `前川`"}
+    ],
+    "session_context": {
+      "last_recommended_stores": [
+        {"name_ja": "初小川", "tabelog_rating": 3.75},
+        {"name_ja": "色川", "tabelog_rating": 3.82, "opening_hours": "11:30 - 14:00"},
+        {"name_ja": "前川", "tabelog_rating": 3.68}
+      ]
+    },
+    "expected": {
+      "intent": "follow_up",
+      "target_index": 2,
+      "question": "今天有開嗎"
+    },
+    "entity_match_sample": {
+      "place_name": "Irokawa",
+      "place_phone": "03-3844-1187",
+      "tabelog_name": "うなぎ 色川",
+      "tabelog_phone": "03-3844-1187",
+      "expected_confidence": 1.0,
+      "expected_method": "phone_exact"
+    },
+    "guardrail_rules": {
+      "require_target_store_context": true
+    }
+  },
+  {
+    "id": "eval_007",
+    "category": "follow_up",
+    "description": "追問第一家支付方式",
+    "user_message": "第一家可以刷信用卡或 PayPay 嗎？",
+    "conversation_history": [
+      {"role": "user", "content": "上野 燒肉"},
+      {"role": "assistant", "content": "1. `東京苑 上野店`"}
+    ],
+    "session_context": {
+      "last_recommended_stores": [
+        {"name_ja": "東京苑 上野店", "supports_paypay": true, "credit_cards": ["VISA", "JCB"]}
+      ]
+    },
+    "expected": {
+      "intent": "follow_up",
+      "target_index": 1,
+      "question": "可以刷信用卡或 PayPay 嗎"
+    },
+    "entity_match_sample": {
+      "place_name": "Tokyoen Ueno",
+      "place_phone": "03-3837-2911",
+      "tabelog_name": "東京苑 上野店",
+      "tabelog_phone": "03-3837-2911",
+      "expected_confidence": 1.0,
+      "expected_method": "phone_exact"
+    },
+    "guardrail_rules": {
+      "require_target_store_context": true
+    }
+  },
+  {
+    "id": "eval_008",
+    "category": "chitchat",
+    "description": "日常問候與禮貌互動",
+    "user_message": "哈囉你好！請問你可以幫我做什麼？",
+    "conversation_history": [],
+    "session_context": {},
+    "expected": {
+      "intent": "chitchat",
+      "location": null,
+      "cuisine": null,
+      "modifier": null
+    },
+    "entity_match_sample": {
+      "place_name": "Dummy",
+      "place_phone": null,
+      "tabelog_name": "Other",
+      "tabelog_phone": null,
+      "expected_confidence": 0.0,
+      "expected_method": "none"
+    },
+    "guardrail_rules": {}
+  },
+  {
+    "id": "eval_009",
+    "category": "need_location",
+    "description": "使用者想吃美食但未提供地標且無歷史座標",
+    "user_message": "我想吃炸豬排",
+    "conversation_history": [],
+    "session_context": {},
+    "expected": {
+      "intent": "need_location",
+      "location": null,
+      "cuisine": "炸豬排",
+      "modifier": null
+    },
+    "entity_match_sample": {
+      "place_name": "Tonkatsu Maisen Aoyama",
+      "place_phone": "03-3470-0071",
+      "tabelog_name": "まい泉 青山本店",
+      "tabelog_phone": "03-3470-0071",
+      "expected_confidence": 1.0,
+      "expected_method": "phone_exact"
+    },
+    "guardrail_rules": {}
+  },
+  {
+    "id": "eval_010",
+    "category": "typo_colloquial",
+    "description": "繁簡字地名與平價預算 (澀谷 -> 渋谷 / 平價居酒屋)",
+    "user_message": "澀谷平價居酒屋，預算3000日幣內",
+    "conversation_history": [],
+    "session_context": {},
+    "expected": {
+      "intent": "search",
+      "location": "澀谷",
+      "cuisine": "居酒屋",
+      "modifier": "平價/3000日幣內"
+    },
+    "entity_match_sample": {
+      "place_name": "Torikizoku Shibuya Dogenzaka",
+      "place_phone": "03-3461-8889",
+      "tabelog_name": "鳥貴族 渋谷道玄坂店",
+      "tabelog_phone": "03-3461-8889",
+      "expected_confidence": 1.0,
+      "expected_method": "phone_exact"
+    },
+    "guardrail_rules": {
+      "require_code_block": true,
+      "require_walking_distance": true,
+      "require_payment_badge": true
+    }
+  },
+  {
+    "id": "eval_011",
+    "category": "taste_rag",
+    "description": "口感與清淡料理需求 (京都長輩清淡豆腐料理)",
+    "user_message": "京都 祇園 適合長輩吃的清淡湯豆腐",
+    "conversation_history": [],
+    "session_context": {},
+    "expected": {
+      "intent": "search",
+      "location": "京都祇園",
+      "cuisine": "湯豆腐",
+      "modifier": "適合長輩/清淡"
+    },
+    "entity_match_sample": {
+      "place_name": "Yudofu Sagano",
+      "place_phone": "075-871-6946",
+      "tabelog_name": "湯どうふ 嵯峨野",
+      "tabelog_phone": "075-871-6946",
+      "expected_confidence": 1.0,
+      "expected_method": "phone_exact"
+    },
+    "guardrail_rules": {
+      "require_code_block": true,
+      "require_walking_distance": true,
+      "require_payment_badge": true
+    }
+  },
+  {
+    "id": "eval_012",
+    "category": "typo_colloquial",
+    "description": "熱門觀光商圈與甜點需求 (原宿竹下通 可麗餅)",
+    "user_message": "原宿竹下通排隊人氣可麗餅",
+    "conversation_history": [],
+    "session_context": {},
+    "expected": {
+      "intent": "search",
+      "location": "原宿竹下通",
+      "cuisine": "可麗餅",
+      "modifier": "排隊人氣"
+    },
+    "entity_match_sample": {
+      "place_name": "Marion Crepes Harajuku",
+      "place_phone": "03-3401-7297",
+      "tabelog_name": "マリオンクレープ 原宿竹下通り店",
+      "tabelog_phone": "03-3401-7297",
+      "expected_confidence": 1.0,
+      "expected_method": "phone_exact"
+    },
+    "guardrail_rules": {
+      "require_code_block": true,
+      "require_walking_distance": true
+    }
+  },
+  {
+    "id": "eval_013",
+    "category": "multi_turn_more",
+    "description": "多輪要求更平價的替換名單 (有沒有便宜一點的)",
+    "user_message": "有沒有更便宜一點的？",
+    "conversation_history": [
+      {"role": "user", "content": "銀座 壽司"},
+      {"role": "assistant", "content": "為您推薦頂級名店：`すきやばし 次郎` (預算 40000 日圓)"}
+    ],
+    "session_context": {
+      "last_location": "銀座",
+      "last_cuisine": "壽司",
+      "last_coords": {"lat": 35.6719, "lng": 139.7639},
+      "seen_place_ids": ["ChIJ_sukiyabashi_jiro"]
+    },
+    "expected": {
+      "intent": "more",
+      "location": "銀座",
+      "cuisine": "壽司",
+      "modifier": "平價/便宜"
+    },
+    "entity_match_sample": {
+      "place_name": "Nemuro Hanamaru Ginza",
+      "place_phone": "03-6264-5735",
+      "tabelog_name": "回転寿司 根室花まる 東急プラザ銀座店",
+      "tabelog_phone": "03-6264-5735",
+      "expected_confidence": 1.0,
+      "expected_method": "phone_exact"
+    },
+    "guardrail_rules": {
+      "require_code_block": true,
+      "require_walking_distance": true,
+      "disallow_seen_place_ids": ["ChIJ_sukiyabashi_jiro"]
+    }
+  },
+  {
+    "id": "eval_014",
+    "category": "chitchat",
+    "description": "非旅遊美食指令 (天氣詢問)",
+    "user_message": "明天東京會下雨嗎？",
+    "conversation_history": [],
+    "session_context": {},
+    "expected": {
+      "intent": "chitchat",
+      "location": null,
+      "cuisine": null,
+      "modifier": null
+    },
+    "entity_match_sample": {
+      "place_name": "Tokyo Station",
+      "place_phone": null,
+      "tabelog_name": "Kyoto Ramen Hon-ten",
+      "tabelog_phone": null,
+      "expected_confidence": 0.0,
+      "expected_method": "none"
+    },
+    "guardrail_rules": {}
+  },
+  {
+    "id": "eval_015",
+    "category": "multi_landmark",
+    "description": "跨站點樞紐 (秋葉原或御茶之水 咖哩)",
+    "user_message": "秋葉原跟御茶之水中間有名的日式咖哩",
+    "conversation_history": [],
+    "session_context": {},
+    "expected": {
+      "intent": "search",
+      "location": "秋葉原",
+      "cuisine": "咖哩",
+      "modifier": "有名"
+    },
+    "entity_match_sample": {
+      "place_name": "Curry Bondy Jinbocho",
+      "place_phone": "03-3234-2080",
+      "tabelog_name": "ボンディ 神保町本店",
+      "tabelog_phone": "03-3234-2080",
+      "expected_confidence": 1.0,
+      "expected_method": "phone_exact"
+    },
+    "guardrail_rules": {
+      "require_code_block": true,
+      "require_walking_distance": true
+    }
+  },
+  {
+    "id": "eval_016",
+    "category": "taste_rag",
+    "description": "燒肉口感肉質需求 (牛舌厚切爆汁、和牛A5)",
+    "user_message": "新宿 想要牛舌厚切多汁的炭火燒肉",
+    "conversation_history": [],
+    "session_context": {},
+    "expected": {
+      "intent": "search",
+      "location": "新宿",
+      "cuisine": "燒肉",
+      "modifier": "牛舌厚切多汁/炭火"
+    },
+    "entity_match_sample": {
+      "place_name": "Yakiniku Motoyama Shinjuku",
+      "place_phone": "03-5321-6580",
+      "tabelog_name": "焼肉 もとやま 新宿店",
+      "tabelog_phone": "03-5321-6580",
+      "expected_confidence": 1.0,
+      "expected_method": "phone_exact"
+    },
+    "guardrail_rules": {
+      "require_code_block": true,
+      "require_walking_distance": true,
+      "require_payment_badge": true
+    }
+  },
+  {
+    "id": "eval_017",
+    "category": "follow_up",
+    "description": "追問第3家是否可以預約",
+    "user_message": "第3家可以線上訂位或打電話預約嗎？",
+    "conversation_history": [
+      {"role": "user", "content": "福岡 天神 水炊雞肉鍋"},
+      {"role": "assistant", "content": "1. `水たき 長野`\n2. `濱田屋`\n3. `華味鳥 天神店`"}
+    ],
+    "session_context": {
+      "last_recommended_stores": [
+        {"name_ja": "水たき 長野", "tabelog_rating": 3.74},
+        {"name_ja": "濱田屋", "tabelog_rating": 3.65},
+        {"name_ja": "華味鳥 天神店", "tabelog_rating": 3.58, "phone": "092-738-5800"}
+      ]
+    },
+    "expected": {
+      "intent": "follow_up",
+      "target_index": 3,
+      "question": "可以線上訂位或打電話預約嗎"
+    },
+    "entity_match_sample": {
+      "place_name": "Hanamidori Tenjin",
+      "place_phone": "092-738-5800",
+      "tabelog_name": "博多華味鳥 天神店",
+      "tabelog_phone": "092-738-5800",
+      "expected_confidence": 1.0,
+      "expected_method": "phone_exact"
+    },
+    "guardrail_rules": {
+      "require_target_store_context": true
+    }
+  },
+  {
+    "id": "eval_018",
+    "category": "typo_colloquial",
+    "description": "地名縮寫與一人用餐 (秋葉 一人 燒肉)",
+    "user_message": "秋葉 一個人也能吃的燒肉定食",
+    "conversation_history": [],
+    "session_context": {},
+    "expected": {
+      "intent": "search",
+      "location": "秋葉原",
+      "cuisine": "燒肉定食",
+      "modifier": "一人用餐"
+    },
+    "entity_match_sample": {
+      "place_name": "Yakiniku Like Akihabara",
+      "place_phone": "03-6260-8929",
+      "tabelog_name": "焼肉ライク 秋葉原電気街店",
+      "tabelog_phone": "03-6260-8929",
+      "expected_confidence": 1.0,
+      "expected_method": "phone_exact"
+    },
+    "guardrail_rules": {
+      "require_code_block": true,
+      "require_walking_distance": true
+    }
+  },
+  {
+    "id": "eval_019",
+    "category": "multi_turn_more",
+    "description": "換一批且希望不要排隊太久",
+    "user_message": "換一批，但不要排隊太久的",
+    "conversation_history": [
+      {"role": "user", "content": "築地 壽司"},
+      {"role": "assistant", "content": "1. `壽司大` (排隊 3 小時)"}
+    ],
+    "session_context": {
+      "last_location": "築地",
+      "last_cuisine": "壽司",
+      "last_coords": {"lat": 35.6655, "lng": 139.7707},
+      "seen_place_ids": ["ChIJ_sushidai_tsukiji"]
+    },
+    "expected": {
+      "intent": "more",
+      "location": "築地",
+      "cuisine": "壽司",
+      "modifier": "不排隊/少排隊"
+    },
+    "entity_match_sample": {
+      "place_name": "Sushizanmai Hon-ten",
+      "place_phone": "03-3541-1117",
+      "tabelog_name": "すしざんまい 本店",
+      "tabelog_phone": "03-3541-1117",
+      "expected_confidence": 1.0,
+      "expected_method": "phone_exact"
+    },
+    "guardrail_rules": {
+      "require_code_block": true,
+      "disallow_seen_place_ids": ["ChIJ_sushidai_tsukiji"]
+    }
+  },
+  {
+    "id": "eval_020",
+    "category": "need_location",
+    "description": "純食物渴望未帶地標",
+    "user_message": "好想吃鰻魚飯喔！",
+    "conversation_history": [],
+    "session_context": {},
+    "expected": {
+      "intent": "need_location",
+      "location": null,
+      "cuisine": "鰻魚飯",
+      "modifier": null
+    },
+    "entity_match_sample": {
+      "place_name": "Obana Tokyo",
+      "place_phone": "03-3801-4670",
+      "tabelog_name": "尾花",
+      "tabelog_phone": "03-3801-4670",
+      "expected_confidence": 1.0,
+      "expected_method": "phone_exact"
+    },
+    "guardrail_rules": {}
+  }
+]

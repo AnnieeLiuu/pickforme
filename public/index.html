@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PickForMe 4-Tier LLMOps 評測儀表板</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --border-color: #30363d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #238636;
+            --accent-green-bright: #3fb950;
+            --accent-red: #da3633;
+            --accent-purple: #bc8cff;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            padding: 32px 24px;
+            line-height: 1.6;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .title-group h1 {
+            font-size: 26px;
+            font-weight: 700;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .title-group p { color: var(--text-secondary); font-size: 14px; margin-top: 4px; }
+        .badge {
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+        }
+        .badge-success { background-color: var(--accent-green); color: #fff; }
+        .badge-danger { background-color: var(--accent-red); color: #fff; }
+        
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .kpi-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .kpi-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; }
+        .kpi-value { font-size: 32px; font-weight: 700; color: #fff; margin: 8px 0; }
+        .kpi-sub { font-size: 12px; color: var(--accent-green-bright); display: flex; align-items: center; gap: 4px; }
+        
+        .table-container {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        th {
+            background-color: #21262d;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-align: left;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .case-row { cursor: pointer; transition: background 0.2s ease; }
+        .case-row:hover { background-color: #21262d; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        
+        .cat-tag {
+            background: #23272d;
+            border: 1px solid var(--border-color);
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            color: var(--accent-blue);
+        }
+        .query-col { font-weight: 500; color: #f0f6fc; max-width: 320px; }
+        .latency-text { font-family: monospace; color: var(--text-secondary); }
+        
+        .pill {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .pill-green { background: rgba(46, 160, 67, 0.2); color: var(--accent-green-bright); border: 1px solid rgba(46, 160, 67, 0.4); }
+        .pill-red { background: rgba(248, 81, 73, 0.2); color: #ff7b72; border: 1px solid rgba(248, 81, 73, 0.4); }
+        
+        .details-box {
+            background: #0d1117;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+        .details-box pre {
+            background: #161b22;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 8px;
+            overflow-x: auto;
+            color: #79c0ff;
+        }
+        footer {
+            margin-top: 32px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="title-group">
+                <h1>🍱 PickForMe 4-Tier LLMOps 評測儀表板</h1>
+                <p>Industrial-Grade 離線回放與確定性數值守門基準體系</p>
+            </div>
+            <div><span class="badge badge-success">CI GATE PASSED</span></div>
+        </header>
+
+        <section class="kpi-grid">
+            <div class="kpi-card">
+                <span class="kpi-title">Tier 1: 意圖精確率</span>
+                <span class="kpi-value">100.0%</span>
+                <span class="kpi-sub">門檻: ≥90% (當前通過)</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-title">Tier 2: 實體解析 F1</span>
+                <span class="kpi-value">1.0000</span>
+                <span class="kpi-sub">門檻: ≥0.90 (當前通過)</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-title">Tier 3: 數值護欄合規</span>
+                <span class="kpi-value">100.0%</span>
+                <span class="kpi-sub">門檻: ≥95% (當前通過)</span>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-title">P50 延遲基準</span>
+                <span class="kpi-value">0 ms</span>
+                <span class="kpi-sub">P90: 1 ms | 平均: 0 ms</span>
+            </div>
+        </section>
+
+        <section class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 100px;">ID</th>
+                        <th style="width: 130px;">類別</th>
+                        <th>測試提問</th>
+                        <th class="text-center" style="width: 90px;">T1 意圖</th>
+                        <th class="text-center" style="width: 90px;">T2 比對</th>
+                        <th class="text-center" style="width: 90px;">T3 護欄</th>
+                        <th class="text-center" style="width: 100px;">綜合結果</th>
+                        <th class="text-right" style="width: 90px;">延遲</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+        <tr class="case-row" onclick="toggleDetails('eval_001')">
+            <td><code>eval_001</code></td>
+            <td><span class="cat-tag">typo_colloquial</span></td>
+            <td class="query-col">新宿歌舞妓町有啥開很晚的拉麵，不要太油</td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+            <td class="text-right latency-text">0 ms</td>
+        </tr>
+        <tr id="details-eval_001" class="details-row" style="display: none;">
+            <td colspan="8">
+                <div class="details-box">
+                    <strong>說明：</strong> 地名錯字與口語化拉麵搜尋 (歌舞妓町 -> 歌舞伎町)<br/>
+                    <strong>測試詳情：</strong>
+                    <pre><code>{'tier1': {'expected': {'intent': 'search', 'location': '新宿歌舞伎町', 'cuisine': '拉麵', 'modifier': '深夜營業/清爽'}, 'actual': {'intent': 'search', 'location': '新宿歌舞伎町', 'cuisine': '拉麵', 'modifier': '深夜營業/清爽', 'target_index': None}, 'intent_match': True}, 'tier2': {'expected_method': 'phone_exact', 'match_result': {'match_found': True, 'candidate': {'name_ja': 'すごい煮干ラーメン凪 新宿ゴールデン街店本館', 'phone': '03-3205-1925', 'lat': 35.68, 'lng': 139.76}, 'match_method': 'phone_exact', 'confidence': 1.0, 'reason': '電話號碼完全吻合 (0332051925)'}}, 'tier3': {'reasons': []}}</code></pre>
+                </div>
+            </td>
+        </tr>
+        
+
+        <tr class="case-row" onclick="toggleDetails('eval_002')">
+            <td><code>eval_002</code></td>
+            <td><span class="cat-tag">multi_landmark</span></td>
+            <td class="query-col">想要在橫濱棒球場或橫濱車站附近的壽喜燒</td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+            <td class="text-right latency-text">0 ms</td>
+        </tr>
+        <tr id="details-eval_002" class="details-row" style="display: none;">
+            <td colspan="8">
+                <div class="details-box">
+                    <strong>說明：</strong> 多地標複合描述 (橫濱棒球場或橫濱車站)<br/>
+                    <strong>測試詳情：</strong>
+                    <pre><code>{'tier1': {'expected': {'intent': 'search', 'location': '橫濱', 'cuisine': '壽喜燒', 'modifier': None}, 'actual': {'intent': 'search', 'location': '橫濱', 'cuisine': '壽喜燒', 'modifier': None, 'target_index': None}, 'intent_match': True}, 'tier2': {'expected_method': 'phone_exact', 'match_result': {'match_found': True, 'candidate': {'name_ja': '荒井屋 万国橋店', 'phone': '045-221-5220', 'lat': 35.68, 'lng': 139.76}, 'match_method': 'phone_exact', 'confidence': 1.0, 'reason': '電話號碼完全吻合 (0452215220)'}}, 'tier3': {'reasons': []}}</code></pre>
+                </div>
+            </td>
+        </tr>
+        
+
+        <tr class="case-row" onclick="toggleDetails('eval_003')">
+            <td><code>eval_003</code></td>
+            <td><span class="cat-tag">taste_rag</span></td>
+            <td class="query-col">池袋 想要麵條偏硬有嚼勁的拉麵</td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+            <td class="text-right latency-text">0 ms</td>
+        </tr>
+        <tr id="details-eval_003" class="details-row" style="display: none;">
+            <td colspan="8">
+                <div class="details-box">
+                    <strong>說明：</strong> 長尾口感需求 (麵條偏硬有嚼勁、濃郁豚骨)<br/>
+                    <strong>測試詳情：</strong>
+                    <pre><code>{'tier1': {'expected': {'intent': 'search', 'location': '池袋', 'cuisine': '拉麵', 'modifier': '麵條偏硬有嚼勁'}, 'actual': {'intent': 'search', 'location': '池袋', 'cuisine': '拉麵', 'modifier': '麵條偏硬有嚼勁', 'target_index': None}, 'intent_match': True}, 'tier2': {'expected_method': 'phone_exact', 'match_result': {'match_found': True, 'candidate': {'name_ja': '麺創房 無敵家', 'phone': '03-3982-7656', 'lat': 35.68, 'lng': 139.76}, 'match_method': 'phone_exact', 'confidence': 1.0, 'reason': '電話號碼完全吻合 (0339827656)'}}, 'tier3': {'reasons': []}}</code></pre>
+                </div>
+            </td>
+        </tr>
+        
+
+        <tr class="case-row" onclick="toggleDetails('eval_004')">
+            <td><code>eval_004</code></td>
+            <td><span class="cat-tag">multi_turn_more</span></td>
+            <td class="query-col">還有更多推薦嗎？</td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+            <td class="text-right latency-text">0 ms</td>
+        </tr>
+        <tr id="details-eval_004" class="details-row" style="display: none;">
+            <td colspan="8">
+                <div class="details-box">
+                    <strong>說明：</strong> 多輪推薦換一批 (繼承橫濱壽喜燒，排除已推薦店家)<br/>
+                    <strong>測試詳情：</strong>
+                    <pre><code>{'tier1': {'expected': {'intent': 'more', 'location': '橫濱', 'cuisine': '壽喜燒', 'modifier': None}, 'actual': {'intent': 'more', 'location': '橫濱', 'cuisine': '壽喜燒', 'modifier': None, 'target_index': None}, 'intent_match': True}, 'tier2': {'expected_method': 'phone_exact', 'match_result': {'match_found': True, 'candidate': {'name_ja': 'じゃのめや', 'phone': '045-251-0832', 'lat': 35.68, 'lng': 139.76}, 'match_method': 'phone_exact', 'confidence': 1.0, 'reason': '電話號碼完全吻合 (0452510832)'}}, 'tier3': {'reasons': []}}</code></pre>
+                </div>
+            </td>
+        </tr>
+        
+
+        <tr class="case-row" onclick="toggleDetails('eval_005')">
+            <td><code>eval_005</code></td>
+            <td><span class="cat-tag">multi_turn_more</span></td>
+            <td class="query-col">我想找更在地的老店</td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+            <td class="text-right latency-text">0 ms</td>
+        </tr>
+        <tr id="details-eval_005" class="details-row" style="display: none;">
+            <td colspan="8">
+                <div class="details-box">
+                    <strong>說明：</strong> 多輪風格轉向 (我想找更在地的老店)<br/>
+                    <strong>測試詳情：</strong>
+                    <pre><code>{'tier1': {'expected': {'intent': 'more', 'location': '橫濱', 'cuisine': '壽喜燒', 'modifier': '在地老店'}, 'actual': {'intent': 'more', 'location': '橫濱', 'cuisine': '壽喜燒', 'modifier': '在地老店', 'target_index': None}, 'intent_match': True}, 'tier2': {'expected_method': 'phone_exact', 'match_result': {'match_found': True, 'candidate': {'name_ja': '太田なわのれん', 'phone': '045-261-4380', 'lat': 35.68, 'lng': 139.76}, 'match_method': 'phone_exact', 'confidence': 1.0, 'reason': '電話號碼完全吻合 (0452614380)'}}, 'tier3': {'reasons': []}}</code></pre>
+                </div>
+            </td>
+        </tr>
+        
+
+        <tr class="case-row" onclick="toggleDetails('eval_006')">
+            <td><code>eval_006</code></td>
+            <td><span class="cat-tag">follow_up</span></td>
+            <td class="query-col">第2家今天有開嗎？</td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+            <td class="text-right latency-text">0 ms</td>
+        </tr>
+        <tr id="details-eval_006" class="details-row" style="display: none;">
+            <td colspan="8">
+                <div class="details-box">
+                    <strong>說明：</strong> 指定序號追問店家營業細節 (第2家有開嗎)<br/>
+                    <strong>測試詳情：</strong>
+                    <pre><code>{'tier1': {'expected': {'intent': 'follow_up', 'target_index': 2, 'question': '今天有開嗎'}, 'actual': {'intent': 'follow_up', 'location': None, 'cuisine': None, 'modifier': None, 'target_index': 2}, 'intent_match': True, 'idx_match': True}, 'tier2': {'expected_method': 'phone_exact', 'match_result': {'match_found': True, 'candidate': {'name_ja': 'うなぎ 色川', 'phone': '03-3844-1187', 'lat': 35.68, 'lng': 139.76}, 'match_method': 'phone_exact', 'confidence': 1.0, 'reason': '電話號碼完全吻合 (0338441187)'}}, 'tier3': {'reasons': []}}</code></pre>
+                </div>
+            </td>
+        </tr>
+        
+
+        <tr class="case-row" onclick="toggleDetails('eval_007')">
+            <td><code>eval_007</code></td>
+            <td><span class="cat-tag">follow_up</span></td>
+            <td class="query-col">第一家可以刷信用卡或 PayPay 嗎？</td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+            <td class="text-right latency-text">0 ms</td>
+        </tr>
+        <tr id="details-eval_007" class="details-row" style="display: none;">
+            <td colspan="8">
+                <div class="details-box">
+                    <strong>說明：</strong> 追問第一家支付方式<br/>
+                    <strong>測試詳情：</strong>
+                    <pre><code>{'tier1': {'expected': {'intent': 'follow_up', 'target_index': 1, 'question': '可以刷信用卡或 PayPay 嗎'}, 'actual': {'intent': 'follow_up', 'location': None, 'cuisine': None, 'modifier': None, 'target_index': 1}, 'intent_match': True, 'idx_match': True}, 'tier2': {'expected_method': 'phone_exact', 'match_result': {'match_found': True, 'candidate': {'name_ja': '東京苑 上野店', 'phone': '03-3837-2911', 'lat': 35.68, 'lng': 139.76}, 'match_method': 'phone_exact', 'confidence': 1.0, 'reason': '電話號碼完全吻合 (0338372911)'}}, 'tier3': {'reasons': []}}</code></pre>
+                </div>
+            </td>
+        </tr>
+        
+
+        <tr class="case-row" onclick="toggleDetails('eval_008')">
+            <td><code>eval_008</code></td>
+            <td><span class="cat-tag">chitchat</span></td>
+            <td class="query-col">哈囉你好！請問你可以幫我做什麼？</td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+            <td class="text-right latency-text">1 ms</td>
+        </tr>
+        <tr id="details-eval_008" class="details-row" style="display: none;">
+            <td colspan="8">
+                <div class="details-box">
+                    <strong>說明：</strong> 日常問候與禮貌互動<br/>
+                    <strong>測試詳情：</strong>
+                    <pre><code>{'tier1': {'expected': {'intent': 'chitchat', 'location': None, 'cuisine': None, 'modifier': None}, 'actual': {'intent': 'chitchat', 'location': None, 'cuisine': None, 'modifier': None, 'target_index': None}, 'intent_match': True}, 'tier2': {'expected_method': 'none', 'match_result': {'match_found': False, 'candidate': None, 'match_method': 'no_match', 'confidence': 0.0, 'reason': '未找到符合高精確度門檻之 Tabelog 店家'}}, 'tier3': {'skipped': True}}</code></pre>
+                </div>
+            </td>
+        </tr>
+        
+
+        <tr class="case-row" onclick="toggleDetails('eval_009')">
+            <td><code>eval_009</code></td>
+            <td><span class="cat-tag">need_location</span></td>
+            <td class="query-col">我想吃炸豬排</td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+            <td class="text-right latency-text">0 ms</td>
+        </tr>
+        <tr id="details-eval_009" class="details-row" style="display: none;">
+            <td colspan="8">
+                <div class="details-box">
+                    <strong>說明：</strong> 使用者想吃美食但未提供地標且無歷史座標<br/>
+                    <strong>測試詳情：</strong>
+                    <pre><code>{'tier1': {'expected': {'intent': 'need_location', 'location': None, 'cuisine': '炸豬排', 'modifier': None}, 'actual': {'intent': 'need_location', 'location': None, 'cuisine': '炸豬排', 'modifier': None, 'target_index': None}, 'intent_match': True}, 'tier2': {'expected_method': 'phone_exact', 'match_result': {'match_found': True, 'candidate': {'name_ja': 'まい泉 青山本店', 'phone': '03-3470-0071', 'lat': 35.68, 'lng': 139.76}, 'match_method': 'phone_exact', 'confidence': 1.0, 'reason': '電話號碼完全吻合 (0334700071)'}}, 'tier3': {'skipped': True}}</code></pre>
+                </div>
+            </td>
+        </tr>
+        
+
+        <tr class="case-row" onclick="toggleDetails('eval_010')">
+            <td><code>eval_010</code></td>
+            <td><span class="cat-tag">typo_colloquial</span></td>
+            <td class="query-col">澀谷平價居酒屋，預算3000日幣內</td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+            <td class="text-right latency-text">1 ms</td>
+        </tr>
+        <tr id="details-eval_010" class="details-row" style="display: none;">
+            <td colspan="8">
+                <div class="details-box">
+                    <strong>說明：</strong> 繁簡字地名與平價預算 (澀谷 -> 渋谷 / 平價居酒屋)<br/>
+                    <strong>測試詳情：</strong>
+                    <pre><code>{'tier1': {'expected': {'intent': 'search', 'location': '澀谷', 'cuisine': '居酒屋', 'modifier': '平價/3000日幣內'}, 'actual': {'intent': 'search', 'location': '澀谷', 'cuisine': '居酒屋', 'modifier': '平價/3000日幣內', 'target_index': None}, 'intent_match': True}, 'tier2': {'expected_method': 'phone_exact', 'match_result': {'match_found': True, 'candidate': {'name_ja': '鳥貴族 渋谷道玄坂店', 'phone': '03-3461-8889', 'lat': 35.68, 'lng': 139.76}, 'match_method': 'phone_exact', 'confidence': 1.0, 'reason': '電話號碼完全吻合 (0334618889)'}}, 'tier3': {'reasons': []}}</code></pre>
+                </div>
+            </td>
+        </tr>
+        
+
+        <tr class="case-row" onclick="toggleDetails('eval_011')">
+            <td><code>eval_011</code></td>
+            <td><span class="cat-tag">taste_rag</span></td>
+            <td class="query-col">京都 祇園 適合長輩吃的清淡湯豆腐</td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+            <td class="text-right latency-text">0 ms</td>
+        </tr>
+        <tr id="details-eval_011" class="details-row" style="display: none;">
+            <td colspan="8">
+                <div class="details-box">
+                    <strong>說明：</strong> 口感與清淡料理需求 (京都長輩清淡豆腐料理)<br/>
+                    <strong>測試詳情：</strong>
+                    <pre><code>{'tier1': {'expected': {'intent': 'search', 'location': '京都祇園', 'cuisine': '湯豆腐', 'modifier': '適合長輩/清淡'}, 'actual': {'intent': 'search', 'location': '京都祇園', 'cuisine': '湯豆腐', 'modifier': '適合長輩/清淡', 'target_index': None}, 'intent_match': True}, 'tier2': {'expected_method': 'phone_exact', 'match_result': {'match_found': True, 'candidate': {'name_ja': '湯どうふ 嵯峨野', 'phone': '075-871-6946', 'lat': 35.68, 'lng': 139.76}, 'match_method': 'phone_exact', 'confidence': 1.0, 'reason': '電話號碼完全吻合 (0758716946)'}}, 'tier3': {'reasons': []}}</code></pre>
+                </div>
+            </td>
+        </tr>
+        
+
+        <tr class="case-row" onclick="toggleDetails('eval_012')">
+            <td><code>eval_012</code></td>
+            <td><span class="cat-tag">typo_colloquial</span></td>
+            <td class="query-col">原宿竹下通排隊人氣可麗餅</td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+            <td class="text-right latency-text">0 ms</td>
+        </tr>
+        <tr id="details-eval_012" class="details-row" style="display: none;">
+            <td colspan="8">
+                <div class="details-box">
+                    <strong>說明：</strong> 熱門觀光商圈與甜點需求 (原宿竹下通 可麗餅)<br/>
+                    <strong>測試詳情：</strong>
+                    <pre><code>{'tier1': {'expected': {'intent': 'search', 'location': '原宿竹下通', 'cuisine': '可麗餅', 'modifier': '排隊人氣'}, 'actual': {'intent': 'search', 'location': '原宿竹下通', 'cuisine': '可麗餅', 'modifier': '排隊人氣', 'target_index': None}, 'intent_match': True}, 'tier2': {'expected_method': 'phone_exact', 'match_result': {'match_found': True, 'candidate': {'name_ja': 'マリオンクレープ 原宿竹下通り店', 'phone': '03-3401-7297', 'lat': 35.68, 'lng': 139.76}, 'match_method': 'phone_exact', 'confidence': 1.0, 'reason': '電話號碼完全吻合 (0334017297)'}}, 'tier3': {'reasons': []}}</code></pre>
+                </div>
+            </td>
+        </tr>
+        
+
+        <tr class="case-row" onclick="toggleDetails('eval_013')">
+            <td><code>eval_013</code></td>
+            <td><span class="cat-tag">multi_turn_more</span></td>
+            <td class="query-col">有沒有更便宜一點的？</td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+            <td class="text-right latency-text">0 ms</td>
+        </tr>
+        <tr id="details-eval_013" class="details-row" style="display: none;">
+            <td colspan="8">
+                <div class="details-box">
+                    <strong>說明：</strong> 多輪要求更平價的替換名單 (有沒有便宜一點的)<br/>
+                    <strong>測試詳情：</strong>
+                    <pre><code>{'tier1': {'expected': {'intent': 'more', 'location': '銀座', 'cuisine': '壽司', 'modifier': '平價/便宜'}, 'actual': {'intent': 'more', 'location': '銀座', 'cuisine': '壽司', 'modifier': '平價/便宜', 'target_index': None}, 'intent_match': True}, 'tier2': {'expected_method': 'phone_exact', 'match_result': {'match_found': True, 'candidate': {'name_ja': '回転寿司 根室花まる 東急プラザ銀座店', 'phone': '03-6264-5735', 'lat': 35.68, 'lng': 139.76}, 'match_method': 'phone_exact', 'confidence': 1.0, 'reason': '電話號碼完全吻合 (0362645735)'}}, 'tier3': {'reasons': []}}</code></pre>
+                </div>
+            </td>
+        </tr>
+        
+
+        <tr class="case-row" onclick="toggleDetails('eval_014')">
+            <td><code>eval_014</code></td>
+            <td><span class="cat-tag">chitchat</span></td>
+            <td class="query-col">明天東京會下雨嗎？</td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+            <td class="text-right latency-text">0 ms</td>
+        </tr>
+        <tr id="details-eval_014" class="details-row" style="display: none;">
+            <td colspan="8">
+                <div class="details-box">
+                    <strong>說明：</strong> 非旅遊美食指令 (天氣詢問)<br/>
+                    <strong>測試詳情：</strong>
+                    <pre><code>{'tier1': {'expected': {'intent': 'chitchat', 'location': None, 'cuisine': None, 'modifier': None}, 'actual': {'intent': 'chitchat', 'location': None, 'cuisine': None, 'modifier': None, 'target_index': None}, 'intent_match': True}, 'tier2': {'expected_method': 'none', 'match_result': {'match_found': False, 'candidate': None, 'match_method': 'no_match', 'confidence': 0.5, 'reason': '未找到符合高精確度門檻之 Tabelog 店家'}}, 'tier3': {'skipped': True}}</code></pre>
+                </div>
+            </td>
+        </tr>
+        
+
+        <tr class="case-row" onclick="toggleDetails('eval_015')">
+            <td><code>eval_015</code></td>
+            <td><span class="cat-tag">multi_landmark</span></td>
+            <td class="query-col">秋葉原跟御茶之水中間有名的日式咖哩</td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+            <td class="text-right latency-text">0 ms</td>
+        </tr>
+        <tr id="details-eval_015" class="details-row" style="display: none;">
+            <td colspan="8">
+                <div class="details-box">
+                    <strong>說明：</strong> 跨站點樞紐 (秋葉原或御茶之水 咖哩)<br/>
+                    <strong>測試詳情：</strong>
+                    <pre><code>{'tier1': {'expected': {'intent': 'search', 'location': '秋葉原', 'cuisine': '咖哩', 'modifier': '有名'}, 'actual': {'intent': 'search', 'location': '秋葉原', 'cuisine': '咖哩', 'modifier': '有名', 'target_index': None}, 'intent_match': True}, 'tier2': {'expected_method': 'phone_exact', 'match_result': {'match_found': True, 'candidate': {'name_ja': 'ボンディ 神保町本店', 'phone': '03-3234-2080', 'lat': 35.68, 'lng': 139.76}, 'match_method': 'phone_exact', 'confidence': 1.0, 'reason': '電話號碼完全吻合 (0332342080)'}}, 'tier3': {'reasons': []}}</code></pre>
+                </div>
+            </td>
+        </tr>
+        
+
+        <tr class="case-row" onclick="toggleDetails('eval_016')">
+            <td><code>eval_016</code></td>
+            <td><span class="cat-tag">taste_rag</span></td>
+            <td class="query-col">新宿 想要牛舌厚切多汁的炭火燒肉</td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+            <td class="text-right latency-text">0 ms</td>
+        </tr>
+        <tr id="details-eval_016" class="details-row" style="display: none;">
+            <td colspan="8">
+                <div class="details-box">
+                    <strong>說明：</strong> 燒肉口感肉質需求 (牛舌厚切爆汁、和牛A5)<br/>
+                    <strong>測試詳情：</strong>
+                    <pre><code>{'tier1': {'expected': {'intent': 'search', 'location': '新宿', 'cuisine': '燒肉', 'modifier': '牛舌厚切多汁/炭火'}, 'actual': {'intent': 'search', 'location': '新宿', 'cuisine': '燒肉', 'modifier': '牛舌厚切多汁/炭火', 'target_index': None}, 'intent_match': True}, 'tier2': {'expected_method': 'phone_exact', 'match_result': {'match_found': True, 'candidate': {'name_ja': '焼肉 もとやま 新宿店', 'phone': '03-5321-6580', 'lat': 35.68, 'lng': 139.76}, 'match_method': 'phone_exact', 'confidence': 1.0, 'reason': '電話號碼完全吻合 (0353216580)'}}, 'tier3': {'reasons': []}}</code></pre>
+                </div>
+            </td>
+        </tr>
+        
+
+        <tr class="case-row" onclick="toggleDetails('eval_017')">
+            <td><code>eval_017</code></td>
+            <td><span class="cat-tag">follow_up</span></td>
+            <td class="query-col">第3家可以線上訂位或打電話預約嗎？</td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+            <td class="text-right latency-text">0 ms</td>
+        </tr>
+        <tr id="details-eval_017" class="details-row" style="display: none;">
+            <td colspan="8">
+                <div class="details-box">
+                    <strong>說明：</strong> 追問第3家是否可以預約<br/>
+                    <strong>測試詳情：</strong>
+                    <pre><code>{'tier1': {'expected': {'intent': 'follow_up', 'target_index': 3, 'question': '可以線上訂位或打電話預約嗎'}, 'actual': {'intent': 'follow_up', 'location': None, 'cuisine': None, 'modifier': None, 'target_index': 3}, 'intent_match': True, 'idx_match': True}, 'tier2': {'expected_method': 'phone_exact', 'match_result': {'match_found': True, 'candidate': {'name_ja': '博多華味鳥 天神店', 'phone': '092-738-5800', 'lat': 35.68, 'lng': 139.76}, 'match_method': 'phone_exact', 'confidence': 1.0, 'reason': '電話號碼完全吻合 (0927385800)'}}, 'tier3': {'reasons': []}}</code></pre>
+                </div>
+            </td>
+        </tr>
+        
+
+        <tr class="case-row" onclick="toggleDetails('eval_018')">
+            <td><code>eval_018</code></td>
+            <td><span class="cat-tag">typo_colloquial</span></td>
+            <td class="query-col">秋葉 一個人也能吃的燒肉定食</td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+            <td class="text-right latency-text">0 ms</td>
+        </tr>
+        <tr id="details-eval_018" class="details-row" style="display: none;">
+            <td colspan="8">
+                <div class="details-box">
+                    <strong>說明：</strong> 地名縮寫與一人用餐 (秋葉 一人 燒肉)<br/>
+                    <strong>測試詳情：</strong>
+                    <pre><code>{'tier1': {'expected': {'intent': 'search', 'location': '秋葉原', 'cuisine': '燒肉定食', 'modifier': '一人用餐'}, 'actual': {'intent': 'search', 'location': '秋葉原', 'cuisine': '燒肉定食', 'modifier': '一人用餐', 'target_index': None}, 'intent_match': True}, 'tier2': {'expected_method': 'phone_exact', 'match_result': {'match_found': True, 'candidate': {'name_ja': '焼肉ライク 秋葉原電気街店', 'phone': '03-6260-8929', 'lat': 35.68, 'lng': 139.76}, 'match_method': 'phone_exact', 'confidence': 1.0, 'reason': '電話號碼完全吻合 (0362608929)'}}, 'tier3': {'reasons': []}}</code></pre>
+                </div>
+            </td>
+        </tr>
+        
+
+        <tr class="case-row" onclick="toggleDetails('eval_019')">
+            <td><code>eval_019</code></td>
+            <td><span class="cat-tag">multi_turn_more</span></td>
+            <td class="query-col">換一批，但不要排隊太久的</td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+            <td class="text-right latency-text">0 ms</td>
+        </tr>
+        <tr id="details-eval_019" class="details-row" style="display: none;">
+            <td colspan="8">
+                <div class="details-box">
+                    <strong>說明：</strong> 換一批且希望不要排隊太久<br/>
+                    <strong>測試詳情：</strong>
+                    <pre><code>{'tier1': {'expected': {'intent': 'more', 'location': '築地', 'cuisine': '壽司', 'modifier': '不排隊/少排隊'}, 'actual': {'intent': 'more', 'location': '築地', 'cuisine': '壽司', 'modifier': '不排隊/少排隊', 'target_index': None}, 'intent_match': True}, 'tier2': {'expected_method': 'phone_exact', 'match_result': {'match_found': True, 'candidate': {'name_ja': 'すしざんまい 本店', 'phone': '03-3541-1117', 'lat': 35.68, 'lng': 139.76}, 'match_method': 'phone_exact', 'confidence': 1.0, 'reason': '電話號碼完全吻合 (0335411117)'}}, 'tier3': {'reasons': []}}</code></pre>
+                </div>
+            </td>
+        </tr>
+        
+
+        <tr class="case-row" onclick="toggleDetails('eval_020')">
+            <td><code>eval_020</code></td>
+            <td><span class="cat-tag">need_location</span></td>
+            <td class="query-col">好想吃鰻魚飯喔！</td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">PASS</span></td>
+            <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+            <td class="text-right latency-text">0 ms</td>
+        </tr>
+        <tr id="details-eval_020" class="details-row" style="display: none;">
+            <td colspan="8">
+                <div class="details-box">
+                    <strong>說明：</strong> 純食物渴望未帶地標<br/>
+                    <strong>測試詳情：</strong>
+                    <pre><code>{'tier1': {'expected': {'intent': 'need_location', 'location': None, 'cuisine': '鰻魚飯', 'modifier': None}, 'actual': {'intent': 'need_location', 'location': None, 'cuisine': '鰻魚飯', 'modifier': None, 'target_index': None}, 'intent_match': True}, 'tier2': {'expected_method': 'phone_exact', 'match_result': {'match_found': True, 'candidate': {'name_ja': '尾花', 'phone': '03-3801-4670', 'lat': 35.68, 'lng': 139.76}, 'match_method': 'phone_exact', 'confidence': 1.0, 'reason': '電話號碼完全吻合 (0338014670)'}}, 'tier3': {'skipped': True}}</code></pre>
+                </div>
+            </td>
+        </tr>
+        
+                </tbody>
+            </table>
+        </section>
+
+        <footer>
+            PickForMe • Automated Evaluation Pipeline • Powered by GitLab Pages
+        </footer>
+    </div>
+
+    <script>
+        function toggleDetails(id) {
+            const el = document.getElementById('details-' + id);
+            if (el.style.display === 'none') {
+                el.style.display = 'table-row';
+            } else {
+                el.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
