@@ -1,19 +1,24 @@
 import asyncio
 import json
 import logging
+import math
 import time
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Awaitable, Callable, Optional
 
 from src.agent.llm_client import LLMClient
 from src.agent.trace import AgentTraceLogger
 from src.db.repositories.restaurant import RestaurantRepository
 from src.db.repositories.session import SessionRepository
-from src.services.entity_resolver import EntityResolver
+from src.services.entity_resolver import EntityResolver, calculate_distance_meters
 from src.services.google_places import GooglePlacesClient
 from src.services.tabelog_scraper import TabelogScraper
 
 logger = logging.getLogger(__name__)
+
+PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent / "config" / "prompts"
+AGENT_SYSTEM_PROMPT_PATH = PROMPTS_DIR / "agent_system.md"
 
 INTENT_PARSER_SYSTEM_PROMPT = """你是一位嚴格的日本美食搜尋意圖解析器。請分析使用者的輸入與上下文，並輸出標準 JSON 格式。
 
@@ -37,18 +42,32 @@ RECOMMENDATION_CARD_SYSTEM_PROMPT = """你是一位專業、熱情的日本美�
 
 排版規範：
 1. 請依據候選資料推薦 3 ~ 5 家精選餐廳（預設呈現 3 ~ 4 家差異化風格名店，如歷史老舖、平價排隊名店、特色專門店）。
-2. 每家餐廳必須包含：
+2. 每家餐廳排版格式規範（嚴格依序）：
    - 🍱 **店名**：請務必將「日文原名」單獨放在 Code 區塊中（例如：`寿々喜家 本店`），方便 Telegram 一鍵點擊複製！
-   - ⭐️ **評分與老饕評價（嚴格遵守優先級）**：
+   - 🚶 **步行距離（緊接在店名最前排）**：例如 `🚶 步行約 3 分鐘 (240m)`，提供遊客直覺的步行時間與距離。
+   - ⭐️ **雙平台評分與老饕評價（嚴格遵守優先級）**：
      - 若有 Tabelog 評分：標註「⭐️ Tabelog X.XX 分 (XXX 則評價) / Google X.X」，且必須優先提煉 Tabelog 在地老饕對口感、湯頭、麵條、肉質或必點招牌小菜的深入點評！
      - 若 Tabelog 暫無資料：標註「⭐️ Google X.X 分 (XXX 則評價) ｜ Tabelog 暫無評分」，並提煉 Google 網友的普遍好評亮點（排隊熱度、招牌特色）。
    - 🏆 **獲獎/支付**：若有「百名店/Award」或支援「PayPay / 信用卡」請重點標註。
    - 💰 **預算區間**：午餐/晚餐預算。
-   - 📍 **簡短特色與老饕推薦理由**：招牌菜色與口感層次。
+   - 📍 **簡短特色與老饕推薦理由**：招牌菜色與口感層次（1~2 句）。
    - 🔗 **店家連結**：附上 Google 地圖或 Tabelog 連結。
-3. 寬鬆查詢之收斂引導：若查詢品類範圍較廣（如新宿拉麵、燒肉等選擇極多），請在卡片末尾貼心附上 1~2 句縮小範圍引導（例如：「💡 該區域拉麵流派眾多！若您偏好特定口味（如濃郁豚骨、清爽魚介、或想找支援刷卡的店家），可直接告訴我為您即時收斂！」）。
+3. **特派員提醒與收斂引導（極簡凝練，嚴格限 1 ~ 2 句話）**：
+   - 請在卡片末尾以「💡 特派員提醒：...」簡短作結。
+   - **嚴格限制在 1 ~ 2 句話之內**（例如：提醒排隊熱門時段、或若想進一步縮小範圍至特定流派口味可隨時告訴我）。
+   - **嚴禁長篇大論、嚴禁長串條列式說教提醒**，保持精煉清爽！
 
 請保持親切、專業、條理分明。直接輸出 Markdown 卡片內容。"""
+
+
+def get_recommendation_card_prompt() -> str:
+    """動態載入 config/prompts/agent_system.md 系統提示詞，支援即時自訂與模組保底"""
+    if AGENT_SYSTEM_PROMPT_PATH.exists():
+        try:
+            return AGENT_SYSTEM_PROMPT_PATH.read_text(encoding="utf-8")
+        except Exception as e:
+            logger.warning(f"Failed to read prompt file {AGENT_SYSTEM_PROMPT_PATH}: {e}")
+    return RECOMMENDATION_CARD_SYSTEM_PROMPT
 
 
 class FoodRecommendationFSM:
@@ -139,6 +158,14 @@ class FoodRecommendationFSM:
             existing_ids = {c["google_place_id"] for c in candidates}
             for p in raw_places:
                 if p.get("google_place_id") and p["google_place_id"] not in existing_ids:
+                    p_lat = p.get("lat")
+                    p_lng = p.get("lng")
+                    if p_lat and p_lng:
+                        dist_m = int(calculate_distance_meters(lat, lng, p_lat, p_lng))
+                        walk_mins = max(1, math.ceil(dist_m / 80))
+                        p["distance_meters"] = dist_m
+                        p["walk_time_minutes"] = walk_mins
+                        p["walking_desc"] = f"步行約 {walk_mins} 分鐘 ({dist_m}m)"
                     candidates.append(p)
                     existing_ids.add(p["google_place_id"])
 
@@ -294,7 +321,11 @@ class FoodRecommendationFSM:
             t_rating = s.get("tabelog_rating")
             g_rating = s.get("rating") or s.get("google_rating")
 
+            walk_desc = s.get("walking_desc")
+
             lines.append(f"### {idx}. `{name}`")
+            if walk_desc:
+                lines.append(f"🚶 **步行距離**：{walk_desc}")
             if rating_src == "Tabelog" and t_rating:
                 lines.append(f"⭐️ **Tabelog 評分**：{t_rating:.2f} 分 ({s.get('review_count', 0)} 則評價)")
             else:
@@ -322,9 +353,15 @@ class FoodRecommendationFSM:
             f"目標地點：{location_name or '指定區域'}\n美食類別：{cuisine or '熱門美食'}\n\n候選餐廳詳細數據如下：\n"
         )
         for idx, s in enumerate(stores, 1):
+            walk_str = s.get("walking_desc") or (
+                f"步行約 {s.get('walk_time_minutes', 3)} 分鐘 ({s.get('distance_meters', 200)}m)"
+                if s.get("walk_time_minutes")
+                else "步行約 3~5 分鐘"
+            )
             prompt_content += (
                 f"\n店家 {idx}：\n"
                 f"- 店名(日文)：{s.get('name_ja') or s.get('name')}\n"
+                f"- 步行距離：{walk_str}\n"
                 f"- 評分來源：{s.get('rating_source')}\n"
                 f"- Tabelog 評分：{s.get('tabelog_rating')}\n"
                 f"- Google 評分：{s.get('google_rating') or s.get('rating')}\n"
@@ -337,7 +374,7 @@ class FoodRecommendationFSM:
             )
 
         messages = [
-            {"role": "system", "content": RECOMMENDATION_CARD_SYSTEM_PROMPT},
+            {"role": "system", "content": get_recommendation_card_prompt()},
             {"role": "user", "content": prompt_content},
         ]
 

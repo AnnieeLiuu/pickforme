@@ -233,3 +233,27 @@ async def test_fsm_execute_follow_up(mock_fsm):
     ans = await mock_fsm.execute_follow_up(chat_id=999, parsed_intent=parsed, user_message="那第二家在哪？")
 
     assert "店家二" in ans or "新宿三丁目" in ans
+
+
+@pytest.mark.asyncio
+async def test_fsm_walking_distance_and_prompt_loader(mock_fsm):
+    from src.agent.pipeline import get_recommendation_card_prompt
+
+    # 1. 測試提示詞載入器
+    prompt = get_recommendation_card_prompt()
+    assert "步行距離" in prompt
+    assert "特派員提醒" in prompt
+
+    # 2. 測試階梯搜尋中的步行距離計算 (基準點 35.685, 139.710)
+    mock_fsm.places_client.search_nearby.return_value = [
+        {"google_place_id": "p1", "name": "近距離拉麵", "lat": 35.686, "lng": 139.711}
+    ]
+    candidates = await mock_fsm.execute_state_2_places_ladder(35.685, 139.710, "拉麵")
+    assert len(candidates) == 1
+    assert "distance_meters" in candidates[0]
+    assert "walk_time_minutes" in candidates[0]
+    assert "步行約" in candidates[0]["walking_desc"]
+
+    # 3. 測試保底卡片排版有加入步行距離
+    fallback_card = mock_fsm._render_template_fallback_card(candidates, "拉麵")
+    assert "🚶 **步行距離**" in fallback_card
