@@ -496,11 +496,36 @@ class FoodRecommendationFSM:
         enriched_results = await asyncio.gather(*tasks)
         latency = int((time.time() - t0) * 1000)
 
+        stores_input_summary = [
+            {
+                "name": p.get("name"),
+                "phone": p.get("phone"),
+                "google_rating": p.get("rating") or p.get("google_rating"),
+            }
+            for p in places
+        ]
+
+        stores_output_summary = [
+            {
+                "name_ja": s.get("name_ja") or s.get("name"),
+                "tabelog_rating": s.get("tabelog_rating"),
+                "review_count": s.get("review_count"),
+                "price_lunch": s.get("price_lunch"),
+                "price_dinner": s.get("price_dinner"),
+                "supports_paypay": s.get("supports_paypay"),
+                "credit_cards": s.get("credit_cards") or [],
+                "awards": s.get("awards") or [],
+                "tabelog_url": s.get("tabelog_url"),
+                "rating_source": s.get("rating_source", "Tabelog"),
+            }
+            for s in enriched_results
+        ]
+
         await self.trace_logger.log_step(
             action_type="state_3_tabelog",
             tool_name="parallel_tabelog_enrichment",
-            tool_input={"stores_count": len(places)},
-            tool_output={"enriched_count": len(enriched_results)},
+            tool_input={"stores_count": len(places), "stores_searched": stores_input_summary},
+            tool_output={"enriched_count": len(enriched_results), "aligned_stores": stores_output_summary},
             latency_ms=latency,
         )
         return list(enriched_results)

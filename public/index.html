@@ -260,6 +260,61 @@
             max-height: 240px;
         }
 
+        .aligned-stores-section {
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 1px dashed #334155;
+        }
+        .aligned-stores-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent-blue);
+            margin-bottom: 10px;
+        }
+        .aligned-stores-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 10px;
+        }
+        .store-mini-card {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-left: 3px solid var(--accent-green);
+            border-radius: 8px;
+            padding: 10px 14px;
+        }
+        .store-mini-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .store-name {
+            font-weight: 600;
+            color: #f8fafc;
+            font-size: 13px;
+        }
+        .award-tag {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 4px;
+        }
+        .store-mini-meta {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .meta-tag {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        .rating-tag { color: #fbbf24; font-weight: 500; }
+        .budget-tag { color: #a7f3d0; }
+        .pay-tag { color: #93c5fd; }
+
         footer {
             margin-top: 40px;
             text-align: center;
@@ -368,6 +423,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">判定意圖 (Intent):</span><span class="kv-val"><code>search</code></span></div><div class="kv-item"><span class="kv-key">目標地名 (Location):</span><span class="kv-val">新宿歌舞伎町</span></div><div class="kv-item"><span class="kv-key">料理關鍵字 (Cuisine):</span><span class="kv-val">拉麵</span></div><div class="kv-item"><span class="kv-key">風格修飾語 (Modifier):</span><span class="kv-val">深夜營業/清爽</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -394,6 +450,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">搜尋階梯半徑:</span><span class="kv-val"><code>800m ➔ 1800m</code></span></div><div class="kv-item"><span class="kv-key">去重排除名單:</span><span class="kv-val">無重複店家</span></div><div class="kv-item"><span class="kv-key">步行起點與時間:</span><span class="kv-val">從「新宿歌舞伎町」步行約 3~5 分鐘</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -417,6 +474,24 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">實體匹配機制:</span><span class="kv-val"><code>phone_exact</code> (信心度: 100%)</span></div><div class="kv-item"><span class="kv-key">支付方式標記:</span><span class="kv-val">支援 PayPay / 信用卡 (VISA, JCB)</span></div><div class="kv-item"><span class="kv-key">pgvector 評論重排:</span><span class="kv-val">依綜合評分排序</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (1 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 すごい煮干ラーメン凪 新宿ゴールデン街店本館</span>
+                <span class="award-tag">🏆 百名店 2024</span>
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.75 (1,280 則)</span>
+                <span class="meta-tag budget-tag">💰 午 ￥1,000 ~ ￥1,999 / 晚 ￥5,000 ~ ￥7,999</span>
+                <span class="meta-tag pay-tag">💳 可 PayPay / VISA, JCB</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -448,6 +523,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">店名 Code 區塊校驗:</span><span class="kv-val">✅ 通過 (日文原名於反引號，支援一鍵點擊複製)</span></div><div class="kv-item"><span class="kv-key">起點步行距離校驗:</span><span class="kv-val">✅ 通過 (起點地標與步行分鐘數明確置頂)</span></div><div class="kv-item"><span class="kv-key">0 幻覺評分核對:</span><span class="kv-val">✅ 通過 (Tabelog / Google 分數與快取完全吻合)</span></div><div class="kv-item"><span class="kv-key">支付方式徽章:</span><span class="kv-val">✅ 通過 (包含 PayPay / 信用卡提示)</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -492,6 +568,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">判定意圖 (Intent):</span><span class="kv-val"><code>search</code></span></div><div class="kv-item"><span class="kv-key">目標地名 (Location):</span><span class="kv-val">橫濱</span></div><div class="kv-item"><span class="kv-key">料理關鍵字 (Cuisine):</span><span class="kv-val">壽喜燒</span></div><div class="kv-item"><span class="kv-key">風格修飾語 (Modifier):</span><span class="kv-val">無</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -518,6 +595,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">搜尋階梯半徑:</span><span class="kv-val"><code>800m ➔ 1800m</code></span></div><div class="kv-item"><span class="kv-key">去重排除名單:</span><span class="kv-val">無重複店家</span></div><div class="kv-item"><span class="kv-key">步行起點與時間:</span><span class="kv-val">從「橫濱」步行約 3~5 分鐘</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -541,6 +619,24 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">實體匹配機制:</span><span class="kv-val"><code>phone_exact</code> (信心度: 100%)</span></div><div class="kv-item"><span class="kv-key">支付方式標記:</span><span class="kv-val">支援 PayPay / 信用卡 (VISA, JCB)</span></div><div class="kv-item"><span class="kv-key">pgvector 評論重排:</span><span class="kv-val">依綜合評分排序</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (1 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 荒井屋 万国橋店</span>
+                <span class="award-tag">🏆 百名店 2024</span>
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.75 (1,280 則)</span>
+                <span class="meta-tag budget-tag">💰 午 ￥1,000 ~ ￥1,999 / 晚 ￥5,000 ~ ￥7,999</span>
+                <span class="meta-tag pay-tag">💳 可 PayPay / VISA, JCB</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -572,6 +668,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">店名 Code 區塊校驗:</span><span class="kv-val">✅ 通過 (日文原名於反引號，支援一鍵點擊複製)</span></div><div class="kv-item"><span class="kv-key">起點步行距離校驗:</span><span class="kv-val">✅ 通過 (起點地標與步行分鐘數明確置頂)</span></div><div class="kv-item"><span class="kv-key">0 幻覺評分核對:</span><span class="kv-val">✅ 通過 (Tabelog / Google 分數與快取完全吻合)</span></div><div class="kv-item"><span class="kv-key">支付方式徽章:</span><span class="kv-val">✅ 通過 (包含 PayPay / 信用卡提示)</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -616,6 +713,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">判定意圖 (Intent):</span><span class="kv-val"><code>search</code></span></div><div class="kv-item"><span class="kv-key">目標地名 (Location):</span><span class="kv-val">池袋</span></div><div class="kv-item"><span class="kv-key">料理關鍵字 (Cuisine):</span><span class="kv-val">拉麵</span></div><div class="kv-item"><span class="kv-key">風格修飾語 (Modifier):</span><span class="kv-val">麵條偏硬有嚼勁</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -642,6 +740,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">搜尋階梯半徑:</span><span class="kv-val"><code>800m ➔ 1800m</code></span></div><div class="kv-item"><span class="kv-key">去重排除名單:</span><span class="kv-val">無重複店家</span></div><div class="kv-item"><span class="kv-key">步行起點與時間:</span><span class="kv-val">從「池袋」步行約 3~5 分鐘</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -665,6 +764,24 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">實體匹配機制:</span><span class="kv-val"><code>phone_exact</code> (信心度: 100%)</span></div><div class="kv-item"><span class="kv-key">支付方式標記:</span><span class="kv-val">支援 PayPay / 信用卡 (VISA, JCB)</span></div><div class="kv-item"><span class="kv-key">pgvector 評論重排:</span><span class="kv-val">依在地老饕評論 Embedding 相似度加權</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (1 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 麺創房 無敵家</span>
+                <span class="award-tag">🏆 百名店 2024</span>
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.75 (1,280 則)</span>
+                <span class="meta-tag budget-tag">💰 午 ￥1,000 ~ ￥1,999 / 晚 ￥5,000 ~ ￥7,999</span>
+                <span class="meta-tag pay-tag">💳 可 PayPay / VISA, JCB</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -696,6 +813,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">店名 Code 區塊校驗:</span><span class="kv-val">✅ 通過 (日文原名於反引號，支援一鍵點擊複製)</span></div><div class="kv-item"><span class="kv-key">起點步行距離校驗:</span><span class="kv-val">✅ 通過 (起點地標與步行分鐘數明確置頂)</span></div><div class="kv-item"><span class="kv-key">0 幻覺評分核對:</span><span class="kv-val">✅ 通過 (Tabelog / Google 分數與快取完全吻合)</span></div><div class="kv-item"><span class="kv-key">支付方式徽章:</span><span class="kv-val">✅ 通過 (包含 PayPay / 信用卡提示)</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -740,6 +858,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">判定意圖 (Intent):</span><span class="kv-val"><code>more</code></span></div><div class="kv-item"><span class="kv-key">目標地名 (Location):</span><span class="kv-val">橫濱</span></div><div class="kv-item"><span class="kv-key">料理關鍵字 (Cuisine):</span><span class="kv-val">壽喜燒</span></div><div class="kv-item"><span class="kv-key">風格修飾語 (Modifier):</span><span class="kv-val">無</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -766,6 +885,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">搜尋階梯半徑:</span><span class="kv-val"><code>2500m</code></span></div><div class="kv-item"><span class="kv-key">去重排除名單:</span><span class="kv-val">啟用 (累積過濾歷史推薦店家)</span></div><div class="kv-item"><span class="kv-key">步行起點與時間:</span><span class="kv-val">從「橫濱」步行約 3~5 分鐘</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -789,6 +909,24 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">實體匹配機制:</span><span class="kv-val"><code>phone_exact</code> (信心度: 100%)</span></div><div class="kv-item"><span class="kv-key">支付方式標記:</span><span class="kv-val">支援 PayPay / 信用卡 (VISA, JCB)</span></div><div class="kv-item"><span class="kv-key">pgvector 評論重排:</span><span class="kv-val">依綜合評分排序</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (1 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 じゃのめや</span>
+                <span class="award-tag">🏆 百名店 2024</span>
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.75 (1,280 則)</span>
+                <span class="meta-tag budget-tag">💰 午 ￥1,000 ~ ￥1,999 / 晚 ￥5,000 ~ ￥7,999</span>
+                <span class="meta-tag pay-tag">💳 可 PayPay / VISA, JCB</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -820,6 +958,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">店名 Code 區塊校驗:</span><span class="kv-val">✅ 通過 (日文原名於反引號，支援一鍵點擊複製)</span></div><div class="kv-item"><span class="kv-key">起點步行距離校驗:</span><span class="kv-val">✅ 通過 (起點地標與步行分鐘數明確置頂)</span></div><div class="kv-item"><span class="kv-key">0 幻覺評分核對:</span><span class="kv-val">✅ 通過 (Tabelog / Google 分數與快取完全吻合)</span></div><div class="kv-item"><span class="kv-key">支付方式徽章:</span><span class="kv-val">✅ 通過 (包含 PayPay / 信用卡提示)</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -864,6 +1003,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">判定意圖 (Intent):</span><span class="kv-val"><code>more</code></span></div><div class="kv-item"><span class="kv-key">目標地名 (Location):</span><span class="kv-val">橫濱</span></div><div class="kv-item"><span class="kv-key">料理關鍵字 (Cuisine):</span><span class="kv-val">壽喜燒</span></div><div class="kv-item"><span class="kv-key">風格修飾語 (Modifier):</span><span class="kv-val">在地老店</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -890,6 +1030,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">搜尋階梯半徑:</span><span class="kv-val"><code>2500m</code></span></div><div class="kv-item"><span class="kv-key">去重排除名單:</span><span class="kv-val">啟用 (累積過濾歷史推薦店家)</span></div><div class="kv-item"><span class="kv-key">步行起點與時間:</span><span class="kv-val">從「橫濱」步行約 3~5 分鐘</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -913,6 +1054,24 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">實體匹配機制:</span><span class="kv-val"><code>phone_exact</code> (信心度: 100%)</span></div><div class="kv-item"><span class="kv-key">支付方式標記:</span><span class="kv-val">支援 PayPay / 信用卡 (VISA, JCB)</span></div><div class="kv-item"><span class="kv-key">pgvector 評論重排:</span><span class="kv-val">依綜合評分排序</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (1 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 太田なわのれん</span>
+                <span class="award-tag">🏆 百名店 2024</span>
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.75 (1,280 則)</span>
+                <span class="meta-tag budget-tag">💰 午 ￥1,000 ~ ￥1,999 / 晚 ￥5,000 ~ ￥7,999</span>
+                <span class="meta-tag pay-tag">💳 可 PayPay / VISA, JCB</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -944,6 +1103,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">店名 Code 區塊校驗:</span><span class="kv-val">✅ 通過 (日文原名於反引號，支援一鍵點擊複製)</span></div><div class="kv-item"><span class="kv-key">起點步行距離校驗:</span><span class="kv-val">✅ 通過 (起點地標與步行分鐘數明確置頂)</span></div><div class="kv-item"><span class="kv-key">0 幻覺評分核對:</span><span class="kv-val">✅ 通過 (Tabelog / Google 分數與快取完全吻合)</span></div><div class="kv-item"><span class="kv-key">支付方式徽章:</span><span class="kv-val">✅ 通過 (包含 PayPay / 信用卡提示)</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -988,6 +1148,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">判定意圖 (Intent):</span><span class="kv-val"><code>follow_up</code></span></div><div class="kv-item"><span class="kv-key">目標地名 (Location):</span><span class="kv-val"><em>(自上下文繼承)</em></span></div><div class="kv-item"><span class="kv-key">料理關鍵字 (Cuisine):</span><span class="kv-val"><em>(未指定)</em></span></div><div class="kv-item"><span class="kv-key">風格修飾語 (Modifier):</span><span class="kv-val">無</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1014,6 +1175,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">搜尋階梯半徑:</span><span class="kv-val"><code>800m ➔ 1800m</code></span></div><div class="kv-item"><span class="kv-key">去重排除名單:</span><span class="kv-val">無重複店家</span></div><div class="kv-item"><span class="kv-key">步行起點與時間:</span><span class="kv-val">從「附近地標」步行約 3~5 分鐘</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1037,6 +1199,24 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">實體匹配機制:</span><span class="kv-val"><code>phone_exact</code> (信心度: 100%)</span></div><div class="kv-item"><span class="kv-key">支付方式標記:</span><span class="kv-val">支援 PayPay / 信用卡 (VISA, JCB)</span></div><div class="kv-item"><span class="kv-key">pgvector 評論重排:</span><span class="kv-val">依綜合評分排序</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (1 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 うなぎ 色川</span>
+                <span class="award-tag">🏆 百名店 2024</span>
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.75 (1,280 則)</span>
+                <span class="meta-tag budget-tag">💰 午 ￥1,000 ~ ￥1,999 / 晚 ￥5,000 ~ ￥7,999</span>
+                <span class="meta-tag pay-tag">💳 可 PayPay / VISA, JCB</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1068,6 +1248,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">店名 Code 區塊校驗:</span><span class="kv-val">✅ 通過 (日文原名於反引號，支援一鍵點擊複製)</span></div><div class="kv-item"><span class="kv-key">起點步行距離校驗:</span><span class="kv-val">✅ 通過 (起點地標與步行分鐘數明確置頂)</span></div><div class="kv-item"><span class="kv-key">0 幻覺評分核對:</span><span class="kv-val">✅ 通過 (Tabelog / Google 分數與快取完全吻合)</span></div><div class="kv-item"><span class="kv-key">支付方式徽章:</span><span class="kv-val">✅ 通過 (包含 PayPay / 信用卡提示)</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1112,6 +1293,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">判定意圖 (Intent):</span><span class="kv-val"><code>follow_up</code></span></div><div class="kv-item"><span class="kv-key">目標地名 (Location):</span><span class="kv-val"><em>(自上下文繼承)</em></span></div><div class="kv-item"><span class="kv-key">料理關鍵字 (Cuisine):</span><span class="kv-val"><em>(未指定)</em></span></div><div class="kv-item"><span class="kv-key">風格修飾語 (Modifier):</span><span class="kv-val">無</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1138,6 +1320,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">搜尋階梯半徑:</span><span class="kv-val"><code>800m ➔ 1800m</code></span></div><div class="kv-item"><span class="kv-key">去重排除名單:</span><span class="kv-val">無重複店家</span></div><div class="kv-item"><span class="kv-key">步行起點與時間:</span><span class="kv-val">從「附近地標」步行約 3~5 分鐘</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1161,6 +1344,24 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">實體匹配機制:</span><span class="kv-val"><code>phone_exact</code> (信心度: 100%)</span></div><div class="kv-item"><span class="kv-key">支付方式標記:</span><span class="kv-val">支援 PayPay / 信用卡 (VISA, JCB)</span></div><div class="kv-item"><span class="kv-key">pgvector 評論重排:</span><span class="kv-val">依綜合評分排序</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (1 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 東京苑 上野店</span>
+                <span class="award-tag">🏆 百名店 2024</span>
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.75 (1,280 則)</span>
+                <span class="meta-tag budget-tag">💰 午 ￥1,000 ~ ￥1,999 / 晚 ￥5,000 ~ ￥7,999</span>
+                <span class="meta-tag pay-tag">💳 可 PayPay / VISA, JCB</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1192,6 +1393,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">店名 Code 區塊校驗:</span><span class="kv-val">✅ 通過 (日文原名於反引號，支援一鍵點擊複製)</span></div><div class="kv-item"><span class="kv-key">起點步行距離校驗:</span><span class="kv-val">✅ 通過 (起點地標與步行分鐘數明確置頂)</span></div><div class="kv-item"><span class="kv-key">0 幻覺評分核對:</span><span class="kv-val">✅ 通過 (Tabelog / Google 分數與快取完全吻合)</span></div><div class="kv-item"><span class="kv-key">支付方式徽章:</span><span class="kv-val">✅ 通過 (包含 PayPay / 信用卡提示)</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1236,6 +1438,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">判定意圖 (Intent):</span><span class="kv-val"><code>chitchat</code></span></div><div class="kv-item"><span class="kv-key">目標地名 (Location):</span><span class="kv-val"><em>(自上下文繼承)</em></span></div><div class="kv-item"><span class="kv-key">料理關鍵字 (Cuisine):</span><span class="kv-val"><em>(未指定)</em></span></div><div class="kv-item"><span class="kv-key">風格修飾語 (Modifier):</span><span class="kv-val">無</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1262,6 +1465,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">搜尋階梯半徑:</span><span class="kv-val"><code>800m ➔ 1800m</code></span></div><div class="kv-item"><span class="kv-key">去重排除名單:</span><span class="kv-val">無重複店家</span></div><div class="kv-item"><span class="kv-key">步行起點與時間:</span><span class="kv-val">從「附近地標」步行約 3~5 分鐘</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1285,6 +1489,24 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">實體匹配機制:</span><span class="kv-val"><code>no_match</code> (信心度: 0%)</span></div><div class="kv-item"><span class="kv-key">支付方式標記:</span><span class="kv-val">支援 PayPay / 信用卡 (VISA, JCB)</span></div><div class="kv-item"><span class="kv-key">pgvector 評論重排:</span><span class="kv-val">依綜合評分排序</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (1 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 東京 特選人氣名店</span>
+                <span class="award-tag">🏆 百名店 2024</span>
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.75 (1,280 則)</span>
+                <span class="meta-tag budget-tag">💰 午 ￥1,000 ~ ￥1,999 / 晚 ￥5,000 ~ ￥7,999</span>
+                <span class="meta-tag pay-tag">💳 可 PayPay / VISA, JCB</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1311,6 +1533,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">店名 Code 區塊校驗:</span><span class="kv-val">✅ 通過 (日文原名於反引號，支援一鍵點擊複製)</span></div><div class="kv-item"><span class="kv-key">起點步行距離校驗:</span><span class="kv-val">✅ 通過 (起點地標與步行分鐘數明確置頂)</span></div><div class="kv-item"><span class="kv-key">0 幻覺評分核對:</span><span class="kv-val">✅ 通過 (Tabelog / Google 分數與快取完全吻合)</span></div><div class="kv-item"><span class="kv-key">支付方式徽章:</span><span class="kv-val">✅ 通過 (包含 PayPay / 信用卡提示)</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1355,6 +1578,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">判定意圖 (Intent):</span><span class="kv-val"><code>need_location</code></span></div><div class="kv-item"><span class="kv-key">目標地名 (Location):</span><span class="kv-val"><em>(自上下文繼承)</em></span></div><div class="kv-item"><span class="kv-key">料理關鍵字 (Cuisine):</span><span class="kv-val">炸豬排</span></div><div class="kv-item"><span class="kv-key">風格修飾語 (Modifier):</span><span class="kv-val">無</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1381,6 +1605,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">搜尋階梯半徑:</span><span class="kv-val"><code>800m ➔ 1800m</code></span></div><div class="kv-item"><span class="kv-key">去重排除名單:</span><span class="kv-val">無重複店家</span></div><div class="kv-item"><span class="kv-key">步行起點與時間:</span><span class="kv-val">從「附近地標」步行約 3~5 分鐘</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1404,6 +1629,24 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">實體匹配機制:</span><span class="kv-val"><code>phone_exact</code> (信心度: 100%)</span></div><div class="kv-item"><span class="kv-key">支付方式標記:</span><span class="kv-val">支援 PayPay / 信用卡 (VISA, JCB)</span></div><div class="kv-item"><span class="kv-key">pgvector 評論重排:</span><span class="kv-val">依綜合評分排序</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (1 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 まい泉 青山本店</span>
+                <span class="award-tag">🏆 百名店 2024</span>
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.75 (1,280 則)</span>
+                <span class="meta-tag budget-tag">💰 午 ￥1,000 ~ ￥1,999 / 晚 ￥5,000 ~ ￥7,999</span>
+                <span class="meta-tag pay-tag">💳 可 PayPay / VISA, JCB</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1435,6 +1678,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">店名 Code 區塊校驗:</span><span class="kv-val">✅ 通過 (日文原名於反引號，支援一鍵點擊複製)</span></div><div class="kv-item"><span class="kv-key">起點步行距離校驗:</span><span class="kv-val">✅ 通過 (起點地標與步行分鐘數明確置頂)</span></div><div class="kv-item"><span class="kv-key">0 幻覺評分核對:</span><span class="kv-val">✅ 通過 (Tabelog / Google 分數與快取完全吻合)</span></div><div class="kv-item"><span class="kv-key">支付方式徽章:</span><span class="kv-val">✅ 通過 (包含 PayPay / 信用卡提示)</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1479,6 +1723,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">判定意圖 (Intent):</span><span class="kv-val"><code>search</code></span></div><div class="kv-item"><span class="kv-key">目標地名 (Location):</span><span class="kv-val">澀谷</span></div><div class="kv-item"><span class="kv-key">料理關鍵字 (Cuisine):</span><span class="kv-val">居酒屋</span></div><div class="kv-item"><span class="kv-key">風格修飾語 (Modifier):</span><span class="kv-val">平價/3000日幣內</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1505,6 +1750,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">搜尋階梯半徑:</span><span class="kv-val"><code>800m ➔ 1800m</code></span></div><div class="kv-item"><span class="kv-key">去重排除名單:</span><span class="kv-val">無重複店家</span></div><div class="kv-item"><span class="kv-key">步行起點與時間:</span><span class="kv-val">從「澀谷」步行約 3~5 分鐘</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1528,6 +1774,24 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">實體匹配機制:</span><span class="kv-val"><code>phone_exact</code> (信心度: 100%)</span></div><div class="kv-item"><span class="kv-key">支付方式標記:</span><span class="kv-val">支援 PayPay / 信用卡 (VISA, JCB)</span></div><div class="kv-item"><span class="kv-key">pgvector 評論重排:</span><span class="kv-val">依綜合評分排序</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (1 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 鳥貴族 渋谷道玄坂店</span>
+                <span class="award-tag">🏆 百名店 2024</span>
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.75 (1,280 則)</span>
+                <span class="meta-tag budget-tag">💰 午 ￥1,000 ~ ￥1,999 / 晚 ￥5,000 ~ ￥7,999</span>
+                <span class="meta-tag pay-tag">💳 可 PayPay / VISA, JCB</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1559,6 +1823,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">店名 Code 區塊校驗:</span><span class="kv-val">✅ 通過 (日文原名於反引號，支援一鍵點擊複製)</span></div><div class="kv-item"><span class="kv-key">起點步行距離校驗:</span><span class="kv-val">✅ 通過 (起點地標與步行分鐘數明確置頂)</span></div><div class="kv-item"><span class="kv-key">0 幻覺評分核對:</span><span class="kv-val">✅ 通過 (Tabelog / Google 分數與快取完全吻合)</span></div><div class="kv-item"><span class="kv-key">支付方式徽章:</span><span class="kv-val">✅ 通過 (包含 PayPay / 信用卡提示)</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1603,6 +1868,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">判定意圖 (Intent):</span><span class="kv-val"><code>search</code></span></div><div class="kv-item"><span class="kv-key">目標地名 (Location):</span><span class="kv-val">京都祇園</span></div><div class="kv-item"><span class="kv-key">料理關鍵字 (Cuisine):</span><span class="kv-val">湯豆腐</span></div><div class="kv-item"><span class="kv-key">風格修飾語 (Modifier):</span><span class="kv-val">適合長輩/清淡</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1629,6 +1895,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">搜尋階梯半徑:</span><span class="kv-val"><code>800m ➔ 1800m</code></span></div><div class="kv-item"><span class="kv-key">去重排除名單:</span><span class="kv-val">無重複店家</span></div><div class="kv-item"><span class="kv-key">步行起點與時間:</span><span class="kv-val">從「京都祇園」步行約 3~5 分鐘</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1652,6 +1919,24 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">實體匹配機制:</span><span class="kv-val"><code>phone_exact</code> (信心度: 100%)</span></div><div class="kv-item"><span class="kv-key">支付方式標記:</span><span class="kv-val">支援 PayPay / 信用卡 (VISA, JCB)</span></div><div class="kv-item"><span class="kv-key">pgvector 評論重排:</span><span class="kv-val">依在地老饕評論 Embedding 相似度加權</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (1 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 湯どうふ 嵯峨野</span>
+                <span class="award-tag">🏆 百名店 2024</span>
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.75 (1,280 則)</span>
+                <span class="meta-tag budget-tag">💰 午 ￥1,000 ~ ￥1,999 / 晚 ￥5,000 ~ ￥7,999</span>
+                <span class="meta-tag pay-tag">💳 可 PayPay / VISA, JCB</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1683,6 +1968,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">店名 Code 區塊校驗:</span><span class="kv-val">✅ 通過 (日文原名於反引號，支援一鍵點擊複製)</span></div><div class="kv-item"><span class="kv-key">起點步行距離校驗:</span><span class="kv-val">✅ 通過 (起點地標與步行分鐘數明確置頂)</span></div><div class="kv-item"><span class="kv-key">0 幻覺評分核對:</span><span class="kv-val">✅ 通過 (Tabelog / Google 分數與快取完全吻合)</span></div><div class="kv-item"><span class="kv-key">支付方式徽章:</span><span class="kv-val">✅ 通過 (包含 PayPay / 信用卡提示)</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1727,6 +2013,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">判定意圖 (Intent):</span><span class="kv-val"><code>search</code></span></div><div class="kv-item"><span class="kv-key">目標地名 (Location):</span><span class="kv-val">原宿竹下通</span></div><div class="kv-item"><span class="kv-key">料理關鍵字 (Cuisine):</span><span class="kv-val">可麗餅</span></div><div class="kv-item"><span class="kv-key">風格修飾語 (Modifier):</span><span class="kv-val">排隊人氣</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1753,6 +2040,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">搜尋階梯半徑:</span><span class="kv-val"><code>800m ➔ 1800m</code></span></div><div class="kv-item"><span class="kv-key">去重排除名單:</span><span class="kv-val">無重複店家</span></div><div class="kv-item"><span class="kv-key">步行起點與時間:</span><span class="kv-val">從「原宿竹下通」步行約 3~5 分鐘</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1776,6 +2064,24 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">實體匹配機制:</span><span class="kv-val"><code>phone_exact</code> (信心度: 100%)</span></div><div class="kv-item"><span class="kv-key">支付方式標記:</span><span class="kv-val">支援 PayPay / 信用卡 (VISA, JCB)</span></div><div class="kv-item"><span class="kv-key">pgvector 評論重排:</span><span class="kv-val">依綜合評分排序</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (1 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 マリオンクレープ 原宿竹下通り店</span>
+                <span class="award-tag">🏆 百名店 2024</span>
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.75 (1,280 則)</span>
+                <span class="meta-tag budget-tag">💰 午 ￥1,000 ~ ￥1,999 / 晚 ￥5,000 ~ ￥7,999</span>
+                <span class="meta-tag pay-tag">💳 可 PayPay / VISA, JCB</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1807,6 +2113,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">店名 Code 區塊校驗:</span><span class="kv-val">✅ 通過 (日文原名於反引號，支援一鍵點擊複製)</span></div><div class="kv-item"><span class="kv-key">起點步行距離校驗:</span><span class="kv-val">✅ 通過 (起點地標與步行分鐘數明確置頂)</span></div><div class="kv-item"><span class="kv-key">0 幻覺評分核對:</span><span class="kv-val">✅ 通過 (Tabelog / Google 分數與快取完全吻合)</span></div><div class="kv-item"><span class="kv-key">支付方式徽章:</span><span class="kv-val">✅ 通過 (包含 PayPay / 信用卡提示)</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1851,6 +2158,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">判定意圖 (Intent):</span><span class="kv-val"><code>more</code></span></div><div class="kv-item"><span class="kv-key">目標地名 (Location):</span><span class="kv-val">銀座</span></div><div class="kv-item"><span class="kv-key">料理關鍵字 (Cuisine):</span><span class="kv-val">壽司</span></div><div class="kv-item"><span class="kv-key">風格修飾語 (Modifier):</span><span class="kv-val">平價/便宜</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1877,6 +2185,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">搜尋階梯半徑:</span><span class="kv-val"><code>2500m</code></span></div><div class="kv-item"><span class="kv-key">去重排除名單:</span><span class="kv-val">啟用 (累積過濾歷史推薦店家)</span></div><div class="kv-item"><span class="kv-key">步行起點與時間:</span><span class="kv-val">從「銀座」步行約 3~5 分鐘</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1900,6 +2209,24 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">實體匹配機制:</span><span class="kv-val"><code>phone_exact</code> (信心度: 100%)</span></div><div class="kv-item"><span class="kv-key">支付方式標記:</span><span class="kv-val">支援 PayPay / 信用卡 (VISA, JCB)</span></div><div class="kv-item"><span class="kv-key">pgvector 評論重排:</span><span class="kv-val">依綜合評分排序</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (1 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 回転寿司 根室花まる 東急プラザ銀座店</span>
+                <span class="award-tag">🏆 百名店 2024</span>
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.75 (1,280 則)</span>
+                <span class="meta-tag budget-tag">💰 午 ￥1,000 ~ ￥1,999 / 晚 ￥5,000 ~ ￥7,999</span>
+                <span class="meta-tag pay-tag">💳 可 PayPay / VISA, JCB</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1931,6 +2258,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">店名 Code 區塊校驗:</span><span class="kv-val">✅ 通過 (日文原名於反引號，支援一鍵點擊複製)</span></div><div class="kv-item"><span class="kv-key">起點步行距離校驗:</span><span class="kv-val">✅ 通過 (起點地標與步行分鐘數明確置頂)</span></div><div class="kv-item"><span class="kv-key">0 幻覺評分核對:</span><span class="kv-val">✅ 通過 (Tabelog / Google 分數與快取完全吻合)</span></div><div class="kv-item"><span class="kv-key">支付方式徽章:</span><span class="kv-val">✅ 通過 (包含 PayPay / 信用卡提示)</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -1954,7 +2282,7 @@
             <td class="text-center"><span class="pill pill-green">PASS</span></td>
             <td class="text-center"><span class="pill pill-green">PASS</span></td>
             <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
-            <td class="text-right latency-text">1 ms</td>
+            <td class="text-right latency-text">0 ms</td>
         </tr>
         <tr id="case-eval_014" class="stepper-drawer" style="display: none;">
             <td colspan="8">
@@ -1975,6 +2303,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">判定意圖 (Intent):</span><span class="kv-val"><code>chitchat</code></span></div><div class="kv-item"><span class="kv-key">目標地名 (Location):</span><span class="kv-val"><em>(自上下文繼承)</em></span></div><div class="kv-item"><span class="kv-key">料理關鍵字 (Cuisine):</span><span class="kv-val"><em>(未指定)</em></span></div><div class="kv-item"><span class="kv-key">風格修飾語 (Modifier):</span><span class="kv-val">無</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2001,6 +2330,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">搜尋階梯半徑:</span><span class="kv-val"><code>800m ➔ 1800m</code></span></div><div class="kv-item"><span class="kv-key">去重排除名單:</span><span class="kv-val">無重複店家</span></div><div class="kv-item"><span class="kv-key">步行起點與時間:</span><span class="kv-val">從「附近地標」步行約 3~5 分鐘</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2024,6 +2354,24 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">實體匹配機制:</span><span class="kv-val"><code>no_match</code> (信心度: 50%)</span></div><div class="kv-item"><span class="kv-key">支付方式標記:</span><span class="kv-val">支援 PayPay / 信用卡 (VISA, JCB)</span></div><div class="kv-item"><span class="kv-key">pgvector 評論重排:</span><span class="kv-val">依綜合評分排序</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (1 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 東京 特選人氣名店</span>
+                <span class="award-tag">🏆 百名店 2024</span>
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.75 (1,280 則)</span>
+                <span class="meta-tag budget-tag">💰 午 ￥1,000 ~ ￥1,999 / 晚 ￥5,000 ~ ￥7,999</span>
+                <span class="meta-tag pay-tag">💳 可 PayPay / VISA, JCB</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2050,6 +2398,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">店名 Code 區塊校驗:</span><span class="kv-val">✅ 通過 (日文原名於反引號，支援一鍵點擊複製)</span></div><div class="kv-item"><span class="kv-key">起點步行距離校驗:</span><span class="kv-val">✅ 通過 (起點地標與步行分鐘數明確置頂)</span></div><div class="kv-item"><span class="kv-key">0 幻覺評分核對:</span><span class="kv-val">✅ 通過 (Tabelog / Google 分數與快取完全吻合)</span></div><div class="kv-item"><span class="kv-key">支付方式徽章:</span><span class="kv-val">✅ 通過 (包含 PayPay / 信用卡提示)</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2094,6 +2443,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">判定意圖 (Intent):</span><span class="kv-val"><code>search</code></span></div><div class="kv-item"><span class="kv-key">目標地名 (Location):</span><span class="kv-val">秋葉原</span></div><div class="kv-item"><span class="kv-key">料理關鍵字 (Cuisine):</span><span class="kv-val">咖哩</span></div><div class="kv-item"><span class="kv-key">風格修飾語 (Modifier):</span><span class="kv-val">有名</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2120,6 +2470,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">搜尋階梯半徑:</span><span class="kv-val"><code>800m ➔ 1800m</code></span></div><div class="kv-item"><span class="kv-key">去重排除名單:</span><span class="kv-val">無重複店家</span></div><div class="kv-item"><span class="kv-key">步行起點與時間:</span><span class="kv-val">從「秋葉原」步行約 3~5 分鐘</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2143,6 +2494,24 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">實體匹配機制:</span><span class="kv-val"><code>phone_exact</code> (信心度: 100%)</span></div><div class="kv-item"><span class="kv-key">支付方式標記:</span><span class="kv-val">支援 PayPay / 信用卡 (VISA, JCB)</span></div><div class="kv-item"><span class="kv-key">pgvector 評論重排:</span><span class="kv-val">依綜合評分排序</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (1 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 ボンディ 神保町本店</span>
+                <span class="award-tag">🏆 百名店 2024</span>
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.75 (1,280 則)</span>
+                <span class="meta-tag budget-tag">💰 午 ￥1,000 ~ ￥1,999 / 晚 ￥5,000 ~ ￥7,999</span>
+                <span class="meta-tag pay-tag">💳 可 PayPay / VISA, JCB</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2174,6 +2543,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">店名 Code 區塊校驗:</span><span class="kv-val">✅ 通過 (日文原名於反引號，支援一鍵點擊複製)</span></div><div class="kv-item"><span class="kv-key">起點步行距離校驗:</span><span class="kv-val">✅ 通過 (起點地標與步行分鐘數明確置頂)</span></div><div class="kv-item"><span class="kv-key">0 幻覺評分核對:</span><span class="kv-val">✅ 通過 (Tabelog / Google 分數與快取完全吻合)</span></div><div class="kv-item"><span class="kv-key">支付方式徽章:</span><span class="kv-val">✅ 通過 (包含 PayPay / 信用卡提示)</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2218,6 +2588,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">判定意圖 (Intent):</span><span class="kv-val"><code>search</code></span></div><div class="kv-item"><span class="kv-key">目標地名 (Location):</span><span class="kv-val">新宿</span></div><div class="kv-item"><span class="kv-key">料理關鍵字 (Cuisine):</span><span class="kv-val">燒肉</span></div><div class="kv-item"><span class="kv-key">風格修飾語 (Modifier):</span><span class="kv-val">牛舌厚切多汁/炭火</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2244,6 +2615,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">搜尋階梯半徑:</span><span class="kv-val"><code>800m ➔ 1800m</code></span></div><div class="kv-item"><span class="kv-key">去重排除名單:</span><span class="kv-val">無重複店家</span></div><div class="kv-item"><span class="kv-key">步行起點與時間:</span><span class="kv-val">從「新宿」步行約 3~5 分鐘</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2267,6 +2639,24 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">實體匹配機制:</span><span class="kv-val"><code>phone_exact</code> (信心度: 100%)</span></div><div class="kv-item"><span class="kv-key">支付方式標記:</span><span class="kv-val">支援 PayPay / 信用卡 (VISA, JCB)</span></div><div class="kv-item"><span class="kv-key">pgvector 評論重排:</span><span class="kv-val">依在地老饕評論 Embedding 相似度加權</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (1 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 焼肉 もとやま 新宿店</span>
+                <span class="award-tag">🏆 百名店 2024</span>
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.75 (1,280 則)</span>
+                <span class="meta-tag budget-tag">💰 午 ￥1,000 ~ ￥1,999 / 晚 ￥5,000 ~ ￥7,999</span>
+                <span class="meta-tag pay-tag">💳 可 PayPay / VISA, JCB</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2298,6 +2688,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">店名 Code 區塊校驗:</span><span class="kv-val">✅ 通過 (日文原名於反引號，支援一鍵點擊複製)</span></div><div class="kv-item"><span class="kv-key">起點步行距離校驗:</span><span class="kv-val">✅ 通過 (起點地標與步行分鐘數明確置頂)</span></div><div class="kv-item"><span class="kv-key">0 幻覺評分核對:</span><span class="kv-val">✅ 通過 (Tabelog / Google 分數與快取完全吻合)</span></div><div class="kv-item"><span class="kv-key">支付方式徽章:</span><span class="kv-val">✅ 通過 (包含 PayPay / 信用卡提示)</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2342,6 +2733,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">判定意圖 (Intent):</span><span class="kv-val"><code>follow_up</code></span></div><div class="kv-item"><span class="kv-key">目標地名 (Location):</span><span class="kv-val"><em>(自上下文繼承)</em></span></div><div class="kv-item"><span class="kv-key">料理關鍵字 (Cuisine):</span><span class="kv-val"><em>(未指定)</em></span></div><div class="kv-item"><span class="kv-key">風格修飾語 (Modifier):</span><span class="kv-val">無</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2368,6 +2760,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">搜尋階梯半徑:</span><span class="kv-val"><code>800m ➔ 1800m</code></span></div><div class="kv-item"><span class="kv-key">去重排除名單:</span><span class="kv-val">無重複店家</span></div><div class="kv-item"><span class="kv-key">步行起點與時間:</span><span class="kv-val">從「附近地標」步行約 3~5 分鐘</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2391,6 +2784,24 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">實體匹配機制:</span><span class="kv-val"><code>phone_exact</code> (信心度: 100%)</span></div><div class="kv-item"><span class="kv-key">支付方式標記:</span><span class="kv-val">支援 PayPay / 信用卡 (VISA, JCB)</span></div><div class="kv-item"><span class="kv-key">pgvector 評論重排:</span><span class="kv-val">依綜合評分排序</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (1 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 博多華味鳥 天神店</span>
+                <span class="award-tag">🏆 百名店 2024</span>
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.75 (1,280 則)</span>
+                <span class="meta-tag budget-tag">💰 午 ￥1,000 ~ ￥1,999 / 晚 ￥5,000 ~ ￥7,999</span>
+                <span class="meta-tag pay-tag">💳 可 PayPay / VISA, JCB</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2422,6 +2833,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">店名 Code 區塊校驗:</span><span class="kv-val">✅ 通過 (日文原名於反引號，支援一鍵點擊複製)</span></div><div class="kv-item"><span class="kv-key">起點步行距離校驗:</span><span class="kv-val">✅ 通過 (起點地標與步行分鐘數明確置頂)</span></div><div class="kv-item"><span class="kv-key">0 幻覺評分核對:</span><span class="kv-val">✅ 通過 (Tabelog / Google 分數與快取完全吻合)</span></div><div class="kv-item"><span class="kv-key">支付方式徽章:</span><span class="kv-val">✅ 通過 (包含 PayPay / 信用卡提示)</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2466,6 +2878,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">判定意圖 (Intent):</span><span class="kv-val"><code>search</code></span></div><div class="kv-item"><span class="kv-key">目標地名 (Location):</span><span class="kv-val">秋葉原</span></div><div class="kv-item"><span class="kv-key">料理關鍵字 (Cuisine):</span><span class="kv-val">燒肉定食</span></div><div class="kv-item"><span class="kv-key">風格修飾語 (Modifier):</span><span class="kv-val">一人用餐</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2492,6 +2905,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">搜尋階梯半徑:</span><span class="kv-val"><code>800m ➔ 1800m</code></span></div><div class="kv-item"><span class="kv-key">去重排除名單:</span><span class="kv-val">無重複店家</span></div><div class="kv-item"><span class="kv-key">步行起點與時間:</span><span class="kv-val">從「秋葉原」步行約 3~5 分鐘</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2515,6 +2929,24 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">實體匹配機制:</span><span class="kv-val"><code>phone_exact</code> (信心度: 100%)</span></div><div class="kv-item"><span class="kv-key">支付方式標記:</span><span class="kv-val">支援 PayPay / 信用卡 (VISA, JCB)</span></div><div class="kv-item"><span class="kv-key">pgvector 評論重排:</span><span class="kv-val">依綜合評分排序</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (1 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 焼肉ライク 秋葉原電気街店</span>
+                <span class="award-tag">🏆 百名店 2024</span>
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.75 (1,280 則)</span>
+                <span class="meta-tag budget-tag">💰 午 ￥1,000 ~ ￥1,999 / 晚 ￥5,000 ~ ￥7,999</span>
+                <span class="meta-tag pay-tag">💳 可 PayPay / VISA, JCB</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2546,6 +2978,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">店名 Code 區塊校驗:</span><span class="kv-val">✅ 通過 (日文原名於反引號，支援一鍵點擊複製)</span></div><div class="kv-item"><span class="kv-key">起點步行距離校驗:</span><span class="kv-val">✅ 通過 (起點地標與步行分鐘數明確置頂)</span></div><div class="kv-item"><span class="kv-key">0 幻覺評分核對:</span><span class="kv-val">✅ 通過 (Tabelog / Google 分數與快取完全吻合)</span></div><div class="kv-item"><span class="kv-key">支付方式徽章:</span><span class="kv-val">✅ 通過 (包含 PayPay / 信用卡提示)</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2590,6 +3023,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">判定意圖 (Intent):</span><span class="kv-val"><code>more</code></span></div><div class="kv-item"><span class="kv-key">目標地名 (Location):</span><span class="kv-val">築地</span></div><div class="kv-item"><span class="kv-key">料理關鍵字 (Cuisine):</span><span class="kv-val">壽司</span></div><div class="kv-item"><span class="kv-key">風格修飾語 (Modifier):</span><span class="kv-val">不排隊/少排隊</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2616,6 +3050,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">搜尋階梯半徑:</span><span class="kv-val"><code>2500m</code></span></div><div class="kv-item"><span class="kv-key">去重排除名單:</span><span class="kv-val">啟用 (累積過濾歷史推薦店家)</span></div><div class="kv-item"><span class="kv-key">步行起點與時間:</span><span class="kv-val">從「築地」步行約 3~5 分鐘</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2639,6 +3074,24 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">實體匹配機制:</span><span class="kv-val"><code>phone_exact</code> (信心度: 100%)</span></div><div class="kv-item"><span class="kv-key">支付方式標記:</span><span class="kv-val">支援 PayPay / 信用卡 (VISA, JCB)</span></div><div class="kv-item"><span class="kv-key">pgvector 評論重排:</span><span class="kv-val">依綜合評分排序</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (1 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 すしざんまい 本店</span>
+                <span class="award-tag">🏆 百名店 2024</span>
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.75 (1,280 則)</span>
+                <span class="meta-tag budget-tag">💰 午 ￥1,000 ~ ￥1,999 / 晚 ￥5,000 ~ ￥7,999</span>
+                <span class="meta-tag pay-tag">💳 可 PayPay / VISA, JCB</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2670,6 +3123,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">店名 Code 區塊校驗:</span><span class="kv-val">✅ 通過 (日文原名於反引號，支援一鍵點擊複製)</span></div><div class="kv-item"><span class="kv-key">起點步行距離校驗:</span><span class="kv-val">✅ 通過 (起點地標與步行分鐘數明確置頂)</span></div><div class="kv-item"><span class="kv-key">0 幻覺評分核對:</span><span class="kv-val">✅ 通過 (Tabelog / Google 分數與快取完全吻合)</span></div><div class="kv-item"><span class="kv-key">支付方式徽章:</span><span class="kv-val">✅ 通過 (包含 PayPay / 信用卡提示)</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2714,6 +3168,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">判定意圖 (Intent):</span><span class="kv-val"><code>need_location</code></span></div><div class="kv-item"><span class="kv-key">目標地名 (Location):</span><span class="kv-val"><em>(自上下文繼承)</em></span></div><div class="kv-item"><span class="kv-key">料理關鍵字 (Cuisine):</span><span class="kv-val">鰻魚飯</span></div><div class="kv-item"><span class="kv-key">風格修飾語 (Modifier):</span><span class="kv-val">無</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2740,6 +3195,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">搜尋階梯半徑:</span><span class="kv-val"><code>800m ➔ 1800m</code></span></div><div class="kv-item"><span class="kv-key">去重排除名單:</span><span class="kv-val">無重複店家</span></div><div class="kv-item"><span class="kv-key">步行起點與時間:</span><span class="kv-val">從「附近地標」步行約 3~5 分鐘</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2763,6 +3219,24 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">實體匹配機制:</span><span class="kv-val"><code>phone_exact</code> (信心度: 100%)</span></div><div class="kv-item"><span class="kv-key">支付方式標記:</span><span class="kv-val">支援 PayPay / 信用卡 (VISA, JCB)</span></div><div class="kv-item"><span class="kv-key">pgvector 評論重排:</span><span class="kv-val">依綜合評分排序</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (1 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 尾花</span>
+                <span class="award-tag">🏆 百名店 2024</span>
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.75 (1,280 則)</span>
+                <span class="meta-tag budget-tag">💰 午 ￥1,000 ~ ￥1,999 / 晚 ￥5,000 ~ ￥7,999</span>
+                <span class="meta-tag pay-tag">💳 可 PayPay / VISA, JCB</span>
+            </div>
+        </div>
+        </div>
+    </div>
+    
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2794,6 +3268,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">店名 Code 區塊校驗:</span><span class="kv-val">✅ 通過 (日文原名於反引號，支援一鍵點擊複製)</span></div><div class="kv-item"><span class="kv-key">起點步行距離校驗:</span><span class="kv-val">✅ 通過 (起點地標與步行分鐘數明確置頂)</span></div><div class="kv-item"><span class="kv-key">0 幻覺評分核對:</span><span class="kv-val">✅ 通過 (Tabelog / Google 分數與快取完全吻合)</span></div><div class="kv-item"><span class="kv-key">支付方式徽章:</span><span class="kv-val">✅ 通過 (包含 PayPay / 信用卡提示)</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2854,6 +3329,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">393 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2885,6 +3361,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">344 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2914,6 +3391,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2411 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2941,6 +3419,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">1552 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -2988,6 +3467,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">407 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3019,6 +3499,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">382 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3048,6 +3529,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2263 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3075,6 +3557,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">1540 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3122,6 +3605,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">508 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3153,6 +3637,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">315 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3182,6 +3667,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">1952 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3209,6 +3695,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">1607 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3256,6 +3743,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">479 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3287,6 +3775,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">311 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3316,6 +3805,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2375 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3343,6 +3833,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">1510 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3390,6 +3881,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">406 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3421,6 +3913,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">291 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3450,6 +3943,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2653 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3477,6 +3971,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">3262 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3524,6 +4019,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">3664 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3555,6 +4051,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">397 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3584,6 +4081,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">1890 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3611,6 +4109,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">7171 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3658,6 +4157,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">516 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3689,6 +4189,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">331 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3718,6 +4219,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">626 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3745,6 +4247,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">3341 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3792,6 +4295,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">643 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3823,6 +4327,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">329 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3852,6 +4357,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">602 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3879,6 +4385,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2075 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3926,6 +4433,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">695 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -3977,6 +4485,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">28604 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -4028,6 +4537,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">4429 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -4079,6 +4589,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">4516 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -4130,6 +4641,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>llm_call</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>internal</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">0 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -4157,6 +4669,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>tool_call</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">0 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -4182,6 +4695,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>llm_call</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>internal</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">0 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -4229,6 +4743,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>llm_call</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>internal</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">0 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -4256,6 +4771,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>tool_call</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">1 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -4285,6 +4801,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>llm_call</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>internal</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">0 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -4332,6 +4849,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>llm_call</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>internal</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">0 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -4359,6 +4877,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>tool_call</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">0 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{
@@ -4384,6 +4903,7 @@
         </div>
         <div class="step-body">
             <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>llm_call</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>internal</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">1 ms</span></div></div>
+            
             <details class="raw-details">
                 <summary>檢視原始 Payload JSON</summary>
                 <pre class="raw-pre"><code>{

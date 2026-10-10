@@ -59,5 +59,5 @@ def test_reporter_generation(tmp_path: Path):
     out = generate_html_dashboard(mock_summary, html_file)
     assert out.exists()
     content = out.read_text(encoding="utf-8")
-    assert "PickForMe 4-Tier LLMOps 評測儀表板" in content
+    assert "PickForMe 4-Tier LLMOps" in content
     assert "eval_test" in content

@@ -14,7 +14,7 @@
 
 ## ⚡ 延遲基準統計 (Latency Benchmark)
 
-- **平均延遲 (Average Latency)**：`0.1 ms`
+- **平均延遲 (Average Latency)**：`0.0 ms`
 - **P50 延遲**：`0.0 ms`
 - **P90 延遲**：`0.0 ms`
 
@@ -29,7 +29,7 @@
 | `eval_005` | `multi_turn_more` | 我想找更在地的老店 | ✅ | ✅ | ✅ | 0ms |
 | `eval_006` | `follow_up` | 第2家今天有開嗎？ | ✅ | ✅ | ✅ | 0ms |
 | `eval_007` | `follow_up` | 第一家可以刷信用卡或 PayPay 嗎？ | ✅ | ✅ | ✅ | 0ms |
-| `eval_008` | `chitchat` | 哈囉你好！請問你可以幫我做什麼？ | ✅ | ✅ | ✅ | 1ms |
+| `eval_008` | `chitchat` | 哈囉你好！請問你可以幫我做什麼？ | ✅ | ✅ | ✅ | 0ms |
 | `eval_009` | `need_location` | 我想吃炸豬排 | ✅ | ✅ | ✅ | 0ms |
 | `eval_010` | `typo_colloquial` | 澀谷平價居酒屋，預算3000日幣內 | ✅ | ✅ | ✅ | 0ms |
 | `eval_011` | `taste_rag` | 京都 祇園 適合長輩吃的清淡湯豆腐 | ✅ | ✅ | ✅ | 0ms |
