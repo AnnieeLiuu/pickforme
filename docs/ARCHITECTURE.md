@@ -77,6 +77,8 @@ CREATE TABLE tabelog_cache (
     price_dinner VARCHAR(50),
     match_confidence NUMERIC(3,2),            -- 匹配信心度 (0.00 ~ 1.00)
     match_method VARCHAR(50),                 -- 'phone_exact', 'rule_high', 'llm_verify'
+    supports_paypay BOOLEAN DEFAULT FALSE,   -- PayPay 行動支付支援
+    credit_cards JSONB DEFAULT '[]'::jsonb,   -- 支援之信用卡清單 (VISA, JCB...)
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -274,8 +276,9 @@ flowchart TD
 - **快取維護與對話記憶 (Cache TTL & Session Context)**：
   - **7 天 Tabelog 快取 TTL**：Neon DB 快取超過 7 天自動觸發背景爬蟲刷新，平衡評分即時性與抓取頻率。
   - **3 輪對話歷史記憶**：`chat_sessions` 自動保存最近 3 輪對話內容，支援自然語言追問（如「第 2 家有開嗎？」）。
-- **OTel 格式 Trace 可觀測性 (Structured Observability)**：
+- **OTel 格式 Trace 可觀測性 (Structured Observability & Trace Deep-Dive)**：
   - 每筆 Agent 執行同步記錄至 Neon `agent_runs` 與 `agent_steps`，量化分析 Model 降級率、Tool Latency (ms) 與 Token 成本。
+  - **DuckDB 冷熱雙模歷程透視 CLI (`scripts/analyze_traces.py`)**：支援從冷層 Snappy Parquet 或 Neon DB 熱層一鍵提取近期問答清單，選定特定問答後即可輸出完整「端到端歷程透視報告」，包含提問句、最終回答卡片、中間每個 State 流程節點、個別耗時 (ms) 與精確之 Input/Output JSON 結構。
 
 ---
 

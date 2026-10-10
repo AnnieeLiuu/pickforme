@@ -310,3 +310,40 @@ def test_guardrail_contract_with_agent_system_prompt():
     assert "Tabelog" in prompt_text, "Prompt 缺少 'Tabelog' 評分錨點！"
     assert "Google" in prompt_text, "Prompt 缺少 'Google' 評分錨點！"
     assert "步行距離" in prompt_text, "Prompt 缺少 '步行距離' 錨點！"
+
+
+def test_format_payment_methods():
+    from src.agent.pipeline import format_payment_methods
+
+    # 1. 信用卡 + PayPay
+    res1 = format_payment_methods(supports_paypay=True, credit_cards=["VISA", "MasterCard", "JCB"])
+    assert "可使用 信用卡 (VISA、MasterCard、JCB) / PayPay" == res1
+
+    # 2. 僅 PayPay
+    res2 = format_payment_methods(supports_paypay=True, credit_cards=[])
+    assert "可使用 PayPay" == res2
+
+    # 3. 僅信用卡
+    res3 = format_payment_methods(supports_paypay=False, credit_cards=["VISA"])
+    assert "可使用 信用卡 (VISA)" == res3
+
+    # 4. 現金為主 (雙不支援)
+    res4 = format_payment_methods(supports_paypay=False, credit_cards=[])
+    assert "現金為主 (不支援信用卡/行動支付，請備足現鈔)" == res4
+
+    # 5. 未知/無資料保底
+    res5 = format_payment_methods(supports_paypay=None, credit_cards=None)
+    assert "現金為主 (建議備足日圓現鈔)" == res5
+
+
+def test_fallback_card_renders_payment_methods(mock_fsm):
+    stores = [
+        {
+            "name_ja": "寿々喜家 本店",
+            "tabelog_rating": 3.78,
+            "google_rating": 4.4,
+            "payment_methods_desc": "可使用 信用卡 (VISA、JCB) / PayPay",
+        }
+    ]
+    card = mock_fsm._render_template_fallback_card(stores, "拉麵")
+    assert "💳 **支付方式**：可使用 信用卡 (VISA、JCB) / PayPay" in card

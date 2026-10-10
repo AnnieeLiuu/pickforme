@@ -74,6 +74,28 @@ def get_recommendation_card_prompt() -> str:
     return RECOMMENDATION_CARD_SYSTEM_PROMPT
 
 
+def format_payment_methods(
+    supports_paypay: Optional[bool] = None,
+    credit_cards: Optional[list[str]] = None,
+) -> str:
+    """將 PayPay 與信用卡資訊轉換為旅客友善的支付方式說明字串"""
+    parts: list[str] = []
+    if credit_cards and len(credit_cards) > 0:
+        cards_str = "、".join(credit_cards[:3])
+        parts.append(f"信用卡 ({cards_str})")
+
+    if supports_paypay is True:
+        parts.append("PayPay")
+
+    if parts:
+        return "可使用 " + " / ".join(parts)
+    elif supports_paypay is False and (credit_cards is not None and len(credit_cards) == 0):
+        return "現金為主 (不支援信用卡/行動支付，請備足現鈔)"
+    elif supports_paypay is False:
+        return "不支援 PayPay (建議備足日圓現鈔或實體信用卡)"
+    return "現金為主 (建議備足日圓現鈔)"
+
+
 class FoodRecommendationFSM:
     """確定性 4 階段有限狀態機 (Deterministic 4-Stage FSM Pipeline)"""
 
@@ -219,6 +241,8 @@ class FoodRecommendationFSM:
                 rid = cached.get("id")
                 if rid and place.get("reviews"):
                     asyncio.create_task(self._index_store_reviews(rid, place["reviews"]))
+                pay_cards = cached.get("credit_cards") or []
+                pay_desc = format_payment_methods(cached.get("supports_paypay"), pay_cards)
                 return {
                     **place,
                     "restaurant_id": str(rid) if rid else None,
@@ -230,6 +254,8 @@ class FoodRecommendationFSM:
                     "price_dinner": cached.get("price_dinner"),
                     "awards": cached.get("awards") or [],
                     "supports_paypay": cached.get("supports_paypay"),
+                    "credit_cards": pay_cards,
+                    "payment_methods_desc": pay_desc,
                     "rating_source": "Tabelog",
                 }
 
@@ -253,8 +279,11 @@ class FoodRecommendationFSM:
                     or cand.get("rating")
                 )
                 rev_count = details.get("review_count") or cand.get("review_count")
+                cards_list = details.get("credit_cards") or cand.get("credit_cards") or []
+                paypay_val = details.get("supports_paypay")
+                pay_desc = format_payment_methods(paypay_val, cards_list)
 
-                # 存入快取 (包含評分、評論數與百名店榮譽)
+                # 存入快取 (包含評分、評論數與百名店榮譽、支付資訊)
                 tabelog_save_data = {
                     **cand,
                     **details,
@@ -262,6 +291,8 @@ class FoodRecommendationFSM:
                     "review_count": rev_count,
                     "tabelog_url": tabelog_url,
                     "name_ja": cand.get("name_ja") or store_name,
+                    "supports_paypay": paypay_val,
+                    "credit_cards": cards_list,
                 }
                 saved_id = None
                 try:
@@ -286,7 +317,9 @@ class FoodRecommendationFSM:
                     "price_lunch": details.get("price_lunch"),
                     "price_dinner": details.get("price_dinner"),
                     "awards": details.get("awards") or cand.get("awards") or [],
-                    "supports_paypay": details.get("supports_paypay"),
+                    "supports_paypay": paypay_val,
+                    "credit_cards": cards_list,
+                    "payment_methods_desc": pay_desc,
                     "rating_source": "Tabelog",
                 }
         except Exception as e:
@@ -312,6 +345,8 @@ class FoodRecommendationFSM:
             "price_dinner": None,
             "awards": [],
             "supports_paypay": None,
+            "credit_cards": [],
+            "payment_methods_desc": "現金為主 (建議備足日圓現鈔)",
             "rating_source": "Google",
         }
 
@@ -446,6 +481,8 @@ class FoodRecommendationFSM:
 
             if s.get("price_dinner"):
                 lines.append(f"💰 **預算**：晚餐 {s.get('price_dinner')}")
+            if s.get("payment_methods_desc"):
+                lines.append(f"💳 **支付方式**：{s.get('payment_methods_desc')}")
             if s.get("address"):
                 lines.append(f"📍 **地址**：{s.get('address')}")
             if s.get("tabelog_url"):
@@ -549,6 +586,9 @@ class FoodRecommendationFSM:
                 if s.get("walk_time_minutes")
                 else "步行約 3~5 分鐘"
             )
+            pay_desc = s.get("payment_methods_desc") or format_payment_methods(
+                s.get("supports_paypay"), s.get("credit_cards")
+            )
             prompt_content += (
                 f"\n店家 {idx}：\n"
                 f"- 店名(日文)：{s.get('name_ja') or s.get('name')}\n"
@@ -559,6 +599,7 @@ class FoodRecommendationFSM:
                 f"- 評價人數：{s.get('review_count') or s.get('user_ratings_total')}\n"
                 f"- 預算(午/晚)：{s.get('price_lunch')} / {s.get('price_dinner')}\n"
                 f"- 獲獎紀錄：{s.get('awards')}\n"
+                f"- 支付方式：{pay_desc}\n"
                 f"- PayPay支援：{s.get('supports_paypay')}\n"
                 f"- 地址：{s.get('address')}\n"
                 f"- Tabelog網址：{s.get('tabelog_url')}\n"
@@ -584,14 +625,23 @@ class FoodRecommendationFSM:
             await self.trace_logger.log_step(
                 action_type="state_4_synthesis",
                 tool_name="card_synthesis",
-                tool_input={"stores_count": len(stores)},
-                tool_output={"length": len(card_text)},
+                tool_input={"stores_count": len(stores), "cuisine": cuisine, "location": location_name},
+                tool_output={"card_content": card_text, "length": len(card_text)},
                 latency_ms=latency,
             )
             return card_text
         except Exception as e:
             logger.error(f"State 4 LLM card synthesis failed: {e}. Activating template fallback...")
-            return self._render_template_fallback_card(stores, cuisine)
+            fallback_card = self._render_template_fallback_card(stores, cuisine)
+            latency = int((time.time() - t0) * 1000)
+            await self.trace_logger.log_step(
+                action_type="state_4_synthesis",
+                tool_name="card_synthesis_fallback",
+                tool_input={"stores_count": len(stores), "cuisine": cuisine, "error": str(e)},
+                tool_output={"card_content": fallback_card, "length": len(fallback_card)},
+                latency_ms=latency,
+            )
+            return fallback_card
 
     async def execute_follow_up(
         self,
@@ -627,11 +677,28 @@ class FoodRecommendationFSM:
         ]
 
         try:
+            t0 = time.time()
             reply, _, _ = await self.llm_client.call_text(messages)
-            return reply.strip()
+            ans = reply.strip()
+            latency = int((time.time() - t0) * 1000)
+            await self.trace_logger.log_step(
+                action_type="follow_up",
+                tool_name="llm_follow_up",
+                tool_input={"message": user_message, "target_store": store_name},
+                tool_output={"card_content": ans, "length": len(ans)},
+                latency_ms=latency,
+            )
+            return ans
         except Exception as e:
             logger.warning(f"Follow up LLM call failed: {e}")
-            return f"針對 `{store_name}` 的問題：該店評分為 {target_store.get('tabelog_rating') or target_store.get('rating')} 分，地址在 {target_store.get('address', '市區')}。"
+            fallback_ans = f"針對 `{store_name}` 的問題：該店評分為 {target_store.get('tabelog_rating') or target_store.get('rating')} 分，地址在 {target_store.get('address', '市區')}。"
+            await self.trace_logger.log_step(
+                action_type="follow_up",
+                tool_name="fallback_follow_up",
+                tool_input={"message": user_message, "target_store": store_name, "error": str(e)},
+                tool_output={"card_content": fallback_ans, "length": len(fallback_ans)},
+            )
+            return fallback_ans
 
     async def run_pipeline(
         self,
@@ -658,9 +725,19 @@ class FoodRecommendationFSM:
                     },
                     {"role": "user", "content": user_message},
                 ]
+                t0 = time.time()
                 reply, model, tokens = await self.llm_client.call_text(messages)
+                chitchat_res = reply.strip()
+                latency = int((time.time() - t0) * 1000)
+                await self.trace_logger.log_step(
+                    action_type="chitchat",
+                    tool_name="llm_chitchat",
+                    tool_input={"message": user_message},
+                    tool_output={"card_content": chitchat_res, "length": len(chitchat_res)},
+                    latency_ms=latency,
+                )
                 await self.trace_logger.finish_run(status="completed", model_used=model, total_tokens=tokens)
-                return reply.strip()
+                return chitchat_res
 
             # 分支 B: 缺乏座標與地名
             if intent == "need_location":

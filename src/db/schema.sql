@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS tabelog_cache (
     price_dinner VARCHAR(50),
     match_confidence NUMERIC(3,2),
     match_method VARCHAR(50),
+    supports_paypay BOOLEAN DEFAULT FALSE,
+    credit_cards JSONB DEFAULT '[]'::jsonb,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

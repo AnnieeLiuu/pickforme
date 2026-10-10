@@ -14,7 +14,8 @@ class RestaurantRepository:
         query = """
             SELECT
                 r.id, r.google_place_id, r.tabelog_url, r.name_ja, r.name_en, r.phone, r.lat, r.lng, r.address,
-                c.tabelog_rating, c.review_count, c.price_lunch, c.price_dinner, c.match_confidence, c.match_method, c.updated_at
+                c.tabelog_rating, c.review_count, c.price_lunch, c.price_dinner, c.match_confidence, c.match_method,
+                c.supports_paypay, c.credit_cards, c.updated_at
             FROM restaurants r
             LEFT JOIN tabelog_cache c ON r.id = c.restaurant_id
             WHERE r.google_place_id = %s;
@@ -83,11 +84,15 @@ class RestaurantRepository:
 
                 # 2. Upsert 到 tabelog_cache 表 (若有抓到 Tabelog 資料)
                 if tabelog_data:
+                    import json
+
+                    cards_json = json.dumps(tabelog_data.get("credit_cards") or [], ensure_ascii=False)
                     upsert_cache_sql = """
                         INSERT INTO tabelog_cache (
-                            restaurant_id, tabelog_rating, review_count, price_lunch, price_dinner, match_confidence, match_method, updated_at
+                            restaurant_id, tabelog_rating, review_count, price_lunch, price_dinner, match_confidence, match_method,
+                            supports_paypay, credit_cards, updated_at
                         )
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, NOW())
                         ON CONFLICT (restaurant_id) DO UPDATE SET
                             tabelog_rating = EXCLUDED.tabelog_rating,
                             review_count = EXCLUDED.review_count,
@@ -95,6 +100,8 @@ class RestaurantRepository:
                             price_dinner = EXCLUDED.price_dinner,
                             match_confidence = EXCLUDED.match_confidence,
                             match_method = EXCLUDED.match_method,
+                            supports_paypay = EXCLUDED.supports_paypay,
+                            credit_cards = EXCLUDED.credit_cards,
                             updated_at = NOW();
                     """
                     await cur.execute(
@@ -107,6 +114,8 @@ class RestaurantRepository:
                             tabelog_data.get("price_dinner"),
                             match_confidence,
                             match_method,
+                            bool(tabelog_data.get("supports_paypay", False)),
+                            cards_json,
                         ),
                     )
 

@@ -80,14 +80,20 @@ USING hnsw (embedding halfvec_cosine_ops);
 ### 2. 模組落地與成果
 * `src/services/cold_storage.py`：實作 `ColdStorageArchiver`，提供 `archive_traces(retention_days=14)` 與 `analyze_traces_duckdb`，支援自動偵測 GCS 與降級本機目錄雙模儲存。
 * `scripts/archive_to_cold.py`：獨立 CLI 歸檔排程工具，支援 `--days` 與 `--keep-hot` 參數。
-* `scripts/analyze_traces.py`：基於 DuckDB 的極速 OLAP 分析工具，一秒讀取多份 Parquet，產出「請求總量/成功率」、「各模型 Tokens/延遲分佈」與「Tool/Action 調用統計」三合一營運報表。
+* `scripts/analyze_traces.py`：基於 DuckDB 的極速 OLAP 分析與端到端問答歷程透視工具：
+  - **OLAP 營運報表**：一秒讀取多份 Parquet，產出「請求總量/成功率」、「各模型 Tokens/延遲分佈」與「Tool/Action 調用統計」三合一營運報表。
+  - **Trace Deep-Dive (問答歷程透視)**：支援 `--latest`、`--inspect <idx>`、`--run-id <UUID>` 與 `--live`，印出提問提示句、最終生成卡片、中間每個 State 流程節點、個別耗時 (ms) 與詳細 Input/Output JSON。
+* `src/agent/pipeline.py` & `src/db/repositories/restaurant.py`：
+  - 每間餐廳卡片與模板直出皆包含 `💳 **支付方式**`（支援 PayPay、信用卡、現金為主備足現鈔提示）。
+  - 各階段與 State 4 完整記錄 `tool_output={"card_content": ...}` 進入 Trace，確保對話與推薦結果 100% 可回溯檢驗。
 * `src/main.py` & `src/bot/handlers.py`：
   - 提供 `/api/admin/archive` 端點（供 GCP Cloud Scheduler 雲端排程定時呼叫）。
   - Telegram Bot 註冊 `/archive` 指令，管理員在手機上隨時可一鍵歸檔並取得總覽報告。
 * **實測檢驗指標**：
   - 實地歸檔驗證：成功匯出 50 筆 Runs、228 筆 Steps 至 `data/cold_archive/year=2026/month=10/`。
   - DuckDB 報表實測：極速分析出總計 97,501 Tokens、P50 延遲 5,627ms、Gemini 32% / Qwen 18% 分佈。
-  - 單元測試套件：新增 `tests/test_cold_storage.py`，全套 63/63 測試 100% 通過。
+  - Trace 透視實測：成功透過 `--latest` 與 `--live` 輸出單次問答之各階段耗時與 Input/Output。
+  - 單元測試套件：新增 `tests/test_cold_storage.py` 與 `tests/test_analyze_traces.py`，全套 68/68 測試 100% 通過。
 
 ---
 
