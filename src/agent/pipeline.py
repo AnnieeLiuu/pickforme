@@ -567,8 +567,22 @@ class FoodRecommendationFSM:
                 lines.append(f"📍 **地址**：{s.get('address')}")
             if s.get("tabelog_url"):
                 lines.append(f"🔗 [食べログ詳細頁面]({s.get('tabelog_url')})")
-            if s.get("foodie_review_highlight"):
-                lines.append(f"💬 **老饕短評**：{s.get('foodie_review_highlight')}")
+            # 老饕短評 (註明來源)
+            rev_txt = s.get("foodie_review_highlight")
+            rev_badge = "食べログ 口コミ"
+            if not rev_txt:
+                s_revs = s.get("sample_reviews") or []
+                if s_revs and isinstance(s_revs, list):
+                    f_rev = s_revs[0]
+                    if isinstance(f_rev, dict):
+                        rev_txt = f_rev.get("text") or f_rev.get("original_text") or f_rev.get("zh")
+                        if f_rev.get("source") != "tabelog":
+                            rev_badge = "Google 在地評價"
+                    elif isinstance(f_rev, str):
+                        rev_txt = f_rev
+
+            if rev_txt:
+                lines.append(f"📍 **老饕推薦理由 ({rev_badge})**：{rev_txt}")
             lines.append("")
 
         return "\n".join(lines).strip()
@@ -685,8 +699,22 @@ class FoodRecommendationFSM:
                 f"- 地址：{s.get('address')}\n"
                 f"- Tabelog網址：{s.get('tabelog_url')}\n"
             )
-            if s.get("foodie_review_highlight"):
-                prompt_content += f"- 老饕食評亮點：{s.get('foodie_review_highlight')}\n"
+            # 帶入食評亮點與明確標示來源 (Tabelog 口コミ / Google 評論)
+            review_text = s.get("foodie_review_highlight")
+            rev_source_label = "食べログ 口コミ"
+            if not review_text:
+                sample_revs = s.get("sample_reviews") or []
+                if sample_revs and isinstance(sample_revs, list):
+                    first_rev = sample_revs[0]
+                    if isinstance(first_rev, dict):
+                        review_text = first_rev.get("text") or first_rev.get("original_text") or first_rev.get("zh")
+                        if first_rev.get("source") != "tabelog":
+                            rev_source_label = "Google 在地評價"
+                    elif isinstance(first_rev, str):
+                        review_text = first_rev
+
+            if review_text:
+                prompt_content += f"- 顧客/老饕真實評價 (來源: {rev_source_label})：{review_text}\n"
 
         messages = [
             {"role": "system", "content": get_recommendation_card_prompt()},
