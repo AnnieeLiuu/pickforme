@@ -8,6 +8,7 @@ if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 
 from src.bot.webhook import router as telegram_router
 from src.config import settings
@@ -79,3 +80,14 @@ async def trigger_archive(
         delete_after_archive=not keep_hot,
     )
     return result
+
+
+@app.get("/eval", response_class=HTMLResponse)
+async def eval_dashboard() -> HTMLResponse:
+    """提供 4-Tier 評測儀表板 (可在 IDE 內建 Simple Browser 預覽)"""
+    from pathlib import Path
+
+    index_path = Path("public/index.html")
+    if index_path.exists():
+        return HTMLResponse(content=index_path.read_text(encoding="utf-8"))
+    return HTMLResponse(content="<h1>Dashboard not found. Run python scripts/run_eval.py first.</h1>")
