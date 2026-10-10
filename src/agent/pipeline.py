@@ -318,7 +318,7 @@ class FoodRecommendationFSM:
                 f"- 店名(日文)：{s.get('name_ja') or s.get('name')}\n"
                 f"- 評分來源：{s.get('rating_source')}\n"
                 f"- Tabelog 評分：{s.get('tabelog_rating')}\n"
-                f"- Google 評分：{s.get('rating')}\n"
+                f"- Google 評分：{s.get('google_rating') or s.get('rating')}\n"
                 f"- 評價人數：{s.get('review_count') or s.get('user_ratings_total')}\n"
                 f"- 預算(午/晚)：{s.get('price_lunch')} / {s.get('price_dinner')}\n"
                 f"- 獲獎紀錄：{s.get('awards')}\n"
