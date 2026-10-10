@@ -41,6 +41,7 @@ pytest-job:
 pages:
   stage: deploy
   script:
+    - python -c "import os; print('CI DATABASE_URL set:', bool(os.getenv('DATABASE_URL')))"
     - python scripts/run_eval.py --output-html public/index.html
   artifacts:
     paths:

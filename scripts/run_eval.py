@@ -67,11 +67,12 @@ async def main() -> int:
     try:
         from scripts.analyze_traces import fetch_live_data_from_db
 
-        live_runs, live_steps = await asyncio.wait_for(fetch_live_data_from_db(limit=15), timeout=5.0)
+        live_runs, live_steps = await asyncio.wait_for(fetch_live_data_from_db(limit=15), timeout=12.0)
         if live_runs:
             print(f"📡 成功從 Neon DB 載入 {len(live_runs)} 筆真實線上問答 Traces")
     except Exception as e:
-        print(f"ℹ️ 無法從 Neon DB 載入即時 Traces ({e})，切換至冷層備援檢測")
+        err_msg = str(e) or type(e).__name__
+        print(f"ℹ️ 無法從 Neon DB 載入即時 Traces ({err_msg})，切換至冷層備援檢測")
 
     # 若 Live DB 未連線，嘗試從冷層 Parquet 讀取
     if not live_runs:
