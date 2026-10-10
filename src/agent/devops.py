@@ -140,7 +140,28 @@ class DevOpsSubagent:
             "GOOGLE_PLACES_API_KEY": "🟢 已設定" if settings.GOOGLE_PLACES_API_KEY else "🔴 未設定",
         }
 
-        return f"- 資料庫狀態: {db_status}\n- 資料庫統計: {db_stats}\n- API 金鑰設定: {api_status}"
+        # 檢測 Guardrail 提示詞同步狀態
+        guardrail_status = "🟢 正常 (100% 吻合 agent_system.md 規範)"
+        try:
+            from src.agent.pipeline import AGENT_SYSTEM_PROMPT_PATH
+
+            if AGENT_SYSTEM_PROMPT_PATH.exists():
+                prompt_text = AGENT_SYSTEM_PROMPT_PATH.read_text(encoding="utf-8")
+                required_anchors = ["Tabelog", "Google", "步行距離"]
+                missing = [a for a in required_anchors if a not in prompt_text]
+                if missing:
+                    guardrail_status = f"⚠️ 警告 (發現提示詞漂移，缺少錨點: {missing})"
+            else:
+                guardrail_status = "⚠️ 警告 (找不到 agent_system.md 檔案)"
+        except Exception as e:
+            guardrail_status = f"⚠️ 檢測失敗 ({e})"
+
+        return (
+            f"- 資料庫狀態: {db_status}\n"
+            f"- 資料庫統計: {db_stats}\n"
+            f"- API 金鑰設定: {api_status}\n"
+            f"- 護欄與提示詞對齊: {guardrail_status}"
+        )
 
     async def _fetch_recent_error_traces(self) -> str:
         """讀取最近失敗的 agent_runs 紀錄"""

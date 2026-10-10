@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import math
+import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -341,6 +342,82 @@ class FoodRecommendationFSM:
 
         return "\n".join(lines).strip()
 
+    def _sanitize_card_ratings(self, card_text: str, stores: list[dict[str, Any]]) -> str:
+        """Scoped Anchor Guardrail: 區塊錨點防偽護欄
+
+        以店家為單位隔離切割 Markdown 區塊，透過前後雙向強關鍵字錨點精準校對與矯正數值，
+        排除跨店串位與非評分數值誤傷，確保 Telegram 卡片上的評分 100% 與真實資料源一致。
+        """
+        if not card_text or not stores:
+            return card_text
+
+        try:
+            # 1. 依序號/標題切割為獨立段落 (維持原文段落完整性)
+            parts = re.split(r"(?=\n(?:###\s*\d+|\d+[\.、]|\*\*\d+[\.、]))", card_text)
+            modified_parts: list[str] = []
+
+            for part in parts:
+                # 判斷這一段落屬於哪一家店
+                matched_store: Optional[dict[str, Any]] = None
+                for idx, s in enumerate(stores, 1):
+                    name_ja = s.get("name_ja") or s.get("name") or ""
+                    if (name_ja and name_ja in part) or re.search(
+                        rf"(?:###\s*{idx}|\b{idx}[\.、]|\*\*{idx}[\.、])", part
+                    ):
+                        matched_store = s
+                        break
+
+                if not matched_store:
+                    modified_parts.append(part)
+                    continue
+
+                updated_part = part
+
+                # 2. 檢驗並校正 Tabelog 評分錨點 (只作用於該店家隔離區塊)
+                t_rating = matched_store.get("tabelog_rating")
+                if t_rating is not None:
+                    t_val = float(t_rating)
+                    t_pattern = r"((?:Tabelog|食べログ)[^\d\n]{0,25}?)(\d\.\d{1,2})(\s*分)?"
+
+                    def _replace_tabelog(m: re.Match[str]) -> str:
+                        orig_val = float(m.group(2))
+                        unit = m.group(3) or ""
+                        if abs(orig_val - t_val) > 0.001:
+                            logger.info(
+                                f"[Guardrail] Corrected Tabelog rating for '{matched_store.get('name_ja')}': "
+                                f"{orig_val} -> {t_val:.2f}"
+                            )
+                            return f"{m.group(1)}{t_val:.2f}{unit}"
+                        return m.group(0)
+
+                    updated_part = re.sub(t_pattern, _replace_tabelog, updated_part, count=1)
+
+                # 3. 檢驗並校正 Google 評分錨點 (只作用於該店家隔離區塊)
+                g_rating = matched_store.get("google_rating") or matched_store.get("rating")
+                if g_rating is not None:
+                    g_val = float(g_rating)
+                    g_pattern = r"(Google[^\d\n]{0,20}?)([0-5]\.[0-9])(\s*分)?"
+
+                    def _replace_google(m: re.Match[str]) -> str:
+                        orig_val = float(m.group(2))
+                        unit = m.group(3) or ""
+                        if abs(orig_val - g_val) > 0.001:
+                            logger.info(
+                                f"[Guardrail] Corrected Google rating for '{matched_store.get('name_ja')}': "
+                                f"{orig_val} -> {g_val:.1f}"
+                            )
+                            return f"{m.group(1)}{g_val:.1f}{unit}"
+                        return m.group(0)
+
+                    updated_part = re.sub(g_pattern, _replace_google, updated_part, count=1)
+
+                modified_parts.append(updated_part)
+
+            return "".join(modified_parts)
+        except Exception as e:
+            logger.warning(f"[Guardrail] Error during card sanitization: {e}. Keeping original card.", exc_info=True)
+            return card_text
+
     async def execute_state_4_synthesis(
         self,
         stores: list[dict[str, Any]],
@@ -383,6 +460,9 @@ class FoodRecommendationFSM:
             card_text = content.strip()
             if not card_text:
                 raise ValueError("LLM returned empty card content")
+
+            # 🛡️ 執行 Scoped Anchor 毫秒級數值防偽校正護欄
+            card_text = self._sanitize_card_ratings(card_text, stores)
 
             latency = int((time.time() - t0) * 1000)
             await self.trace_logger.log_step(

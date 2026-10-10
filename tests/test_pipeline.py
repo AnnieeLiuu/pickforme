@@ -257,3 +257,56 @@ async def test_fsm_walking_distance_and_prompt_loader(mock_fsm):
     # 3. 測試保底卡片排版有加入步行距離
     fallback_card = mock_fsm._render_template_fallback_card(candidates, "拉麵")
     assert "🚶 **步行距離**" in fallback_card
+
+
+def test_guardrail_sanitizes_rating_drift(mock_fsm):
+    """測試 Scoped Anchor Guardrail 能夠精準修正 LLM 的評分筆誤，且絕不誤傷評論內的數字"""
+    raw_card = """為您推薦新宿優質名店：
+
+1. 🍱 `寿々喜家 本店`
+   🚶 **步行距離**：步行約 3 分鐘 (240m)
+   ⭐️ **雙平台評分**：⭐️ Tabelog 3.70 分 (2,467 則評價) / Google 4.1 分
+   📍 老饕點評：排隊約 3.5 小時，湯頭經 3.5 天熬煮，叉燒重達 350g！
+   🔗 [Tabelog](https://tabelog.com/1)
+
+2. 🍱 `餃子の福包 新宿店`
+   🚶 **步行距離**：步行約 5 分鐘 (400m)
+   ⭐️ **雙平台評分**：⭐️ Tabelog 3.42 分 (1,531 則評價) / Google 4.3 分
+   📍 老饕點評：皮薄多汁，性價比極高。
+   🔗 [Tabelog](https://tabelog.com/2)
+
+💡 特派員提醒：排隊請趁早！"""
+
+    stores = [
+        {"name_ja": "寿々喜家 本店", "tabelog_rating": 3.78, "google_rating": 4.4},
+        {"name_ja": "餃子の福包 新宿店", "tabelog_rating": 3.50, "google_rating": 4.2},
+    ]
+
+    sanitized = mock_fsm._sanitize_card_ratings(raw_card, stores)
+
+    # 1. 驗證店家 1 的分數被精準校正
+    assert "Tabelog 3.78 分" in sanitized
+    assert "Google 4.4 分" in sanitized
+
+    # 2. 驗證店家 1 評論內的非評分數值 100% 未被誤傷
+    assert "排隊約 3.5 小時" in sanitized
+    assert "3.5 天熬煮" in sanitized
+    assert "350g" in sanitized
+
+    # 3. 驗證店家 2 的分數亦被精準校正
+    assert "Tabelog 3.50 分" in sanitized
+    assert "Google 4.2 分" in sanitized
+
+
+def test_guardrail_contract_with_agent_system_prompt():
+    """合約測試 (Contract Test)：確保 agent_system.md 的規範與 Guardrail 正則錨點 100% 同步。
+    若未來有人改動 Prompt 格式而導致關鍵字不一致，CI 會立刻紅燈阻擋！"""
+    from src.agent.pipeline import AGENT_SYSTEM_PROMPT_PATH
+
+    assert AGENT_SYSTEM_PROMPT_PATH.exists(), "agent_system.md 檔案不存在！"
+    prompt_text = AGENT_SYSTEM_PROMPT_PATH.read_text(encoding="utf-8")
+
+    # 檢驗 Prompt 必須包含護欄仰賴的關鍵錨點關鍵字
+    assert "Tabelog" in prompt_text, "Prompt 缺少 'Tabelog' 評分錨點！"
+    assert "Google" in prompt_text, "Prompt 缺少 'Google' 評分錨點！"
+    assert "步行距離" in prompt_text, "Prompt 缺少 '步行距離' 錨點！"
