@@ -39,31 +39,38 @@
 ```mermaid
 graph TD
     User(["Telegram App / 每次發送位置與問句"]) -->|Webhook| Server["FastAPI 後端 @ Cloud Run"]
+    Server --> FSM["自研 4 階段 FSM 狀態機 (FoodRecommendationFSM)"]
     
-    subgraph Core AI Agent
-        Server --> FSM["自研 4 階段 FSM 狀態機 (FoodRecommendationFSM)"]
-        FSM --> LLMClient["統一多模型 LLM 客戶端 (Groq ➡️ Gemini ➡️ Ollama)"]
-        FSM --> TraceLogger["Neon agent_runs / agent_steps (OTel 格式 Trace)"]
-    end
-    
-    subgraph Deterministic Pipeline Stages
-        FSM -->|State 1| S1["Micro-LLM 結構化意圖與追問判斷 (0.3s JSON)"]
-        FSM -->|State 2| S2["Google Places 階梯式半徑搜尋 (800m ➔ 1200m ➔ 1800m)"]
-        FSM -->|State 3| S3["Tabelog 雙平台實體對齊 (asyncio.gather 平行處理)"]
-        FSM -->|State 4| S4["單次合成推薦卡片 (含模板容錯直出防護)"]
-    end
-    
-    subgraph Storage Tiering
-        S3 --> EntityMatch["電話號碼優先 ↔ Tabelog 實體匹配器"]
-        EntityMatch --> HotDB[("Neon Postgres: 關聯/快取/對話/工作佇列")]
-        
-        S3 -.->|原始網頁/完整評論歸檔| ColdStorage[("GCS 冷層: Parquet / 壓縮 JSON")]
-        TraceLogger -.->|過期 Trace 轉檔| ColdStorage
+    subgraph MultiTierLLM ["🧠 多級 LLM 推論核心 (LLMClient)"]
+        Groq["🥇 Groq qwen3.8-27b (0.7s 極速主力)"]
+        Gemini["🥈 Gemini 3.8 Flash (429 自動備援)"]
+        Ollama["🥉 本機 Ollama qwen2.5 (離線保底)"]
+        Groq -.->|429/異常降級| Gemini
+        Gemini -.->|離線降級| Ollama
     end
 
-    subgraph Async & Background
+    subgraph DeterministicPipeline ["⚡ 確定性 4 階段狀態機流水線"]
+        FSM -->|1. 意圖辨識| S1["State 1: 使用者意圖與追問判斷"]
+        S1 -->|2. 地圖搜尋| S2["State 2: Google Places 智慧階梯搜尋<br/>(TextSearch 專門店 ➔ 800m~1800m)"]
+        S2 -->|3. 雙平台對齊| S3["State 3: Tabelog 雙平台實體對齊<br/>(asyncio.gather 3~5家平行處理)"]
+        S3 -->|4. 生成卡片| S4["State 4: 最終美食卡片排版合成<br/>(日文店名Code區塊 + 老饕評價)"]
+        
+        %% 明確標註 LLM 在哪裡被調用
+        S1 ==>|"【LLM 呼叫 1】0.3s Micro-LLM 結構化意圖抽取"| MultiTierLLM
+        S3 -.->|"【LLM 呼叫 2 (可選)】灰區 0.6~0.85 實體比對裁決"| MultiTierLLM
+        S4 ==>|"【LLM 呼叫 3】單次 Prompt 高美感推薦卡片生成"| MultiTierLLM
+        
+        S4 -.->|LLM全斷線防護| Fallback["純 Python 模板引擎直出保底"]
+    end
+    
+    subgraph StorageTiering ["🗄️ 冷熱資料儲存分層"]
+        S3 --> HotDB[("Neon Postgres 熱層: 快取/餐廳/對話歷史")]
+        S3 -.->|原始網頁存檔| ColdStorage[("GCS 冷層: Parquet / 壓縮 JSON")]
+        FSM -->|OTel 格式 Trace| HotDB
+    end
+
+    subgraph AsyncWorker ["⚙️ 背景非同步處理"]
         HotDB -->|prewarm_jobs 佇列| LocalWorker["本機 Worker / 家用 IP 批次預熱"]
-        ColdStorage -->|DuckDB 分析| Notebook["DS 實驗與 Observability Notebook"]
     end
 ```
 
