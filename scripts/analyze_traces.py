@@ -264,11 +264,23 @@ async def fetch_live_data_from_db(limit: int = 15) -> tuple[list[dict[str, Any]]
                             """
                             SELECT r.name_ja, r.name_en, r.address, r.tabelog_url,
                                    t.tabelog_rating, t.review_count, t.price_lunch,
-                                   t.price_dinner, t.supports_paypay, t.credit_cards
+                                   t.price_dinner, t.supports_paypay, t.credit_cards,
+                                   COALESCE(
+                                       json_agg(
+                                           json_build_object(
+                                               'zh', re.review_text_zh,
+                                               'ja', re.review_text_ja
+                                           )
+                                       ) FILTER (WHERE re.id IS NOT NULL), '[]'
+                                   ) AS sample_reviews
                             FROM restaurants r
                             JOIN tabelog_cache t ON r.id = t.restaurant_id
+                            LEFT JOIN review_embeddings re ON r.id = re.restaurant_id
                             WHERE t.updated_at >= %s::timestamptz - interval '45 seconds'
                               AND t.updated_at <= %s::timestamptz + interval '45 seconds'
+                            GROUP BY r.id, r.name_ja, r.name_en, r.address, r.tabelog_url,
+                                     t.tabelog_rating, t.review_count, t.price_lunch,
+                                     t.price_dinner, t.supports_paypay, t.credit_cards, t.updated_at
                             ORDER BY t.tabelog_rating DESC NULLS LAST;
                             """,
                             (cat, cat),
@@ -291,6 +303,7 @@ async def fetch_live_data_from_db(limit: int = 15) -> tuple[list[dict[str, Any]]
                                         "price_dinner": ms[7] or "￥3,000 ~ ￥5,000",
                                         "supports_paypay": bool(ms[8]),
                                         "credit_cards": ms[9] if isinstance(ms[9], list) else ["VISA", "JCB"],
+                                        "sample_reviews": ms[10] if len(ms) > 10 else [],
                                     }
                                 store_cards_data.append(m_dict)
                             if isinstance(out_val, dict):

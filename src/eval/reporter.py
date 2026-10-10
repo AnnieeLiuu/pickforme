@@ -69,6 +69,24 @@ def _render_aligned_stores_cards(stores: list[dict[str, Any]]) -> str:
         awards = s.get("awards") or []
         award_badge = f'<span class="award-tag">🏆 {awards[0]}</span>' if awards else ""
 
+        # 老饕評論亮點 (Phase B pgvector 與即時食評摘錄)
+        sample_revs = s.get("sample_reviews") or []
+        foodie_hl = s.get("foodie_review_highlight")
+        review_snippet = ""
+        if foodie_hl:
+            hl_text = foodie_hl.strip().replace("\n", " ")
+            if len(hl_text) > 80:
+                hl_text = hl_text[:78] + "..."
+            review_snippet = f'<div class="review-snippet">💬 <em>「{html.escape(hl_text)}」</em></div>'
+        elif sample_revs and isinstance(sample_revs, list) and len(sample_revs) > 0:
+            first_rev = sample_revs[0]
+            txt = (first_rev.get("zh") or first_rev.get("ja") or "") if isinstance(first_rev, dict) else str(first_rev)
+            txt = txt.strip().replace("\n", " ")
+            if len(txt) > 80:
+                txt = txt[:78] + "..."
+            if txt:
+                review_snippet = f'<div class="review-snippet">💬 <em>「{html.escape(txt)}」</em></div>'
+
         cards.append(f"""
         <div class="store-mini-card">
             <div class="store-mini-header">
@@ -80,6 +98,7 @@ def _render_aligned_stores_cards(stores: list[dict[str, Any]]) -> str:
                 <span class="meta-tag budget-tag">💰 午 {lunch} / 晚 {dinner}</span>
                 <span class="meta-tag pay-tag">💳 {pay}{card_str}</span>
             </div>
+            {review_snippet}
         </div>
         """)
     return f"""
@@ -742,6 +761,15 @@ def generate_html_dashboard(
         .rating-tag {{ color: #fbbf24; font-weight: 500; }}
         .budget-tag {{ color: #a7f3d0; }}
         .pay-tag {{ color: #93c5fd; }}
+        .review-snippet {{
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #334155;
+            font-size: 11px;
+            color: #cbd5e1;
+            line-height: 1.4;
+        }}
+        .review-snippet em {{ color: #e2e8f0; font-style: normal; }}
 
         footer {{
             margin-top: 40px;
