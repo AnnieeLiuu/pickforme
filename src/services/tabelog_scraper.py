@@ -63,6 +63,10 @@ class TabelogScraper:
         seen_urls: set[str] = set()
 
         for item in soup.select("section, .sw-Card"):
+            classes = item.get("class", [])
+            if any("AnswerGourmetSpot__plan" in str(c) for c in classes):
+                continue
+
             text = item.get_text(" ", strip=True)
             if "tabelog.com" not in text and "食べログ" not in text:
                 continue
@@ -74,12 +78,16 @@ class TabelogScraper:
             if not isinstance(raw_href, str):
                 continue
             clean_url = self._clean_tabelog_url(raw_href)
-            if not clean_url.startswith("https://tabelog.com/") or clean_url in seen_urls:
+            if not clean_url.startswith("https://tabelog.com/"):
                 continue
 
-            title_tag = item.select_one("h3, .sw-Card__title")
+            title_tag = item.select_one("h3") or item.select_one(".sw-Card__title")
             raw_title = title_tag.get_text(strip=True) if title_tag else link_tag.get_text(strip=True)
+            if re.search(r"^(空席状況|クチコミ|口コミ|周辺の地図|写真一覧|予約サイト)", raw_title):
+                continue
+
             name_ja = re.split(r"[（\(\-\|\:\[]", raw_title)[0].strip()
+            name_ja = re.sub(r"の(?:ご)?予約$", "", name_ja).strip()
             if not name_ja or "食べログ" in name_ja:
                 name_ja = store_name
 
@@ -122,6 +130,17 @@ class TabelogScraper:
                         "original_text": clean_desc,
                     }
                 )
+
+            # 若此 URL 已記錄過，優先補全遺漏的評分與食評資料
+            if clean_url in seen_urls:
+                for c in candidates:
+                    if c["tabelog_url"] == clean_url:
+                        if c.get("tabelog_rating") is None and rating is not None:
+                            c["tabelog_rating"] = rating
+                            c["review_count"] = review_count
+                        if not c.get("sample_reviews") and sample_reviews:
+                            c["sample_reviews"] = sample_reviews
+                continue
 
             candidates.append(
                 {
