@@ -7,11 +7,14 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Optional
+from uuid import UUID
 
 from src.agent.llm_client import LLMClient
 from src.agent.trace import AgentTraceLogger
 from src.db.repositories.restaurant import RestaurantRepository
 from src.db.repositories.session import SessionRepository
+from src.db.repositories.vector import VectorRepository
+from src.services.embedding import EmbeddingService
 from src.services.entity_resolver import EntityResolver, calculate_distance_meters
 from src.services.google_places import GooglePlacesClient
 from src.services.tabelog_scraper import TabelogScraper
@@ -83,6 +86,8 @@ class FoodRecommendationFSM:
         restaurant_repo: Optional[RestaurantRepository] = None,
         session_repo: Optional[SessionRepository] = None,
         trace_logger: Optional[AgentTraceLogger] = None,
+        vector_repo: Optional[VectorRepository] = None,
+        embedding_service: Optional[EmbeddingService] = None,
     ):
         self.llm_client = llm_client or LLMClient()
         self.places_client = places_client or GooglePlacesClient()
@@ -91,6 +96,8 @@ class FoodRecommendationFSM:
         self.restaurant_repo = restaurant_repo or RestaurantRepository()
         self.session_repo = session_repo or SessionRepository()
         self.trace_logger = trace_logger or AgentTraceLogger()
+        self.vector_repo = vector_repo or VectorRepository()
+        self.embedding_service = embedding_service or EmbeddingService()
 
     async def execute_state_1_intent(
         self,
@@ -209,8 +216,12 @@ class FoodRecommendationFSM:
                     is_fresh = False
 
             if is_fresh:
+                rid = cached.get("id")
+                if rid and place.get("reviews"):
+                    asyncio.create_task(self._index_store_reviews(rid, place["reviews"]))
                 return {
                     **place,
+                    "restaurant_id": str(rid) if rid else None,
                     "tabelog_url": cached.get("tabelog_url"),
                     "name_ja": cached.get("name_ja") or store_name,
                     "tabelog_rating": float(cached["tabelog_rating"]) if cached.get("tabelog_rating") else None,
@@ -252,18 +263,22 @@ class FoodRecommendationFSM:
                     "tabelog_url": tabelog_url,
                     "name_ja": cand.get("name_ja") or store_name,
                 }
+                saved_id = None
                 try:
-                    await self.restaurant_repo.save_restaurant_with_tabelog(
+                    saved_id = await self.restaurant_repo.save_restaurant_with_tabelog(
                         google_store=place,
                         tabelog_data=tabelog_save_data,
                         match_confidence=match_res.get("confidence", 0.9),
                         match_method=match_res.get("match_method", "rule_high"),
                     )
+                    if saved_id and place.get("reviews"):
+                        asyncio.create_task(self._index_store_reviews(saved_id, place["reviews"]))
                 except Exception as e:
                     logger.warning(f"Failed to upsert tabelog cache: {e}")
 
                 return {
                     **place,
+                    "restaurant_id": str(saved_id) if saved_id else None,
                     "tabelog_url": tabelog_url,
                     "name_ja": cand.get("name_ja") or store_name,
                     "tabelog_rating": rating,
@@ -278,8 +293,17 @@ class FoodRecommendationFSM:
             logger.warning(f"Tabelog scraping / resolution failed for {store_name}: {e}")
 
         # 3. 爬蟲失敗或無資料保底：以 Google 評分呈現並透明標註
+        fallback_id = None
+        try:
+            fallback_id = await self.restaurant_repo.save_restaurant_with_tabelog(google_store=place)
+            if fallback_id and place.get("reviews"):
+                asyncio.create_task(self._index_store_reviews(fallback_id, place["reviews"]))
+        except Exception:
+            pass
+
         return {
             **place,
+            "restaurant_id": str(fallback_id) if fallback_id else None,
             "tabelog_url": None,
             "name_ja": store_name,
             "tabelog_rating": None,
@@ -290,6 +314,94 @@ class FoodRecommendationFSM:
             "supports_paypay": None,
             "rating_source": "Google",
         }
+
+    async def _index_store_reviews(self, restaurant_id: Any, reviews: list[dict[str, Any]]) -> None:
+        """非同步將 Google/Tabelog 評論向量化並寫入 review_embeddings (pgvector)"""
+        if not reviews or not self.vector_repo or not self.embedding_service:
+            return
+        try:
+            rid = UUID(str(restaurant_id))
+            existing = await self.vector_repo.get_reviews_by_restaurant_id(rid)
+            if existing:
+                return
+
+            sample_reviews = reviews[:3]
+            texts = [
+                r.get("text") or r.get("original_text", "")
+                for r in sample_reviews
+                if (r.get("text") or r.get("original_text"))
+            ]
+            if not texts:
+                return
+
+            embeddings = await self.embedding_service.get_embeddings_batch(texts)
+            records = []
+            for r, emb in zip(sample_reviews, embeddings):
+                if any(emb):
+                    records.append(
+                        {
+                            "restaurant_id": rid,
+                            "review_text_ja": r.get("original_text") or r.get("text", ""),
+                            "review_text_zh": r.get("text") or r.get("original_text", ""),
+                            "embedding": emb,
+                        }
+                    )
+            if records:
+                await self.vector_repo.batch_insert_reviews(records)
+                logger.info(f"Indexed {len(records)} review embeddings for {rid}")
+        except Exception as e:
+            logger.warning(f"Could not index review embeddings for {restaurant_id}: {e}")
+
+    async def semantic_rerank_reviews(
+        self,
+        user_query: str,
+        stores: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """依據使用者詢問之口感/氛圍，透過 pgvector Cosine 相似度檢索最契合的食評亮點"""
+        if not self.embedding_service or not self.vector_repo or not stores:
+            return stores
+
+        try:
+            query_vec = await self.embedding_service.get_embedding(user_query)
+            if not any(query_vec):
+                return stores
+
+            valid_rids: list[UUID] = []
+            store_map: dict[UUID, dict[str, Any]] = {}
+            for s in stores:
+                rid_str = s.get("restaurant_id")
+                if rid_str:
+                    try:
+                        rid = UUID(str(rid_str))
+                        valid_rids.append(rid)
+                        store_map[rid] = s
+                    except Exception:
+                        pass
+
+            if not valid_rids:
+                return stores
+
+            matches = await self.vector_repo.search_similar_reviews(
+                query_embedding=query_vec,
+                top_k=len(valid_rids),
+                restaurant_ids=valid_rids,
+            )
+
+            for m in matches:
+                rid_val = m.get("restaurant_id")
+                if rid_val:
+                    rid_obj = UUID(str(rid_val))
+                    if rid_obj in store_map:
+                        highlight = m.get("review_text_zh") or m.get("review_text_ja")
+                        if highlight and not store_map[rid_obj].get("foodie_review_highlight"):
+                            sim = m.get("similarity", 0.0)
+                            store_map[rid_obj]["foodie_review_highlight"] = highlight
+                            store_map[rid_obj]["review_similarity"] = sim
+
+            return stores
+        except Exception as e:
+            logger.warning(f"Semantic reranking skipped: {e}")
+            return stores
 
     async def execute_state_3_parallel_tabelog(
         self,
@@ -338,6 +450,8 @@ class FoodRecommendationFSM:
                 lines.append(f"📍 **地址**：{s.get('address')}")
             if s.get("tabelog_url"):
                 lines.append(f"🔗 [食べログ詳細頁面]({s.get('tabelog_url')})")
+            if s.get("foodie_review_highlight"):
+                lines.append(f"💬 **老饕短評**：{s.get('foodie_review_highlight')}")
             lines.append("")
 
         return "\n".join(lines).strip()
@@ -449,6 +563,8 @@ class FoodRecommendationFSM:
                 f"- 地址：{s.get('address')}\n"
                 f"- Tabelog網址：{s.get('tabelog_url')}\n"
             )
+            if s.get("foodie_review_highlight"):
+                prompt_content += f"- 老饕食評亮點：{s.get('foodie_review_highlight')}\n"
 
         messages = [
             {"role": "system", "content": get_recommendation_card_prompt()},
@@ -579,6 +695,9 @@ class FoodRecommendationFSM:
 
             # 3. State 3: 3 店家平行 Tabelog 查驗
             enriched_stores = await self.execute_state_3_parallel_tabelog(candidates)
+
+            # 3.5 pgvector 語意重排與食評亮點萃取 (RAG)
+            enriched_stores = await self.semantic_rerank_reviews(user_message, enriched_stores)
 
             # 方案 1A 二段式進度更新 (進度 2 - 準備寫卡片)
             if on_progress:

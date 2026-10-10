@@ -41,7 +41,8 @@ class GooglePlacesClient:
                 "places.rating,"
                 "places.userRatingCount,"
                 "places.formattedAddress,"
-                "places.regularOpeningHours"
+                "places.regularOpeningHours,"
+                "places.reviews"
             ),
         }
 
@@ -94,7 +95,8 @@ class GooglePlacesClient:
                 "places.rating,"
                 "places.userRatingCount,"
                 "places.formattedAddress,"
-                "places.regularOpeningHours"
+                "places.regularOpeningHours,"
+                "places.reviews"
             ),
         }
 
@@ -196,6 +198,22 @@ class GooglePlacesClient:
         opening_hours = item.get("regularOpeningHours", {})
         open_now = opening_hours.get("openNow", True)
 
+        reviews_list: list[dict[str, Any]] = []
+        for r in item.get("reviews", []):
+            text_obj = r.get("text", {}) or {}
+            orig_obj = r.get("originalText", {}) or {}
+            r_text = text_obj.get("text", "")
+            r_orig = orig_obj.get("text", "") or r_text
+            if r_text or r_orig:
+                reviews_list.append(
+                    {
+                        "text": r_text,
+                        "original_text": r_orig,
+                        "rating": r.get("rating"),
+                        "author": (r.get("authorAttribution") or {}).get("displayName", ""),
+                    }
+                )
+
         return {
             "google_place_id": item.get("id", ""),
             "name": name_text,
@@ -207,4 +225,5 @@ class GooglePlacesClient:
             "google_rating": item.get("rating"),
             "user_ratings_total": item.get("userRatingCount"),
             "open_now": open_now,
+            "reviews": reviews_list,
         }

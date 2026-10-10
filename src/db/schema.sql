@@ -76,8 +76,22 @@ CREATE TABLE IF NOT EXISTS agent_steps (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 7. 老饕評論向量檢索表 (Phase B: pgvector + halfvec 768 維)
+CREATE EXTENSION IF NOT EXISTS vector;
+
+CREATE TABLE IF NOT EXISTS review_embeddings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    restaurant_id UUID REFERENCES restaurants(id) ON DELETE CASCADE,
+    review_text_ja TEXT NOT NULL,
+    review_text_zh TEXT,
+    embedding HALFVEC(768),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- 索引建置
 CREATE INDEX IF NOT EXISTS idx_restaurants_google_id ON restaurants(google_place_id);
 CREATE INDEX IF NOT EXISTS idx_restaurants_phone ON restaurants(phone);
 CREATE INDEX IF NOT EXISTS idx_prewarm_status ON prewarm_jobs(status);
 CREATE INDEX IF NOT EXISTS idx_agent_steps_run_id ON agent_steps(run_id);
+CREATE INDEX IF NOT EXISTS idx_review_restaurant_id ON review_embeddings(restaurant_id);
+CREATE INDEX IF NOT EXISTS idx_review_halfvec ON review_embeddings USING hnsw (embedding halfvec_cosine_ops);

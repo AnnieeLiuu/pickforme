@@ -30,10 +30,10 @@ graph LR
 
 ---
 
-## 📦 里程碑 1：老饕評論萃取與 pgvector 語意向量檢索 (RAG & halfvec)
+## 📦 里程碑 1：老饕評論萃取與 pgvector 語意向量檢索 (RAG & halfvec) [Status: Completed / 已完工]
 
 ### 1. 痛點與價值
-* **痛點**：目前系統僅支援「地點 + 料理類別」（如：*新宿 拉麵*）。遊客常見的長尾模糊需求（如：*「想找麵條偏硬、湯頭清爽不油膩、適合長輩或一人用餐」*）無法透過 Google Places 關鍵字檢索。
+* **痛點**：系統若僅支援「地點 + 料理類別」（如：*新宿 拉麵*），遊客常見的長尾模糊需求（如：*「想找麵條偏硬、湯頭清爽不油膩、適合長輩或一人用餐」*）無法透過 Google Places 關鍵字精準檢索。
 * **解法**：在 Neon Postgres 建立 `review_embeddings` 表，利用原生 `pgvector` 與 `HALFVEC(768)` 半精度向量儲存老饕評論 Embedding，支援語意相似度檢索（Cosine Similarity / HNSW 索引）。
 
 ### 2. 資料庫 Schema 擴充 ([src/db/schema.sql](file:///c:/Users/User/OneDrive/%E6%96%87%E4%BB%B6/2026/PickForMe/src/db/schema.sql))
@@ -56,10 +56,15 @@ ON review_embeddings
 USING hnsw (embedding halfvec_cosine_ops);
 ```
 
-### 3. 模組變更清單
-* `src/services/embedding.py`：封裝 Gemini `text-embedding-004` (768 維) 向量生成客戶端。
-* `src/db/repositories/vector.py`：實作 `search_similar_reviews(query_vector, top_k=5)`。
-* `src/agent/pipeline.py`：State 2 擴充支援「語意重排（Semantic Rerank）」，當使用者有口感偏好時，以向量相似度篩選最貼近的名店。
+### 3. 模組落地與成果
+* `src/services/embedding.py`：封裝 Gemini `gemini-embedding-001` (支援 Matryoshka 768 維 halfvec 投影，批次與單筆生成)。
+* `src/db/repositories/vector.py`：實作 `insert_review_embedding`, `batch_insert_reviews`, `search_similar_reviews` (基於 `1 - (embedding <=> $1::halfvec)` 之 Cosine 相似度計算)。
+* `src/services/google_places.py`：擴充 FieldMask 新增 `places.reviews`，零額外 API 開銷提取最多 5 則在地食評。
+* `src/agent/pipeline.py`：非同步背景索引食評向量，並在 State 3 與 State 4 間插入 `semantic_rerank_reviews`，將最契合之老饕食評精華 (`foodie_review_highlight`) 注入卡片排版。
+* **實測檢驗指標**：
+  - Neon Postgres 雲端驗證：成功建立 `review_embeddings` 表與 `idx_review_halfvec` 索引。
+  - 端到端實測：查詢「想要麵條偏硬有嚼勁的拉麵」，命中「麵條口感偏硬、麥香濃郁，豚骨醬油湯頭堪稱極品」評論，Cosine Similarity 達 0.7825。
+  - 單元測試套件：新增 `tests/test_vector.py`，全套 60/60 測試全部通過。
 
 ---
 
