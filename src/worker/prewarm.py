@@ -92,13 +92,21 @@ class PrewarmWorker:
                 if resolve_res.get("match_found"):
                     matched_cand = resolve_res["candidate"]
                     tabelog_url = matched_cand.get("tabelog_url", "")
-                    details = await self.tabelog_scraper.scrape_restaurant_details(tabelog_url)
-                    if not details:
-                        details = matched_cand
+                    details = await self.tabelog_scraper.scrape_restaurant_details(
+                        tabelog_url, fallback_candidate=matched_cand
+                    )
+                    merged_details = {
+                        **matched_cand,
+                        **(details or {}),
+                        "tabelog_url": tabelog_url,
+                        "name_ja": matched_cand.get("name_ja") or store_name,
+                    }
+                    if not merged_details.get("tabelog_rating"):
+                        merged_details["tabelog_rating"] = matched_cand.get("tabelog_rating")
 
                     await self.restaurant_repo.save_restaurant_with_tabelog(
                         place,
-                        tabelog_data=details,
+                        tabelog_data=merged_details,
                         match_confidence=resolve_res.get("confidence", 0.0),
                         match_method=resolve_res.get("match_method", "rule_high"),
                     )

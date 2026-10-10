@@ -1,5 +1,7 @@
 import logging
 import random
+import re
+import urllib.parse
 from typing import Any, Optional
 
 import httpx
@@ -26,23 +28,140 @@ class TabelogScraper:
             "Referer": "https://tabelog.com/",
         }
 
+    def _clean_tabelog_url(self, raw_url: str) -> str:
+        """將外語版或子路徑 Tabelog 網址正規化為官方標準店家首頁"""
+        m = re.search(
+            r"https?://(?:s\.|tw\.|en\.)?tabelog\.com/(?:tw/|en/)?([a-z]+/[A-Z0-9]+/[A-Z0-9]+/\d+)",
+            raw_url,
+        )
+        if m:
+            return f"https://tabelog.com/{m.group(1)}/"
+        return raw_url
+
+    async def search_via_grounding(self, store_name: str, area_name: str = "") -> list[dict[str, Any]]:
+        """當 Tabelog 官方 HTTP 爬蟲遭 Cloudflare WAF (403/Turnstile) 攔截時，自動啟動 Web Grounding 搜尋備援"""
+        query = f"site:tabelog.com {store_name} {area_name}".strip()
+        encoded = urllib.parse.quote_plus(query)
+        search_url = f"https://search.yahoo.co.jp/search?p={encoded}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+            "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
+        }
+        candidates: list[dict[str, Any]] = []
+        try:
+            async with httpx.AsyncClient(timeout=4.0) as client:
+                resp = await client.get(search_url, headers=headers)
+                if resp.status_code != 200:
+                    logger.warning(f"Web Grounding search failed with status {resp.status_code}")
+                    return []
+                html = resp.text
+        except Exception as e:
+            logger.warning(f"Web Grounding search request exception: {e}")
+            return []
+
+        soup = BeautifulSoup(html, "html.parser")
+        seen_urls: set[str] = set()
+
+        for item in soup.select("section, .sw-Card"):
+            text = item.get_text(" ", strip=True)
+            if "tabelog.com" not in text and "食べログ" not in text:
+                continue
+
+            link_tag = item.select_one("a[href*='tabelog.com']")
+            if not link_tag:
+                continue
+            raw_href = link_tag.get("href", "")
+            clean_url = self._clean_tabelog_url(raw_href)
+            if not clean_url.startswith("https://tabelog.com/") or clean_url in seen_urls:
+                continue
+
+            title_tag = item.select_one("h3, .sw-Card__title")
+            raw_title = title_tag.get_text(strip=True) if title_tag else link_tag.get_text(strip=True)
+            name_ja = re.split(r"[（\(\-\|\:\[]", raw_title)[0].strip()
+            if not name_ja or "食べログ" in name_ja:
+                name_ja = store_name
+
+            # 評分 (例如：評価： 3.5)
+            rating: Optional[float] = None
+            rating_match = re.search(r"評価[：:\s]+([0-9]\.[0-9]{1,2})", text)
+            if rating_match:
+                try:
+                    rating = float(rating_match.group(1))
+                except ValueError:
+                    rating = None
+
+            # 評論數 (例如：1,531件のレビュー / 口コミ1531人)
+            review_count: Optional[int] = None
+            review_match = re.search(r"([0-9,]+)件のレビュー|口コミ([0-9,]+)人", text)
+            if review_match:
+                try:
+                    raw_count = review_match.group(1) or review_match.group(2)
+                    if raw_count:
+                        review_count = int(raw_count.replace(",", ""))
+                except ValueError:
+                    review_count = None
+
+            # 百名店與榮譽標章
+            hyaku_matches = re.findall(r"([^\s\"\'\>]+ 百名店 \d{4})", text)
+            hyakumeiten = list(dict.fromkeys(hyaku_matches))
+
+            candidates.append(
+                {
+                    "tabelog_url": clean_url,
+                    "name_ja": name_ja,
+                    "tabelog_rating": rating,
+                    "review_count": review_count,
+                    "hyakumeiten": hyakumeiten,
+                    "awards": hyakumeiten,
+                    "phone": "",
+                    "address": "",
+                }
+            )
+            seen_urls.add(clean_url)
+            if len(candidates) >= 5:
+                break
+
+        if candidates:
+            logger.info(f"Web Grounding recovered {len(candidates)} Tabelog candidates for '{store_name}'")
+        return candidates
+
     async def search_tabelog_candidates(self, store_name: str, area_name: str = "") -> list[dict[str, Any]]:
-        """搜尋 Tabelog 候選店家頁面 (Fail-Fast 降級)"""
+        """搜尋 Tabelog 候選店家頁面 (Fail-Fast 降級至 Web Grounding)"""
         query_str = f"{area_name} {store_name}".strip()
         search_url = f"https://tabelog.com/rstLst/?vs=1&sa={httpx.QueryParams({'sk': query_str})['sk']}"
 
         html_content = await self._fetch_url_with_retry(search_url)
         if not html_content:
-            logger.warning(f"Fail-fast: Could not fetch Tabelog search results for '{query_str}'")
-            return []
+            logger.info(f"Direct scraping blocked for '{query_str}'. Falling back to Web Grounding...")
+            return await self.search_via_grounding(store_name=store_name, area_name=area_name)
 
-        return self._parse_search_results(html_content)
+        parsed = self._parse_search_results(html_content)
+        if not parsed:
+            logger.info(f"Direct search yielded 0 results for '{query_str}'. Trying Web Grounding fallback...")
+            return await self.search_via_grounding(store_name=store_name, area_name=area_name)
+        return parsed
 
-    async def scrape_restaurant_details(self, tabelog_url: str) -> dict[str, Any]:
+    async def scrape_restaurant_details(
+        self, tabelog_url: str, fallback_candidate: Optional[dict[str, Any]] = None
+    ) -> dict[str, Any]:
         """抓取 Tabelog 店家詳細頁面評分、預算與電話 (Fail-Fast 降級)"""
         html_content = await self._fetch_url_with_retry(tabelog_url)
         if not html_content:
-            logger.warning(f"Fail-fast: Could not fetch Tabelog store details for '{tabelog_url}'")
+            logger.info(f"Direct store fetch blocked for '{tabelog_url}'. Using candidate metadata fallback.")
+            if fallback_candidate:
+                return {
+                    "tabelog_url": tabelog_url,
+                    "name_ja": fallback_candidate.get("name_ja", ""),
+                    "tabelog_rating": fallback_candidate.get("tabelog_rating"),
+                    "review_count": fallback_candidate.get("review_count"),
+                    "price_lunch": fallback_candidate.get("price_lunch"),
+                    "price_dinner": fallback_candidate.get("price_dinner"),
+                    "phone": fallback_candidate.get("phone", ""),
+                    "awards": fallback_candidate.get("awards", []),
+                    "hyakumeiten": fallback_candidate.get("hyakumeiten", []),
+                    "supports_paypay": fallback_candidate.get("supports_paypay", False),
+                    "credit_cards": fallback_candidate.get("credit_cards", []),
+                }
             return {}
 
         return self._parse_store_details(html_content, tabelog_url)

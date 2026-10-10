@@ -215,16 +215,19 @@ flowchart TD
     S2Select --> Progress2["Telegram 狀態推播 2:<br/>📊 正在彙整 Google 與 Tabelog 雙平台評分卡片..."]
 
     subgraph State3 ["State 3: Tabelog 平行實體對齊 (Parallel Enrichment)"]
-        Progress2 --> ParallelGather["asyncio.gather 平行對齊 3 家候選店"]
+        Progress2 --> ParallelGather["asyncio.gather 平行對齊 3~5 家候選店"]
         
         subgraph PerStore ["每家候選店對齊邏輯"]
             ParallelGather --> CheckCache{"Neon tabelog_cache 快取?"}
             CheckCache -- "🟢 快取命中 (TTL <= 7天)" --> HitCache["直接載入 Tabelog 評分"]
-            CheckCache -- "🔴 快取未命中" --> FetchTabelog["TabelogScraper 抓取搜尋清單"]
-            FetchTabelog --> EntityResolver["EntityResolver (電話優先 ➔ 店名相似度)"]
+            CheckCache -- "🔴 快取未命中" --> FetchTabelog["TabelogScraper 抓取清單"]
+            FetchTabelog --> CheckWaf{"403 WAF 阻擋 / 0筆?"}
+            CheckWaf -- "Yes (WAF 觸發)" --> GroundingFallback["啟動 Web Grounding 搜尋備援<br/>(提取官方標準評分、評論數與百名店標章)"]
+            CheckWaf -- "No (順利連線)" --> EntityResolver
+            GroundingFallback --> EntityResolver["EntityResolver (電話優先 ➔ 店名相似度)"]
             EntityResolver --> MatchCheck{"比對成功?"}
-            MatchCheck -- Yes --> ScrapeDetail["爬取內頁評分/百名店/支付方式"] --> SaveCache["寫入 Neon DB 快取"]
-            MatchCheck -- No / 403 --> FallbackGoogle["標註「Tabelog 暫無評分，以 Google 為依據」"]
+            MatchCheck -- Yes --> ScrapeDetail["彙整評分/百名店/URL"] --> SaveCache["寫入 Neon DB tabelog_cache 快取<br/>(後續查詢 0ms 永久命中)"]
+            MatchCheck -- No --> FallbackGoogle["保底：標註「Tabelog 暫無評分，以 Google 為依據」"]
         end
     end
 

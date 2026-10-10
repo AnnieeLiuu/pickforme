@@ -206,19 +206,28 @@ class FoodRecommendationFSM:
             if match_res and match_res.get("match_found") and match_res.get("candidate"):
                 cand = match_res["candidate"]
                 tabelog_url = cand.get("tabelog_url", "")
-                details = await self.tabelog_scraper.scrape_restaurant_details(tabelog_url)
-                rating = details.get("rating") or cand.get("rating")
+                details = await self.tabelog_scraper.scrape_restaurant_details(tabelog_url, fallback_candidate=cand)
+                rating = (
+                    details.get("tabelog_rating")
+                    or cand.get("tabelog_rating")
+                    or details.get("rating")
+                    or cand.get("rating")
+                )
                 rev_count = details.get("review_count") or cand.get("review_count")
 
-                # 存入快取
+                # 存入快取 (包含評分、評論數與百名店榮譽)
+                tabelog_save_data = {
+                    **cand,
+                    **details,
+                    "tabelog_rating": rating,
+                    "review_count": rev_count,
+                    "tabelog_url": tabelog_url,
+                    "name_ja": cand.get("name_ja") or store_name,
+                }
                 try:
                     await self.restaurant_repo.save_restaurant_with_tabelog(
                         google_store=place,
-                        tabelog_data={
-                            **details,
-                            "tabelog_url": tabelog_url,
-                            "name_ja": cand.get("name_ja") or store_name,
-                        },
+                        tabelog_data=tabelog_save_data,
                         match_confidence=match_res.get("confidence", 0.9),
                         match_method=match_res.get("match_method", "rule_high"),
                     )
