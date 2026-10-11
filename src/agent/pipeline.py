@@ -335,24 +335,49 @@ class FoodRecommendationFSM:
                 search_query = f"{store_name} {target_area}".strip()
 
             candidates = await self.tabelog_scraper.search_tabelog_candidates(store_name=search_query)
-            # 若帶地區搜尋未果，回退至純店名搜尋
-            if not candidates and search_query != store_name:
-                candidates = await self.tabelog_scraper.search_tabelog_candidates(store_name=store_name)
-
-            # 若帶地區與純店名皆搜尋未果，且具備電話號碼，以電話號碼執行精準檢索保底 (site:tabelog.com <phone>)
-            phone_raw = (place.get("phone") or "").strip()
-            if not candidates and phone_raw and len(re.sub(r"\D", "", phone_raw)) >= 9:
-                phone_clean = re.sub(r"[^\d-]", "", phone_raw)
-                logger.info(
-                    f"Store name search yielded 0 results for '{store_name}'. Fallback to phone search: '{phone_clean}'"
+            match_res = (
+                await self.entity_resolver.resolve_entity(
+                    google_store=place,
+                    tabelog_candidates=candidates,
+                    allow_llm=True,
                 )
-                candidates = await self.tabelog_scraper.search_via_grounding(store_name=phone_clean, area_name="")
-
-            match_res = await self.entity_resolver.resolve_entity(
-                google_store=place,
-                tabelog_candidates=candidates,
-                allow_llm=True,  # 雙層漏斗：明確者 0ms 通過，模糊者由 Tier 2 LLM 智慧裁決
+                if candidates
+                else None
             )
+
+            # 階梯備援 1：若帶地區搜尋未匹配，且 search_query != store_name，回退至純店名搜尋
+            if (not match_res or not match_res.get("match_found")) and search_query != store_name:
+                fallback_cands = await self.tabelog_scraper.search_tabelog_candidates(store_name=store_name)
+                if fallback_cands:
+                    fb_match = await self.entity_resolver.resolve_entity(
+                        google_store=place,
+                        tabelog_candidates=fallback_cands,
+                        allow_llm=True,
+                    )
+                    if fb_match and fb_match.get("match_found"):
+                        match_res = fb_match
+
+            # 階梯備援 2：若店名檢索未匹配（或候選皆為無關雜訊），且具備有效日本電話號碼，啟動電話精準檢索保底 (site:tabelog.com <phone>)
+            phone_raw = (place.get("phone") or "").strip()
+            if (
+                (not match_res or not match_res.get("match_found"))
+                and phone_raw
+                and len(re.sub(r"\D", "", phone_raw)) >= 9
+            ):
+                phone_clean = re.sub(r"[^\d-]", "", phone_raw)
+                logger.info(f"Store matching unaligned for '{store_name}'. Fallback to phone search: '{phone_clean}'")
+                phone_candidates = await self.tabelog_scraper.search_via_grounding(store_name=phone_clean, area_name="")
+                if phone_candidates:
+                    for pc in phone_candidates:
+                        if not pc.get("phone"):
+                            pc["phone"] = phone_clean
+                    phone_match = await self.entity_resolver.resolve_entity(
+                        google_store=place,
+                        tabelog_candidates=phone_candidates,
+                        allow_llm=True,
+                    )
+                    if phone_match and phone_match.get("match_found"):
+                        match_res = phone_match
 
             if match_res and match_res.get("match_found") and match_res.get("candidate"):
                 cand = match_res["candidate"]

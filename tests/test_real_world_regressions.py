@@ -403,3 +403,102 @@ def test_case10_template_fallback_truncates_long_raw_reviews():
     assert "..." in fallback_card
     assert len(super_long_review) > 400
     assert super_long_review not in fallback_card
+
+
+# ==============================================================================
+# Case 11: 搜尋雜訊阻斷防禦與電話號碼保底檢索 (Search Noise Unblocking & Phone Grounding Rescue)
+# ==============================================================================
+@pytest.mark.asyncio
+async def test_case11_search_noise_unblocking_and_phone_grounding_rescue():
+    """Case 11: 驗證當帶商圈搜尋回傳不相干雜訊候選（如大和町、大和屋）導致比對失敗時，
+
+    系統不會受非空候選誤導，而是由 match_found 驅動回退階梯，
+    以日本電話號碼精準檢索保底成功召回真身 (Yamatoshi -> 七代目 山利)。
+    """
+    mock_places_client = MagicMock()
+    mock_tabelog_scraper = MagicMock()
+    mock_entity_resolver = MagicMock()
+    mock_llm_client = MagicMock()
+
+    # 模擬 Yamatoshi 店家
+    yamatoshi_store = {
+        "google_place_id": "test_yamatoshi_place_id",
+        "name": "Yamatoshi",
+        "address": "Japan, 〒220-0005 Kanagawa, Yokohama, Nishi Ward, Minamisaiwai, 1-chōme−1−１ JR横浜タワーNEWoMan 8F",
+        "phone": "045-534-5234",
+        "lat": 35.4660,
+        "lng": 139.6225,
+        "reviews": [{"text": "好吃的大蝦丼飯", "author": "Tester"}],
+    }
+
+    # 1. 帶地區搜尋回傳 5 筆字面雜訊候選（大和町、大和屋等）
+    noisy_candidates = [
+        {"name_ja": "や台ずし 大和町", "tabelog_url": "https://tabelog.com/sample1"},
+        {"name_ja": "大和屋横浜店", "tabelog_url": "https://tabelog.com/sample2"},
+    ]
+    # 2. 純店名搜尋亦回傳無關候選
+    fallback_candidates = [
+        {"name_ja": "大和酒場", "tabelog_url": "https://tabelog.com/sample3"},
+    ]
+    # 3. 電話號碼檢索回傳之真身候選
+    phone_candidates = [
+        {
+            "name_ja": "しらす食堂 じゃこ屋 七代目 山利",
+            "tabelog_url": "https://tabelog.com/kanagawa/A1401/A140101/14079594/",
+            "rating": 3.5,
+            "review_count": 637,
+        }
+    ]
+
+    async def mock_search_cands(store_name: str):
+        if "橫濱" in store_name or "横浜" in store_name:
+            return noisy_candidates
+        return fallback_candidates
+
+    mock_tabelog_scraper.search_tabelog_candidates = AsyncMock(side_effect=mock_search_cands)
+    mock_tabelog_scraper.search_via_grounding = AsyncMock(return_value=phone_candidates)
+    mock_tabelog_scraper.scrape_restaurant_details = AsyncMock(
+        return_value={
+            "tabelog_rating": 3.5,
+            "review_count": 637,
+            "credit_cards": ["Visa"],
+            "supports_paypay": True,
+        }
+    )
+
+    async def mock_resolve(google_store, tabelog_candidates, allow_llm=True):
+        # 雜訊候選無法匹配
+        if tabelog_candidates == noisy_candidates or tabelog_candidates == fallback_candidates:
+            return {"match_found": False, "candidate": None}
+        # 電話檢索候選比對成功 (由注入的 phone 觸發完全比對)
+        if any(c.get("name_ja") == "しらす食堂 じゃこ屋 七代目 山利" for c in tabelog_candidates):
+            return {
+                "match_found": True,
+                "candidate": tabelog_candidates[0],
+                "match_method": "phone_exact",
+                "confidence": 1.0,
+            }
+        return {"match_found": False, "candidate": None}
+
+    mock_entity_resolver.resolve_entity = AsyncMock(side_effect=mock_resolve)
+
+    fsm = FoodRecommendationFSM(
+        places_client=mock_places_client,
+        tabelog_scraper=mock_tabelog_scraper,
+        entity_resolver=mock_entity_resolver,
+        llm_client=mock_llm_client,
+    )
+    # 關閉 DB 查詢以利純離線測試
+    fsm.restaurant_repo.get_by_google_place_id = AsyncMock(return_value=None)
+    fsm.restaurant_repo.upsert_restaurant = AsyncMock()
+
+    enriched = await fsm._enrich_single_place(yamatoshi_store, area_hint="橫濱車站")
+
+    # 驗證成功透過電話保底階梯救回真身
+    assert enriched["rating_source"] == "Tabelog"
+    assert enriched["name_ja"] == "しらす食堂 じゃこ屋 七代目 山利"
+    assert enriched["tabelog_url"] == "https://tabelog.com/kanagawa/A1401/A140101/14079594/"
+    assert enriched["tabelog_rating"] == 3.5
+    assert enriched["review_count"] == 637
+    # 驗證確實觸發了電話搜尋
+    mock_tabelog_scraper.search_via_grounding.assert_called_once_with(store_name="045-534-5234", area_name="")
