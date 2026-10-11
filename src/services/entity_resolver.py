@@ -84,6 +84,63 @@ def calculate_distance_meters(lat1: float, lng1: float, lat2: float, lng2: float
     return r * c
 
 
+PREFECTURE_MAP = {
+    "東京都": "tokyo",
+    "東京": "tokyo",
+    "神奈川県": "kanagawa",
+    "神奈川": "kanagawa",
+    "大阪府": "osaka",
+    "大阪": "osaka",
+    "京都府": "kyoto",
+    "京都": "kyoto",
+    "北海道": "hokkaido",
+    "愛知県": "aichi",
+    "愛知": "aichi",
+    "福岡県": "fukuoka",
+    "福岡": "fukuoka",
+    "千葉県": "chiba",
+    "千葉": "chiba",
+    "埼玉県": "saitama",
+    "埼玉": "saitama",
+    "兵庫県": "hyogo",
+    "兵庫": "hyogo",
+    "広島県": "hiroshima",
+    "広島": "hiroshima",
+    "宮城県": "miyagi",
+    "宮城": "miyagi",
+    "静岡県": "shizuoka",
+    "静岡": "shizuoka",
+    "沖縄県": "okinawa",
+    "沖縄": "okinawa",
+}
+
+
+def extract_prefecture_from_tabelog_url(url: Optional[str]) -> Optional[str]:
+    """從 Tabelog URL 提取都道府縣代碼 (例如 https://tabelog.com/kanagawa/... -> kanagawa)"""
+    if not url:
+        return None
+    m = re.search(r"tabelog\.com/(?:[a-z]{2}/)?([a-z]+)/", url)
+    if m:
+        pref = m.group(1).lower()
+        if pref not in {"rstlst", "japan"}:
+            return pref
+    return None
+
+
+def extract_prefecture_from_address(address: Optional[str]) -> Optional[str]:
+    """從中日文/英文地址中提取都道府縣代碼 (例如 神奈川県 -> kanagawa, Kanagawa -> kanagawa)"""
+    if not address:
+        return None
+    for kanji, code in PREFECTURE_MAP.items():
+        if kanji in address:
+            return code
+    addr_lower = address.lower()
+    for code in set(PREFECTURE_MAP.values()):
+        if re.search(rf"\b{code}\b", addr_lower):
+            return code
+    return None
+
+
 STORE_STOP_WORDS = {
     "restaurant",
     "restaurants",
@@ -183,13 +240,52 @@ class EntityResolver:
         google_name = google_store.get("name", "")
         google_lat = google_store.get("lat", 0.0)
         google_lng = google_store.get("lng", 0.0)
+        google_pref = extract_prefecture_from_address(google_store.get("address"))
+
+        # Step 0: 地理硬性護欄過濾 (Geo Hard-Veto Guardrail)
+        # 過濾明顯跨縣市 (例如 神奈川 vs 東京) 或距離大於 5km 之異地候選人，徹底杜絕全日同名 SEO 名店污染
+        valid_candidates: list[dict[str, Any]] = []
+        for cand in tabelog_candidates:
+            cand_url = cand.get("tabelog_url", "")
+            cand_pref = extract_prefecture_from_tabelog_url(cand_url) or extract_prefecture_from_address(
+                cand.get("address")
+            )
+
+            # 1. 都道府縣一票否決
+            if google_pref and cand_pref and google_pref != cand_pref:
+                logger.info(
+                    f"Prefecture mismatch: Google '{google_name}' ({google_pref}) vs Tabelog '{cand.get('name_ja')}' ({cand_pref}). Vetoed."
+                )
+                continue
+
+            # 2. 距離硬性上限一票否決 (> 5,000m)
+            cand_lat = cand.get("lat")
+            cand_lng = cand.get("lng")
+            if cand_lat and cand_lng and google_lat and google_lng:
+                dist = calculate_distance_meters(google_lat, google_lng, cand_lat, cand_lng)
+                if dist > 5000:
+                    logger.info(
+                        f"Distance hard-cap exceeded ({round(dist)}m > 5000m): '{google_name}' vs '{cand.get('name_ja')}'. Vetoed."
+                    )
+                    continue
+
+            valid_candidates.append(cand)
+
+        if not valid_candidates:
+            return {
+                "match_found": False,
+                "candidate": None,
+                "match_method": "geo_vetoed",
+                "confidence": 0.0,
+                "reason": "所有 Tabelog 候選店家皆因都道府縣不符或距離過遠被一票否決",
+            }
 
         best_candidate: Optional[dict[str, Any]] = None
         best_score = 0.0
 
         # Step 1: 電話號碼完全比對 (Highest Priority)
         if google_phone:
-            for cand in tabelog_candidates:
+            for cand in valid_candidates:
                 cand_phone = normalize_japanese_phone(cand.get("phone"))
                 if cand_phone and (
                     google_phone == cand_phone or google_phone in cand_phone or cand_phone in google_phone
@@ -203,7 +299,7 @@ class EntityResolver:
                     }
 
         # Step 2: 店名相似度 + 距離計算
-        for cand in tabelog_candidates:
+        for cand in valid_candidates:
             sim_score = calculate_string_similarity(google_name, cand.get("name_ja", ""))
 
             cand_lat = cand.get("lat")
@@ -232,9 +328,9 @@ class EntityResolver:
             }
 
         # Step 2.5: 搜尋引擎首位主幹信任 (Top 1 Core Match)
-        # 若候選清單第 1 筆之核心名稱完全包含在 Google 店名中，直接放行 (信任 site:tabelog.com 搜尋引擎首選)
-        if tabelog_candidates:
-            top_cand = tabelog_candidates[0]
+        # 僅適用於通過地理護欄之首位候選人
+        if valid_candidates:
+            top_cand = valid_candidates[0]
             top_name_norm = normalize_store_name(top_cand.get("name_ja", ""))
             google_name_norm = normalize_store_name(google_name)
             if top_name_norm and (top_name_norm in google_name_norm or google_name_norm in top_name_norm):
@@ -246,34 +342,43 @@ class EntityResolver:
                     "reason": f"搜尋引擎首位店家主幹完全吻合 ({top_cand.get('name_ja')})",
                 }
 
-        # Step 3: 灰色地帶判定 (0.35 ~ 0.85 啟動 Level 2 LLM 智慧裁決，或西文/羅馬拼音跨語言裁決)
-        target_llm_cand = best_candidate or (tabelog_candidates[0] if tabelog_candidates else None)
-        # 跨語言 (外語/羅馬拼音) 判定：含有英文字母 (不受 Unicode 破折號如 –、特殊引號、重音符號干擾)
+        # Step 3: 多候選仲裁池 (Multi-Candidate Arbitration Pool)
+        # 當為西文/羅馬拼音跨語言案例時，打破單一候選鎖定瓶頸，評估通過地理護欄之前 3 名候選
         has_latin = bool(re.search(r"[a-zA-Z]", google_name))
-        is_cross_lingual_case = bool(has_latin and target_llm_cand)
-        should_trigger_llm = bool(target_llm_cand and ((0.35 <= best_score < 0.85) or is_cross_lingual_case))
+        pool_to_evaluate: list[dict[str, Any]] = []
 
-        if target_llm_cand and should_trigger_llm:
+        if has_latin:
+            # 跨語言羅馬拼音：將前 3 名候選全數列入仲裁池，若 best_candidate 存在則置頂
+            for c in valid_candidates[:3]:
+                if c not in pool_to_evaluate:
+                    pool_to_evaluate.append(c)
+        else:
+            target = best_candidate or (valid_candidates[0] if valid_candidates else None)
+            if target and (0.35 <= best_score < 0.85):
+                pool_to_evaluate.append(target)
+
+        if pool_to_evaluate:
             if not allow_llm:
-                # 預熱/離線純規則模式：相似度 >= 0.70 直接採納為中等信心匹配，不消耗雲端 LLM API Key
-                if best_score >= 0.70:
+                # 預熱/離線純規則模式：相似度 >= 0.70 直接採納為中等信心匹配
+                if best_score >= 0.70 and best_candidate:
                     return {
                         "match_found": True,
-                        "candidate": target_llm_cand,
+                        "candidate": best_candidate,
                         "match_method": "rule_medium",
                         "confidence": round(best_score, 2),
                         "reason": f"預熱純規則中度匹配成功 ({round(best_score, 2)})",
                     }
             else:
-                llm_result = await self._verify_with_llm(google_store, target_llm_cand)
-                if llm_result and llm_result.is_same_store:
-                    return {
-                        "match_found": True,
-                        "candidate": target_llm_cand,
-                        "match_method": "llm_verify",
-                        "confidence": llm_result.confidence,
-                        "reason": llm_result.reason,
-                    }
+                for candidate in pool_to_evaluate:
+                    llm_result = await self._verify_with_llm(google_store, candidate)
+                    if llm_result and llm_result.is_same_store:
+                        return {
+                            "match_found": True,
+                            "candidate": candidate,
+                            "match_method": "llm_verify",
+                            "confidence": llm_result.confidence,
+                            "reason": llm_result.reason,
+                        }
 
         return {
             "match_found": False,

@@ -6,9 +6,15 @@
 
 ## [Unreleased]
 ### Added
+- **實體對齊都道府縣一票否決硬性護欄 (Prefecture & Distance Hard-Cap Guardrail)**：於 `EntityResolver` 實裝都道府縣代碼（`kanagawa` vs `tokyo`）與 5km 物理距離硬性護欄，跨區候選直接一票否決。
+- **跨語言多候選仲裁池 (Multi-Candidate Arbitration Pool)**：打破羅馬拼音西文名稱在純字元比對下的單一候選鎖定瓶頸，將通過地理護欄之 Top 3 候選全面納入仲裁，精準召回正牌老店（荒井屋 本店）。
+- **行政區平滑降級階梯 (Hierarchical Area Relaxation)**：細部商圈未命中時，優先退回大城市（如「橫濱」、「新宿」），避免裸店名引發全日本 SEO 雜訊污染。
 - **Cloud Run 自動化生產環境部署腳本 (`scripts/deploy_cloud_run.sh`)**：支援一鍵讀取環境變數、GCP 容器建構、Cloud Run 服務部署、自動綁定 Telegram Webhook 與 `--dry-run` 模擬演練。
 - **GitLab CI/CD Cloud Run 自動部署 Job (`deploy-cloud-run`)**：配置於 `deploy` stage，支援 Google Cloud SDK 認證、手動觸發與 Git Tag 自動發布。
 - **Pre-push Hook `--dry-run` 無副作用驗證**：支援評測無磁碟污染執行，根除 Git Push 造成的 Working Tree 髒檔案問題。
+
+### Fixed
+- 修復橫濱公園搜尋時，因純英文店名 `Araiya` 觸發純店名備援，導致店家被跨縣市張冠李戴替換為東京都澀谷區「新井屋」的嚴重實體漂移問題。
 
 ---
 

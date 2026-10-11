@@ -716,3 +716,117 @@ async def test_case13_distance_modifier_cleansing_and_review_noise_filtering() -
     assert "老饕推薦理由" in card
     assert "3.52" in card
     assert "`壽喜燒極`" in card
+
+
+# ==============================================================================
+# Case 14: 跨縣市同名防禦一票否決與多候選羅馬拼音正牌召回 (Cross-Prefecture Veto & Multi-Candidate Recall)
+# ==============================================================================
+@pytest.mark.asyncio
+async def test_case14_cross_prefecture_hard_veto_and_cross_lingual_recall():
+    """Case 14: 驗證跨縣市同名店家 (橫濱 Araiya vs 澀谷新井屋) 100% 被都道府縣硬性護欄一票否決，
+
+    且多候選仲裁池能正確跳過雜訊分店，100% 正向召回正牌橫濱老字號荒井屋本店。
+    """
+    from unittest.mock import AsyncMock
+
+    from src.services.entity_resolver import (
+        EntityResolver,
+        EntityVerifyResponse,
+        extract_prefecture_from_address,
+        extract_prefecture_from_tabelog_url,
+    )
+
+    # 1. 驗證都道府縣解析器之準確性
+    assert extract_prefecture_from_tabelog_url("https://tabelog.com/kanagawa/A1401/A140104/14003068/") == "kanagawa"
+    assert extract_prefecture_from_tabelog_url("https://tabelog.com/tokyo/A1303/A130301/13237382/") == "tokyo"
+    assert (
+        extract_prefecture_from_address("4-chōme-19-1 Kaigandōri, Naka Ward, Yokohama, Kanagawa 231-0002") == "kanagawa"
+    )
+    assert extract_prefecture_from_address("東京都渋谷区道玄坂2-19-11") == "tokyo"
+
+    resolver = EntityResolver()
+
+    # 模擬 Google 橫濱牛鍋名店 (Araiya)
+    google_araiya = {
+        "name": "Araiya",
+        "address": "4-chōme-19-1 Kaigandōri, Naka Ward, Yokohama, Kanagawa 231-0002",
+        "phone": "+81 45-226-5003",
+        "lat": 35.4497,
+        "lng": 139.6385,
+    }
+
+    # 2. 負向防禦：若被 SEO 誤召回東京都澀谷區的新井屋
+    shibuya_candidate = [
+        {
+            "name_ja": "焼肉ホルモン 新井屋 渋谷",
+            "tabelog_url": "https://tabelog.com/tokyo/A1303/A130301/13237382/",
+            "address": "東京都渋谷区道玄坂2-19-11",
+            "lat": 35.6595,
+            "lng": 139.6961,
+        }
+    ]
+
+    veto_res = await resolver.resolve_entity(
+        google_store=google_araiya,
+        tabelog_candidates=shibuya_candidate,
+        allow_llm=True,
+    )
+    # 必須觸發都道府縣硬性一票否決
+    assert veto_res["match_found"] is False
+    assert veto_res["match_method"] == "geo_vetoed"
+
+    # 3. 正向召回：真實候選清單 (1: 本店, 2: 萬國橋店, 3: ANNEX)
+    yokohama_candidates = [
+        {
+            "name_ja": "荒井屋 本店",
+            "tabelog_url": "https://tabelog.com/kanagawa/A1401/A140104/14003068/",
+            "address": "神奈川県横浜市中区伊勢佐木町",
+            "lat": 35.4428,
+            "lng": 139.6291,
+            "tabelog_rating": 3.60,
+        },
+        {
+            "name_ja": "荒井屋 万國橋店",
+            "tabelog_url": "https://tabelog.com/kanagawa/A1401/A140104/14009643/",
+            "address": "神奈川県横浜市中区海岸通",
+            "lat": 35.4501,
+            "lng": 139.6379,
+            "tabelog_rating": 3.55,
+        },
+        {
+            "name_ja": "荒井屋ANNEX",
+            "tabelog_url": "https://tabelog.com/kanagawa/A1401/A140104/14041185/",
+            "address": "神奈川県横浜市中区",
+            "lat": 35.4429,
+            "lng": 139.6295,
+            "tabelog_rating": 3.40,
+        },
+    ]
+
+    # Mock LLM 裁決：比對 本店 時判定為 True，比對 ANNEX 時判定為 False
+    async def mock_verify(g_store, t_cand):
+        if "本店" in t_cand.get("name_ja", ""):
+            return EntityVerifyResponse(
+                is_same_store=True,
+                confidence=0.98,
+                reason="店名 Araiya 完全為荒井屋之羅馬拼音，且位於橫濱市中區，為老字號本店",
+            )
+        return EntityVerifyResponse(
+            is_same_store=False,
+            confidence=0.20,
+            reason="分店不同",
+        )
+
+    resolver._verify_with_llm = AsyncMock(side_effect=mock_verify)
+
+    recall_res = await resolver.resolve_entity(
+        google_store=google_araiya,
+        tabelog_candidates=yokohama_candidates,
+        allow_llm=True,
+    )
+
+    # 驗證多候選仲裁池順利跨過 ANNEX 雜訊，成功命中「荒井屋 本店」
+    assert recall_res["match_found"] is True
+    assert recall_res["match_method"] == "llm_verify"
+    assert recall_res["candidate"]["name_ja"] == "荒井屋 本店"
+    assert recall_res["candidate"]["tabelog_rating"] == 3.60

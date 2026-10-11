@@ -432,9 +432,20 @@ class FoodRecommendationFSM:
                 else None
             )
 
-            # 階梯備援 1：若帶地區搜尋未匹配，且 search_query != store_name，回退至純店名搜尋
+            # 階梯備援 1：若帶細部商圈搜尋未匹配，回退至大行政區/城市搜尋 (如 橫濱/新宿)，避免裸奔引發全日 SEO 污染
             if (not match_res or not match_res.get("match_found")) and search_query != store_name:
-                fallback_cands = await self.tabelog_scraper.search_tabelog_candidates(store_name=store_name)
+                city_anchor = ""
+                if place.get("address"):
+                    city_m = re.search(r"([^\d\s,，]{2,6}?(?:市|特別区|都|府|県))", place["address"])
+                    if city_m:
+                        city_anchor = re.sub(r"[都道府縣県市]$", "", city_m.group(1)).strip()
+
+                broad_query = (
+                    f"{store_name} {city_anchor}".strip()
+                    if (city_anchor and city_anchor.lower() != target_area.lower())
+                    else store_name
+                )
+                fallback_cands = await self.tabelog_scraper.search_tabelog_candidates(store_name=broad_query)
                 if fallback_cands:
                     fb_match = await self.entity_resolver.resolve_entity(
                         google_store=place,
