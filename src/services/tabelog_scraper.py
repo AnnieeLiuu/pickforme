@@ -28,15 +28,15 @@ class TabelogScraper:
             "Referer": "https://tabelog.com/",
         }
 
-    def _clean_tabelog_url(self, raw_url: str) -> str:
-        """將外語版或子路徑 Tabelog 網址正規化為官方標準店家首頁"""
+    def _clean_tabelog_url(self, raw_url: str) -> Optional[str]:
+        """將外語版或子路徑 Tabelog 網址正規化為官方標準店家首頁，非單一店家專頁則返回 None"""
         m = re.search(
             r"https?://(?:s\.|tw\.|en\.)?tabelog\.com/(?:tw/|en/)?([a-z]+/[A-Z0-9]+/[A-Z0-9]+/\d+)",
             raw_url,
         )
         if m:
             return f"https://tabelog.com/{m.group(1)}/"
-        return raw_url
+        return None
 
     async def search_via_grounding(self, store_name: str, area_name: str = "") -> list[dict[str, Any]]:
         """當 Tabelog 官方 HTTP 爬蟲遭 Cloudflare WAF (403/Turnstile) 攔截時，自動啟動 Web Grounding 搜尋備援"""
@@ -78,7 +78,7 @@ class TabelogScraper:
             if not isinstance(raw_href, str):
                 continue
             clean_url = self._clean_tabelog_url(raw_href)
-            if not clean_url.startswith("https://tabelog.com/"):
+            if not clean_url:
                 continue
 
             title_tag = item.select_one("h3") or item.select_one(".sw-Card__title")

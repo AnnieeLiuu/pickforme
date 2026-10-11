@@ -165,19 +165,22 @@ CREATE TABLE restaurant_insights (
 - **互動流程**：使用者每次發送位置與問句。Telegram 訊息不可編輯的限制由「同步 Webhook 編輯訊息」克服——連線期間即時編輯訊息顯示進度 (`🔍 搜尋 Google Places...` → `📊 抓取 Tabelog 評分...` → 最終推薦卡片)。
 - **冪等性**：以 `update_id` 做去重，避免 Telegram 重送時觸發第二次 Agent 執行。超時時間上限設為 45 秒。
 
-### B. Google ↔ Tabelog 實體匹配器 (`src/services/entity_resolver.py`)
-- **特徵工程**：
-  1. **電話號碼（最高權限）**：號碼完全一致直接配對成功。
-  2. **店名正規化相似度**：全半形統一、消除分店後綴（如「博多店」「本店」）、片假名/英文轉譯。
-  3. **座標距離扣分**。
-- **門檻決策**：
-  - 高分判定：直接寫入 `tabelog_cache` (`match_method = 'rule_high'`)。
-  - 灰色地帶 (0.60 ~ 0.85)：呼叫 LLM 微型 Prompt 輔助研判 (`match_method = 'llm_verify'`)。
-  - 匹配失敗：標註「無 Tabelog 資料」，堅守 Precision 優先原則。
+### B. Google ↔ Tabelog 雙層漏斗實體匹配器 (`src/services/entity_resolver.py`)
+- **設計哲學**：拒絕脆弱的字串打地鼠正則，落實「Level 1 極速放行 + Level 2 智能語意裁決」：
+  1. **Level 1: 0ms 規則快篩 (Fast-Path)**：
+     - 電話號碼完全吻合 ➔ 直接判定命中 (`phone_exact`, 1.0)。
+     - 核心品牌 Token 高度相符 (>= 0.85) ➔ 直接命中 (`rule_high`)。
+     - 搜尋引擎首位店家主幹完全吻合 ➔ 信任搜尋結果首選 (`top1_core_match`, 0.92)。
+  2. **Level 2: LLM 智能裁決 (Smart Arbiter)**：
+     - 灰色地帶 (0.40 ~ 0.85)：異構店名、日英文夾雜、長品類修飾詞，自動由 Groq Llama 3.3 70B（<300ms）或 Gemini 3.8 Flash 進行語意判定 (`llm_verify`)。
+  3. **匹配失敗兜底**：標註「Tabelog 暫無評分，以 Google 為依據」，確保零幻覺。
 
-### C. 預熱與防封鎖機制
-- **預熱佇列**：使用 Neon `prewarm_jobs` 表搭配 `FOR UPDATE SKIP LOCKED`，支援分散式 Worker 平行認領不撞單。
-- **觸發與推播**：使用者可透過 Telegram 傳送 `/prewarm <地名> [分類]`（或 `預熱 <地名>`）直接發起預熱。Worker 完成後會透過記錄的 `chat_id` 主動推播「🎉 預熱完成！已快取 N 家熱門餐廳」通知卡片。
+### C. 預熱與防封鎖機制 (`src/worker/prewarm.py`)
+- **核心架構共用**：`PrewarmWorker` 與即時查詢 FSM 管線**底層共用同一套 `TabelogScraper` 與 `EntityResolver`**。
+- **效益雙贏**：
+  1. **離峰批量入庫**：以每 2 秒安全間隔自動將熱門商圈（如新宿、澀谷）前 20~50 家名店與 Tabelog 分數、老饕評論寫入 Neon DB。
+  2. **前台 0ms 秒回**：熱門商圈店家在真實用戶查詢時 100% 命中 DB 快取，徹底免除外部爬蟲與 API 延遲。
+- **觸發與推播**：使用者可透過 Telegram 傳送 `/prewarm <地名> [分類]` 直接發起預熱，完成後主動推播 Telegram 通知。
 
 ### D. 完整 Agent 決策、大腦選擇與 4 階段 FSM 流程圖 (Agent Decision & 4-Stage FSM Flowchart)
 

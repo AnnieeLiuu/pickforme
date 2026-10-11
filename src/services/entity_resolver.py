@@ -225,8 +225,23 @@ class EntityResolver:
                 "reason": f"店名極高度相似 ({round(best_score, 2)})",
             }
 
-        # Step 3: 灰色地帶判定 (0.45 ~ 0.85 啟動 Tier 2 LLM 智慧裁決)
-        if best_candidate and 0.45 <= best_score < 0.85:
+        # Step 2.5: 搜尋引擎首位主幹信任 (Top 1 Core Match)
+        # 若候選清單第 1 筆之核心名稱完全包含在 Google 店名中，直接放行 (信任 site:tabelog.com 搜尋引擎首選)
+        if tabelog_candidates:
+            top_cand = tabelog_candidates[0]
+            top_name_norm = normalize_store_name(top_cand.get("name_ja", ""))
+            google_name_norm = normalize_store_name(google_name)
+            if top_name_norm and (top_name_norm in google_name_norm or google_name_norm in top_name_norm):
+                return {
+                    "match_found": True,
+                    "candidate": top_cand,
+                    "match_method": "top1_core_match",
+                    "confidence": 0.92,
+                    "reason": f"搜尋引擎首位店家主幹完全吻合 ({top_cand.get('name_ja')})",
+                }
+
+        # Step 3: 灰色地帶判定 (0.40 ~ 0.85 啟動 Level 2 LLM 智慧裁決)
+        if best_candidate and 0.40 <= best_score < 0.85:
             if not allow_llm:
                 # 預熱/離線純規則模式：相似度 >= 0.70 直接採納為中等信心匹配，不消耗雲端 LLM API Key
                 if best_score >= 0.70:

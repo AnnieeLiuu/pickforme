@@ -86,7 +86,7 @@ def test_entity_resolver_llm_verify():
 
     async def _test():
         resolver = EntityResolver(gemini_api_key=None)
-        # 相似度約 0.54 (落在 0.45 ~ 0.85 灰色區間)
+        # 相似度約 0.54 (落在 0.40 ~ 0.85 灰色區間)
         google_store = {
             "name": "一蘭 歌舞伎町店",
             "phone": "",
@@ -97,7 +97,7 @@ def test_entity_resolver_llm_verify():
             {"name_ja": "天然とんこつラーメン一蘭 新宿歌舞伎町店", "phone": "", "lat": 35.6949, "lng": 139.7026},
         ]
 
-        # 模擬 Tier 2 LLM 裁決返回 True
+        # 模擬 Level 2 LLM 裁決返回 True
         resolver._verify_with_llm = AsyncMock(
             return_value=EntityVerifyResponse(
                 is_same_store=True,
@@ -110,5 +110,59 @@ def test_entity_resolver_llm_verify():
         assert result["match_found"] is True
         assert result["match_method"] == "llm_verify"
         assert result["confidence"] == 0.95
+
+    asyncio.run(_test())
+
+
+def test_resolve_honey_toast_top1_match():
+    async def _test():
+        resolver = EntityResolver(gemini_api_key=None)
+        google_store = {
+            "name": "ハニトーカフェ横浜関内店",
+            "phone": "0120-911-753",
+            "lat": 35.4437,
+            "lng": 139.6328,
+        }
+        tabelog_candidates = [
+            {
+                "tabelog_url": "https://tabelog.com/kanagawa/A1401/A140104/14099981/",
+                "name_ja": "ハニトーカフェ 横浜関内店",
+                "phone": "",
+                "lat": 35.4437,
+                "lng": 139.6328,
+                "tabelog_rating": 3.1,
+            }
+        ]
+        result = await resolver.resolve_entity(google_store, tabelog_candidates, allow_llm=False)
+        assert result["match_found"] is True
+        assert result["match_method"] in ("rule_high", "top1_core_match")
+        assert result["candidate"]["tabelog_url"] == "https://tabelog.com/kanagawa/A1401/A140104/14099981/"
+
+    asyncio.run(_test())
+
+
+def test_resolve_jiichiro_pudding_match():
+    async def _test():
+        resolver = EntityResolver(gemini_api_key=None)
+        google_store = {
+            "name": "治一郎 ジョイナス店",
+            "phone": "045-311-2005",
+            "lat": 35.4658,
+            "lng": 139.6223,
+        }
+        tabelog_candidates = [
+            {
+                "tabelog_url": "https://tabelog.com/kanagawa/A1401/A140101/14061803/",
+                "name_ja": "治一郎",
+                "phone": "",
+                "lat": 35.4658,
+                "lng": 139.6223,
+                "tabelog_rating": 3.25,
+            }
+        ]
+        result = await resolver.resolve_entity(google_store, tabelog_candidates, allow_llm=False)
+        assert result["match_found"] is True
+        assert result["match_method"] in ("rule_high", "top1_core_match")
+        assert result["candidate"]["tabelog_rating"] == 3.25
 
     asyncio.run(_test())
