@@ -246,10 +246,12 @@ class EntityResolver:
                     "reason": f"搜尋引擎首位店家主幹完全吻合 ({top_cand.get('name_ja')})",
                 }
 
-        # Step 3: 灰色地帶判定 (0.40 ~ 0.85 啟動 Level 2 LLM 智慧裁決，或純英數羅馬拼音近距離跨語言裁決)
+        # Step 3: 灰色地帶判定 (0.35 ~ 0.85 啟動 Level 2 LLM 智慧裁決，或西文/羅馬拼音跨語言裁決)
         target_llm_cand = best_candidate or (tabelog_candidates[0] if tabelog_candidates else None)
-        is_romanized_case = bool(google_name and google_name.isascii() and target_llm_cand)
-        should_trigger_llm = (target_llm_cand and 0.40 <= best_score < 0.85) or is_romanized_case
+        # 跨語言 (外語/羅馬拼音) 判定：含有英文字母 (不受 Unicode 破折號如 –、特殊引號、重音符號干擾)
+        has_latin = bool(re.search(r"[a-zA-Z]", google_name))
+        is_cross_lingual_case = bool(has_latin and target_llm_cand)
+        should_trigger_llm = bool(target_llm_cand and ((0.35 <= best_score < 0.85) or is_cross_lingual_case))
 
         if target_llm_cand and should_trigger_llm:
             if not allow_llm:

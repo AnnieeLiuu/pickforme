@@ -208,6 +208,48 @@ def test_resolve_romanized_name_triggers_llm():
     asyncio.run(_test())
 
 
+def test_resolve_unicode_dash_romanized_triggers_llm():
+    """測試當 Google 店名含有 Unicode 破折號 (如 – EN DASH) 之羅馬拼音時，仍能正確觸發 Level 2 LLM 裁決"""
+    from unittest.mock import AsyncMock, patch
+
+    from src.services.entity_resolver import EntityVerifyResponse
+
+    async def _test():
+        resolver = EntityResolver(gemini_api_key=None)
+        google_store = {
+            "name": "Tori Sanwa – Yokohama Landmark Plaza Branch",  # 含有 \u2013 EN DASH
+            "address": "日本、〒220-0012 神奈川県横浜市西区みなとみらい２丁目２−１ ランドマークプラザ 1F",
+            "phone": "045-263-8180",
+            "lat": 35.4548,
+            "lng": 139.6318,
+        }
+        tabelog_candidates = [
+            {
+                "name_ja": "鶏三和 横浜ランドマークタワー店",
+                "address": "神奈川県横浜市西区みなとみらい2-2-1 ランドマークプラザ 1F",
+                "phone": "",
+                "lat": 35.4548,
+                "lng": 139.6318,
+                "tabelog_url": "https://tabelog.com/kanagawa/A1401/A140103/14037512/",
+                "tabelog_rating": 3.2,
+            }
+        ]
+
+        with patch.object(resolver, "_verify_with_llm", new_callable=AsyncMock) as mock_llm:
+            mock_llm.return_value = EntityVerifyResponse(
+                is_same_store=True,
+                confidence=0.99,
+                reason="店名中的 Tori Sanwa 與 鶏三和 為同一品牌，分店名指向同一地點，地址完全一致",
+            )
+            result = await resolver.resolve_entity(google_store, tabelog_candidates, allow_llm=True)
+            assert result["match_found"] is True
+            assert result["match_method"] == "llm_verify"
+            assert result["confidence"] == 0.99
+            assert result["candidate"]["name_ja"] == "鶏三和 横浜ランドマークタワー店"
+
+    asyncio.run(_test())
+
+
 def test_short_store_name_stop_words_protection():
     """測試短店名 (如 Curry House) 不會因通用停用詞清空而使相似度歸零"""
     sim1 = calculate_string_similarity("Curry House", "Curry House CoCo")
