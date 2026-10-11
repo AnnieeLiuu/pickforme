@@ -269,6 +269,10 @@ flowchart TD
   - **拒絕未預期表格**：嚴格偵測並拒絕 Markdown 表格語法（`|---|`），確保不會退化成生硬表格。
   - **必備維度稽核**：強制要求一鍵複製反引號店名（`` `店名` ``）、步行距離（`🚶 **步行距離**`）、雙平台評分與支付方式（`💳 **支付方式**`）。
   - **State 4 自動回退**：若 LLM 產生的卡片未能通過驗證，自動降級為確定性精準模板卡片，保證送到使用者的排版永遠 100% 規範統一。
+- **實體對齊強化：商圈錨定搜尋與同商業大樓/樓層快篩 (`src/services/entity_resolver.py`)**：
+  - **商圈/地名搜尋錨定**：若 Google 店名未包含地名，Tabelog 搜尋自動附加使用者搜尋區域（如 `Mawashizushi KATSU 横浜`），確保在地分店 100% 擠入搜尋前席。
+  - **商業大樓/樓層 0ms 快篩**：比對同商業大樓（スカイビル、JOINUS 等）或同樓層（11F 等）且經緯度近距（<300m），0ms 直接放行，徹底跨越英日羅馬拼音文字鴻溝。
+  - **羅馬拼音跨語言防誤判**：升級實體判定 Prompt，防止 LLM 將「KATSU (活)」望文生義猜成炸豬排。
 - **對話歷史淨化機制 (State 1 Conversation History Sanitization)**：
   - 意圖解析時，將上一輪長篇推薦卡片（>100 字或含卡片格式）淨化為簡要摘要，杜絕微型 LLM 產生 Few-shot 模仿偏見導致輸出非 JSON。
   - 整合 JSON Mode 與美食關鍵字雙重保底，杜絕美食搜尋誤判為閒聊 (`chitchat`)。
@@ -281,7 +285,7 @@ flowchart TD
 ### F. 工程維護品質與軟體最佳實踐 (Engineering & Maintainability Practices)
 - **品質防線與 CI 守門 (Code Quality Gates)**：
   - **靜態檢查與型別標註**：全面採用 `ruff` (代碼規範/格式化) 與 `mypy` (Python 3.11 嚴格型別校驗)，確保程式碼可讀性與型別安全。
-  - **自動化測試與覆蓋率**：建立 81 項覆蓋核心邏輯之單元與合約測試，整合 `pytest-cov` Cobertura XML 報告與 GitLab CI/CD Pipeline (`.gitlab-ci.yml`)，未通過品質關卡禁止合併主線。
+  - **自動化測試與覆蓋率**：建立 83 項覆蓋核心邏輯之單元與合約測試，整合 `pytest-cov` Cobertura XML 報告與 GitLab CI/CD Pipeline (`.gitlab-ci.yml`)，未通過品質關卡禁止合併主線。
 - **資安防護與存取控制 (Security & Access Control)**：
   - **Telegram Webhook Secret Token 驗證**：要求驗證 `X-Telegram-Bot-Api-Secret-Token` 標頭，防止惡意流量觸發 Cloud Run。
   - **白名單過濾**：以 `TELEGRAM_ALLOWED_USER_ID` 限制存取權限。

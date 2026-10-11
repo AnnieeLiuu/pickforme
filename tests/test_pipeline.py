@@ -449,3 +449,39 @@ async def test_llm_client_fallback_to_search_on_food_keywords():
         parsed, _, _ = await client.call_structured_json(messages)
         # 應觸發關鍵詞保底為 search，避免進入 chitchat
         assert parsed["intent"] == "search"
+
+
+@pytest.mark.asyncio
+async def test_enrich_single_place_appends_area_hint(mock_fsm):
+    """測試未命中快取時，Tabelog 搜尋會自動附加上商圈/地區關鍵字以鎖定當地分店"""
+    mock_fsm.restaurant_repo.get_by_google_place_id.return_value = None
+    cand = {
+        "name_ja": "回し寿司活 活美登利横浜スカイビル店",
+        "tabelog_url": "https://tabelog.com/kanagawa/A1401/A140101/14041492/",
+        "tabelog_rating": 3.52,
+    }
+    mock_fsm.tabelog_scraper.search_tabelog_candidates.return_value = [cand]
+    mock_fsm.entity_resolver.resolve_entity.return_value = {
+        "match_found": True,
+        "candidate": cand,
+        "confidence": 0.95,
+        "match_method": "building_address_exact",
+    }
+    mock_fsm.tabelog_scraper.scrape_restaurant_details.return_value = {
+        "tabelog_rating": 3.52,
+        "review_count": 500,
+    }
+    mock_fsm.restaurant_repo.save_restaurant_with_tabelog.return_value = "saved-uuid"
+
+    place = {
+        "google_place_id": "katsu-place-id",
+        "name": "Mawashizushi KATSU",
+        "address": "神奈川県横浜市西区高島２丁目１９−１２ スカイビル 11階",
+    }
+    enriched = await mock_fsm._enrich_single_place(place, area_hint="橫濱")
+
+    # 驗證傳遞給 search_tabelog_candidates 的參數包含地區關鍵字
+    called_query = mock_fsm.tabelog_scraper.search_tabelog_candidates.call_args[1].get("store_name") or ""
+    assert "Mawashizushi KATSU" in called_query
+    assert "橫濱" in called_query
+    assert enriched["name_ja"] == "回し寿司活 活美登利横浜スカイビル店"

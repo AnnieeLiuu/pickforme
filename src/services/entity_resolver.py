@@ -196,6 +196,56 @@ class EntityResolver:
                         "reason": f"電話號碼完全吻合 ({google_phone})",
                     }
 
+        # Step 1.2: 商業大樓/樓層與近距地址比對 (Building/Floor Exact Match, < 300m)
+        google_addr = (google_store.get("address") or "").lower()
+        common_buildings = [
+            "スカイビル",
+            "ジョイナス",
+            "joinus",
+            "ルミネ",
+            "lumine",
+            "高島屋",
+            "takashimaya",
+            "パルコ",
+            "parco",
+            "ヒカリエ",
+            "hikarie",
+            "ヒルズ",
+            "hills",
+            "ポルタ",
+            "porta",
+            "ミッドタウン",
+            "midtown",
+        ]
+        if google_addr:
+            for cand in tabelog_candidates:
+                cand_addr = (cand.get("address") or "").lower()
+                cand_name = (cand.get("name_ja") or "").lower()
+                if cand_addr:
+                    cand_lat = cand.get("lat")
+                    cand_lng = cand.get("lng")
+                    dist = 9999.0
+                    if cand_lat and cand_lng and google_lat and google_lng:
+                        dist = calculate_distance_meters(google_lat, google_lng, cand_lat, cand_lng)
+
+                    # 1. 同一商業大樓名稱 (比對 address 或店名中的大樓標記)
+                    matched_building = any(
+                        b in google_addr and (b in cand_addr or b in cand_name) for b in common_buildings
+                    )
+                    # 2. 相同樓層 (如 11f, 11階, b1f)
+                    g_floors = set(re.findall(r"(?:b\d|\d{1,2})[f階]", google_addr))
+                    c_floors = set(re.findall(r"(?:b\d|\d{1,2})[f階]", cand_addr))
+                    same_floor = bool(g_floors and c_floors and (g_floors & c_floors))
+
+                    if (matched_building or same_floor) and (dist < 300 or not (cand_lat and cand_lng)):
+                        return {
+                            "match_found": True,
+                            "candidate": cand,
+                            "match_method": "building_address_exact",
+                            "confidence": 0.95,
+                            "reason": f"同商業大樓/樓層地址吻合 ({cand.get('name_ja')})",
+                        }
+
         # Step 2: 店名相似度 + 距離計算
         for cand in tabelog_candidates:
             sim_score = calculate_string_similarity(google_name, cand.get("name_ja", ""))
@@ -240,24 +290,28 @@ class EntityResolver:
                     "reason": f"搜尋引擎首位店家主幹完全吻合 ({top_cand.get('name_ja')})",
                 }
 
-        # Step 3: 灰色地帶判定 (0.40 ~ 0.85 啟動 Level 2 LLM 智慧裁決)
-        if best_candidate and 0.40 <= best_score < 0.85:
+        # Step 3: 灰色地帶判定 (0.40 ~ 0.85 啟動 Level 2 LLM 智慧裁決，或純英數羅馬拼音近距離跨語言裁決)
+        target_llm_cand = best_candidate or (tabelog_candidates[0] if tabelog_candidates else None)
+        is_romanized_case = bool(google_name and google_name.isascii() and target_llm_cand)
+        should_trigger_llm = (target_llm_cand and 0.40 <= best_score < 0.85) or is_romanized_case
+
+        if target_llm_cand and should_trigger_llm:
             if not allow_llm:
                 # 預熱/離線純規則模式：相似度 >= 0.70 直接採納為中等信心匹配，不消耗雲端 LLM API Key
                 if best_score >= 0.70:
                     return {
                         "match_found": True,
-                        "candidate": best_candidate,
+                        "candidate": target_llm_cand,
                         "match_method": "rule_medium",
                         "confidence": round(best_score, 2),
                         "reason": f"預熱純規則中度匹配成功 ({round(best_score, 2)})",
                     }
             else:
-                llm_result = await self._verify_with_llm(google_store, best_candidate)
+                llm_result = await self._verify_with_llm(google_store, target_llm_cand)
                 if llm_result and llm_result.is_same_store:
                     return {
                         "match_found": True,
-                        "candidate": best_candidate,
+                        "candidate": target_llm_cand,
                         "match_method": "llm_verify",
                         "confidence": llm_result.confidence,
                         "reason": llm_result.reason,

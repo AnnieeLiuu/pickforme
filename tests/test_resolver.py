@@ -166,3 +166,31 @@ def test_resolve_jiichiro_pudding_match():
         assert result["candidate"]["tabelog_rating"] == 3.25
 
     asyncio.run(_test())
+
+
+def test_resolve_building_address_exact_match():
+    async def _test():
+        resolver = EntityResolver(gemini_api_key=None)
+        google_store = {
+            "name": "Mawashizushi KATSU",
+            "address": "神奈川県横浜市西区高島２丁目１９−１２ スカイビル 11階",
+            "lat": 35.465,
+            "lng": 139.622,
+        }
+        tabelog_candidates = [
+            {
+                "name_ja": "回し寿司活 活美登利横浜スカイビル店",
+                "address": "神奈川県横浜市西区高島2-19-12 スカイビル 11F",
+                "lat": 35.4651,
+                "lng": 139.6221,
+                "tabelog_url": "https://tabelog.com/kanagawa/A1401/A140101/14041492/",
+                "tabelog_rating": 3.52,
+            }
+        ]
+        result = await resolver.resolve_entity(google_store, tabelog_candidates, allow_llm=False)
+        assert result["match_found"] is True
+        assert result["match_method"] == "building_address_exact"
+        assert result["confidence"] >= 0.90
+        assert result["candidate"]["name_ja"] == "回し寿司活 活美登利横浜スカイビル店"
+
+    asyncio.run(_test())

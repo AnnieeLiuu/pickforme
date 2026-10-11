@@ -266,7 +266,7 @@ class FoodRecommendationFSM:
         )
         return final_candidates
 
-    async def _enrich_single_place(self, place: dict[str, Any]) -> dict[str, Any]:
+    async def _enrich_single_place(self, place: dict[str, Any], area_hint: Optional[str] = None) -> dict[str, Any]:
         """對單一店家補全 Tabelog 評分 (優先 Neon DB 快取，未命中則爬蟲+Resolver)"""
         place_id = place.get("google_place_id", "")
         store_name = place.get("name", "")
@@ -313,7 +313,25 @@ class FoodRecommendationFSM:
 
         # 2. 未命中快取：執行即時爬蟲與比對
         try:
-            candidates = await self.tabelog_scraper.search_tabelog_candidates(store_name=store_name)
+            # 自動組合商圈/地名關鍵字，精準鎖定在地分店 (如 Mawashizushi KATSU 横浜)
+            search_query = store_name
+            target_area = (area_hint or "").strip()
+            if not target_area and place.get("address"):
+                m = re.search(
+                    r"(?:東京都|大阪府|京都府|神奈川県|愛知県|北海道|福岡県)?\s*([^\d\s,，]+?[市區町村島])",
+                    place["address"],
+                )
+                if m:
+                    target_area = m.group(1).rstrip("市區町村島")
+
+            if target_area and target_area.lower() not in store_name.lower():
+                search_query = f"{store_name} {target_area}".strip()
+
+            candidates = await self.tabelog_scraper.search_tabelog_candidates(store_name=search_query)
+            # 若帶地區搜尋未果，回退至純店名搜尋
+            if not candidates and search_query != store_name:
+                candidates = await self.tabelog_scraper.search_tabelog_candidates(store_name=store_name)
+
             match_res = await self.entity_resolver.resolve_entity(
                 google_store=place,
                 tabelog_candidates=candidates,
@@ -501,10 +519,11 @@ class FoodRecommendationFSM:
     async def execute_state_3_parallel_tabelog(
         self,
         places: list[dict[str, Any]],
+        area_hint: Optional[str] = None,
     ) -> list[dict[str, Any]]:
         """State 3: 3 店家平行 Tabelog 查驗 (asyncio.gather 並行加速)"""
         t0 = time.time()
-        tasks = [self._enrich_single_place(p) for p in places]
+        tasks = [self._enrich_single_place(p, area_hint=area_hint) for p in places]
         enriched_results = await asyncio.gather(*tasks)
         latency = int((time.time() - t0) * 1000)
 
@@ -942,7 +961,7 @@ class FoodRecommendationFSM:
                 return f"抱歉，在 {loc_name or '該地點'} 週邊暫時未檢索到更多符合「{search_keyword}」的高評價餐廳，建議可更換地標或料理關鍵字再次搜尋。"
 
             # 3. State 3: 3 店家平行 Tabelog 查驗
-            enriched_stores = await self.execute_state_3_parallel_tabelog(candidates)
+            enriched_stores = await self.execute_state_3_parallel_tabelog(candidates, area_hint=loc_name)
 
             # 3.5 pgvector 語意重排與食評亮點萃取 (RAG)
             rerank_query = f"{user_message} {modifier}" if modifier else user_message
