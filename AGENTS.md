@@ -74,12 +74,13 @@ Temporary scripts created in `scratch/` during exploratory phase MUST follow thi
 
 ---
 
-## 📄 Documentation Co-Evolution Guidelines (文件與程式碼同步強制規範)
+## 📄 Documentation & Pages Co-Evolution Guidelines (文件與可觀測性看板同步強制規範)
 
 Whenever modifying code, schemas, configurations, or business logic, AI Agents and developers **MUST** simultaneously review and update all related documentation before completing the task:
 1. **Zero Doc Drift (零文件滯後)**: Whenever database schemas (`schema.sql`), configuration keys (`config.py`), or agent routing logic change, immediately synchronize [`docs/ARCHITECTURE.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/ARCHITECTURE.md).
 2. **Mermaid & Diagram Consistency**: Keep architectural flowcharts and State transitions in sync with implementation reality.
-3. **Active Plan Sync**: When completing or adjusting an implementation plan in `docs/plans/`, update its status and architectural decisions.
+3. **Observability & Pages Sync (架構動 Pages 必動)**: 凡涉及 Pipeline 狀態機流轉（State）、輸入輸出 Payload 或演算法階段演進時，**MUST 同時更新 `src/eval/reporter.py` 並重新生成 GitLab Pages 儀表板 (`public/index.html`)**，確保對外展示之步驟瀑布流與系統真實實作 100% 一致。
+4. **Active Plan Sync**: When completing or adjusting an implementation plan in `docs/plans/`, update its status and architectural decisions.
 
 ---
 

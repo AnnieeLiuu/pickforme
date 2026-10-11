@@ -6,12 +6,14 @@
 
 ## 📐 1. 系統整體架構 (System Architecture)
 
+本系統採 **C4 Model** 之 Level 2 (Container) 設計，將使用者介面、確定性業務狀態機、多級 LLM 推論核心與冷熱分層儲存解耦：
+
 ```mermaid
 graph TD
-    User(["Telegram App / 每次發送位置與問句"]) -->|Webhook| Server["FastAPI 後端 @ Cloud Run"]
-    Server --> FSM["自研 4 階段 FSM 狀態機 (FoodRecommendationFSM)"]
-    
-    subgraph MultiTierLLM ["🧠 多級 LLM 推論核心 (LLMClient)"]
+    User(["📱 Telegram Client"]) -->|Webhook / HTTPS| Server["🚀 FastAPI 後端 @ Cloud Run"]
+    Server --> FSM["⚙️ 自研 4 階段狀態機 (FoodRecommendationFSM)"]
+
+    subgraph LLMTier ["🧠 多級 LLM 推論核心 (LLMClient)"]
         Groq["🥇 Groq qwen3.8-27b (0.7s 極速主力)"]
         Gemini["🥈 Gemini 3.8 Flash (429 自動備援)"]
         Ollama["🥉 本機 Ollama qwen2.5 (離線保底)"]
@@ -19,142 +21,48 @@ graph TD
         Gemini -.->|離線降級| Ollama
     end
 
-    subgraph DeterministicPipeline ["⚡ 確定性 4 階段狀態機流水線"]
-        FSM -->|1. 意圖辨識| S1["State 1: 使用者意圖與追問判斷<br/>(繼承歷史/換一批/modifier 抽取)"]
-        S1 -->|2. 地圖搜尋| S2["State 2: Google Places 智慧階梯搜尋<br/>(800m~1800m ➔ 2500m 擴圈 + 累積排除已看過)"]
-        S2 -->|3. 雙平台對齊| S3["State 3: Tabelog 雙平台實體對齊<br/>(asyncio.gather 平行處理 + 支付標記 + pgvector 重排)"]
-        S3 -->|4. 生成卡片| S4["State 4: 最終美食卡片排版合成<br/>(日文店名Code區塊 + 🚶起點步行距離 + 💳支付)"]
-        
-        %% 明確標註 LLM 在哪裡被調用
-        S1 ==>|"【LLM 呼叫 1】0.3s Micro-LLM 結構化意圖抽取"| MultiTierLLM
-        S3 -.->|"【LLM 呼叫 2 (可選)】灰區 0.6~0.85 實體比對裁決"| MultiTierLLM
-        S4 ==>|"【LLM 呼叫 3】單次 Prompt 高美感推薦卡片生成"| MultiTierLLM
-        
-        S4 --> Guardrail["🛡️ Scoped Anchor 毫秒級防偽護欄<br/>(0.1ms 數值校驗與自動矯正)"]
-        Guardrail --> OutputCard["輸出零幻覺推薦卡片"]
-        S4 -.->|LLM全斷線防護| Fallback["純 Python 模板引擎直出保底"]
-    end
-    
-    subgraph StorageTiering ["🗄️ 冷熱資料儲存分層與向量引擎"]
-        S3 --> HotDB[("Neon Postgres 熱層: 快取/餐廳/對話歷史")]
-        S3 --> VectorDB[("pgvector: halfvec(768) 評論向量重排")]
-        FSM -->|OTel 格式 Trace| HotDB
-        HotDB -.->|背景歸檔 (Parquet)| ColdStorage[("本機/GCS 冷層: Parquet 壓縮檔")]
-        ColdStorage --> DuckDBEngine["🦆 DuckDB OLAP 分析引擎 (analyze_traces.py)"]
+    subgraph StorageTier ["🗄️ 冷熱資料儲存分層與向量引擎"]
+        HotDB[("🐘 Neon Postgres (熱層: 快取/餐廳/對話歷史)")]
+        VectorDB[("🔍 pgvector: halfvec(768) 評論向量")]
+        ColdArchive[("📦 GCS 冷層 (Snappy Parquet 壓縮封存)")]
+        DuckDBEngine["🦆 DuckDB OLAP 分析引擎 (scripts/analyze_traces.py)"]
+        HotDB -.->|過期歸檔| ColdArchive
+        ColdArchive --> DuckDBEngine
     end
 
-    subgraph AsyncWorker ["⚙️ 背景非同步處理"]
-        HotDB -->|prewarm_jobs 佇列| LocalWorker["本機 Worker / 家用 IP 批次預熱"]
-        DuckDBEngine --> TraceDeepDive["Pipeline 耗時瀑布流與 Deep-Dive"]
+    subgraph BackgroundWorker ["🔄 非同步佇列與預熱"]
+        LocalWorker["🏠 Prewarm Worker (離峰熱門商圈預熱入庫)"]
+        HotDB -->|prewarm_jobs (SKIP LOCKED)| LocalWorker
     end
+
+    FSM <--> LLMTier
+    FSM --> HotDB
+    FSM --> VectorDB
 ```
+
+> 註：關於 4 階段 FSM（State 1~4）內部之決策邏輯、階梯擴圈與 Early Stopping 瀑布流，詳見 **[第 3.D 節詳細狀態機流程圖](#d-完整-agent-決策大腦選擇與-4-階段-fsm-流程圖-agent-decision--4-stage-fsm-flowchart)**。
 
 ---
 
 ## 🗄️ 2. 資料庫 Schema 設計 (Neon Postgres + GCS 冷熱分層)
 
-### 熱層：Neon Serverless Postgres (上限與容量防護)
-- **容量上限與防護**：1 GB 免費額度。採用 `halfvec` 半精度向量、每店最多存 30 則評論 embedding、原始 Trace 只留 14 天、每週自動清理，容量使用率達 70% 時自動發送 Telegram 通知。
+系統遵循 **SSOT (Single Source of Truth)** 原則，完整 DDL 定義收斂於 [`src/db/schema.sql`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/src/db/schema.sql)。
 
-```sql
--- 1. 餐廳基礎資料（遵從 Google 條款，只永久存 place_id；其餘店名座標使用 Tabelog）
-CREATE TABLE restaurants (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    google_place_id VARCHAR(255) UNIQUE NOT NULL, -- 唯一合規永久儲存欄位
-    tabelog_url VARCHAR(500) UNIQUE,
-    name_ja VARCHAR(255) NOT NULL,
-    name_en VARCHAR(255),
-    phone VARCHAR(50),                       -- 實體匹配關鍵特徵
-    lat DOUBLE PRECISION NOT NULL,            -- 來自 Tabelog
-    lng DOUBLE PRECISION NOT NULL,            -- 來自 Tabelog
-    address TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+### 熱層：Neon Serverless Postgres (容量上限防護)
+- **1 GB 免費額度防護**：採用 `halfvec` 半精度向量節省 50% 儲存空間；每店最多保留 30 則評論 embedding；原始 Trace 保留 14 天後自動歸檔，容量使用率達 70% 時自動觸發 Telegram 告警。
 
--- 2. Tabelog 分數與詳細資料快取
-CREATE TABLE tabelog_cache (
-    restaurant_id UUID PRIMARY KEY REFERENCES restaurants(id) ON DELETE CASCADE,
-    tabelog_rating NUMERIC(3,2),
-    review_count INT,
-    price_lunch VARCHAR(50),
-    price_dinner VARCHAR(50),
-    match_confidence NUMERIC(3,2),            -- 匹配信心度 (0.00 ~ 1.00)
-    match_method VARCHAR(50),                 -- 'phone_exact', 'rule_high', 'llm_verify'
-    supports_paypay BOOLEAN DEFAULT FALSE,   -- PayPay 行動支付支援
-    credit_cards JSONB DEFAULT '[]'::jsonb,   -- 支援之信用卡清單 (VISA, JCB...)
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 3. 對話狀態與記憶 (Telegram)
-CREATE TABLE chat_sessions (
-    chat_id BIGINT PRIMARY KEY,
-    last_location POINT,
-    last_recommended_ids JSONB,               -- 存上一次推薦的店家編號 [id1, id2, id3]
-    conversation_history JSONB,               -- 最近幾輪對話 (僅保留摘要)
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 4. 預熱工作佇列 (SKIP LOCKED)
-CREATE TABLE prewarm_jobs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    area_name VARCHAR(100) NOT NULL,
-    status VARCHAR(20) DEFAULT 'pending',     -- 'pending', 'processing', 'completed', 'failed'
-    target_count INT DEFAULT 20,
-    chat_id BIGINT,                           -- 任務完成時主動推播通知的 Telegram Chat ID
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 5. 自研 Agent Trace 與 Observability
-CREATE TABLE agent_runs (
-    run_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    chat_id BIGINT,
-    user_query TEXT,
-    model_used VARCHAR(50),
-    total_tokens INT,
-    latency_ms INT,
-    status VARCHAR(20),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE TABLE agent_steps (
-    step_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    run_id UUID REFERENCES agent_runs(run_id) ON DELETE CASCADE,
-    step_number INT,
-    action_type VARCHAR(50),                  -- 'llm_call', 'tool_call'
-    tool_name VARCHAR(50),
-    tool_input JSONB,
-    tool_output JSONB,
-    latency_ms INT,
-    error_message TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 6. Phase B: 評論與向量搜尋 (halfvec)
-CREATE EXTENSION IF NOT EXISTS vector;
-
-CREATE TABLE review_embeddings (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    restaurant_id UUID REFERENCES restaurants(id) ON DELETE CASCADE,
-    review_text_ja TEXT NOT NULL,
-    review_text_zh TEXT,                     -- 可空，由 Phase B 跨語言小實驗決定
-    embedding HALFVEC(768),                  -- halfvec 半精度向量省 50% 空間
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE TABLE restaurant_insights (
-    restaurant_id UUID PRIMARY KEY REFERENCES restaurants(id) ON DELETE CASCADE,
-    top_dishes JSONB,                        -- [{"name_ja": "特製つけ麺", "name_zh": "特製沾麵", "mentions": 42}]
-    pros JSONB,
-    cons JSONB,
-    summary_zh TEXT,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
+| 資料表 | 用途 | 關鍵欄位 / 設計考量 |
+| :--- | :--- | :--- |
+| **`restaurants`** | 餐廳實體主檔 | 遵從 Google 條款僅永久儲存 `google_place_id`，其餘名稱座標由 Tabelog 授權資料為主；`phone` 為實體對齊關鍵索引。 |
+| **`tabelog_cache`** | 雙平台評分快取 | 記錄 `tabelog_rating`、`match_confidence`、PayPay 支援與信用卡 JSONB。設有 7 天 TTL 過期機制。 |
+| **`chat_sessions`** | 對話狀態與多輪記憶 | 記錄 `last_location` (地理點位)、`last_recommended_ids` (防止換一批推薦重複)、`conversation_history` (保留 3 輪摘要)。 |
+| **`prewarm_jobs`** | 離線預熱任務佇列 | 支援 `SKIP LOCKED` 並行領取，支援 `/prewarm <地名>` 任務狀態與 Telegram 完成推播。 |
+| **`agent_runs` / `agent_steps`** | OTel 格式可觀測性 Trace | 記錄每次 Pipeline 總耗時、Token 消耗、狀態機各步驟的 Tool 輸入/輸出 Payload 與例外訊息。 |
+| **`review_embeddings`** | 評論語意向量庫 | 支援 `pgvector` halfvec(768)，供 Phase B 跨語言品項檢索與老饕心得比對。 |
 
 ### 冷層：Google Cloud Storage (GCS) + DuckDB
-- **資料檔案**：`gs://pickforme-cold-archive/raw_reviews/*.json.gz` (原始抓取內容) 與 `gs://pickforme-cold-archive/traces/year=2026/month=10/*.parquet` (過期轉檔 Trace)。
-- **用途**：免重新爬蟲即可重跑評測、修改 Prompt、或用 DuckDB 做離線 DS 分析。
+- **資料檔案**：`gs://pickforme-cold-archive/traces/year=2026/month=10/*.parquet` (Snappy 壓縮檔)。
+- **用途**：免連線 Live DB 即可使用 DuckDB 進行百萬級離線效能分析、Prompt A/B 評測與回歸實驗。
 
 ---
 
@@ -255,42 +163,26 @@ flowchart TD
     TemplateFallback --> EndResponse
 ```
 
-### E. Production AI 護欄體系：確定性數值防偽與防規則漂移 (Deterministic Guardrail & Contract Testing)
+### E. Production AI 護欄體系：確定性數值防偽與防規則漂移 (Deterministic Guardrails & Contract Testing)
 - **痛點與挑戰 (The Problem)**：
-  - LLM 在生成高生動度富文本時存在機率性微調幻覺（例如將 DB 中的 3.78 評分筆誤寫成 3.70），高敏感美食評分失真將嚴重損害用戶信任。
-  - 若使用二次 LLM 審核（LLM-as-a-Judge），會增加 1 秒以上的延遲與額外 Token 成本；若使用單純正則，又極易誤傷評論中的非評分數值（如「排隊 3.5 小時」、「3.5 天熬煮」）。
-  - 正則規則容易隨著 Prompt 範本的迭代演進而產生靜默失效（Rule / Schema Drift）。
-- **核心架構：Scoped Anchor 區塊錨點隔離護欄 (`src/agent/pipeline.py`)**：
-  - **區塊隔離 (Per-Store Scoping)**：以店家序號與日文店名為界將 Markdown 切割為獨立片段，店家 1 的比對絕不影響店家 2，徹底排除跨店串位。
-  - **前後雙向強關鍵字錨點 (Context Anchoring)**：只匹配 `(?:Tabelog|食べログ)[^\d\n]{0,25}?(\d\.\d{1,2})`，精準校正數值，內文的「排隊 3.5 小時」100% 受到語境保護不受影響。
-  - **極致效能 (Zero Latency & Cost)**：純 Python 運算耗時 <0.5ms，0 額外 API 調用成本。
-  - **Fail-Safe 兜底機制**：未匹配到錨點時維持原文，絕不盲目置換；若結構嚴重毀損自動降級為模板直出。
-- **卡片排版防禦體系：嚴格版型驗證器 (`src/agent/validator.py`)**：
-  - **拒絕未預期表格**：嚴格偵測並拒絕 Markdown 表格語法（`|---|`），確保不會退化成生硬表格。
-  - **必備維度稽核**：強制要求一鍵複製反引號店名（`` `店名` ``）、步行距離（`🚶 **步行距離**`）、雙平台評分與支付方式（`💳 **支付方式**`）。
-  - **State 4 自動回退**：若 LLM 產生的卡片未能通過驗證，自動降級為確定性精準模板卡片，保證送到使用者的排版永遠 100% 規範統一。
-- **實體對齊強化：商圈錨定搜尋與跨語言 LLM 智慧裁決 (`src/services/entity_resolver.py`)**：
-  - **商圈/地名搜尋錨定**：若 Google 店名未包含地名，Tabelog 搜尋自動附加使用者搜尋區域（如 `Mawashizushi KATSU 横浜`），確保在地分店 100% 擠入搜尋前席。
-  - **拒絕脆弱大樓白名單 (Zero Hardcoded Whitelists)**：不維護易腐化的大樓名稱白名單，徹底避免同商場美食街張冠李戴之風險。
-  - **Unicode-Safe 跨語言語意裁決**：針對包含英文字母/羅馬拼音之店名（全面支援 `–` EN DASH、特殊標點與重音符號，徹底拋棄脆弱的 `.isascii()` 判定），當字面相似度因跨語系落差過大時，自動平滑流向 Level 2 Micro-LLM，由 Prompt 指引其結合地址、品類與發音綜合裁決。
-- **Google 端老饕潛力預篩與自適應漸進查驗 (Smart Pre-filtering & Adaptive Early Stopping)**：
-  - **Google 記憶體端老饕潛力預篩 (State 2.5)**：Google Places 單次調用直取 20 筆周邊店家，在 Python 記憶體中依評分、評論數合理性對數平滑與距離懲罰計算 $Score_{pre}$，0ms 預篩出前 4 筆主選與 2 筆備選種子店家。
-  - **自適應漸進查驗與提早終止 (State 3.1 & 3.2)**：第一梯隊僅並行查驗 4 家；若高分名店（Tabelog $\ge 3.45$ 或百名店）$\ge 2$ 家，立即 Early Stop 提早終止收工，80% 場景零額外延遲；僅在品質不足時動態查驗 2 家備選店家進行救援。
-- **老饕綜合加權重排演算法 (Foodie Scoring & Ranking Engine)**：
-  - **$S_i$ 綜合老饕計分**：Tabelog 評分享有核心權重（若無 Tabelog 則以 Google 評分折算 $0.70$ 安全降權）；百名店/Award $+0.15$、高評論數 $+0.05$；距離依梯隊施加微幅扣分。精選 Top 3 高分店家並在標題注入 `🥇 精選推薦 1`、`🥈`、`🥉` 排名徽章。
-- **電話號碼檢索階梯備援機制 (Phone Grounding Fallback & Noise Unblocking)**：
-  - 徹底防禦搜尋引擎雜訊阻斷：改由 `match_found` 匹配狀態驅動回退階梯，而非僅依賴 `not candidates`。當商圈檢索回傳之候選皆為無關雜訊、比對失敗時，依序自動回退純店名與電話檢索。
-  - 當店家具備日本市話/手機號碼時，自動以 `site:tabelog.com <phone>` 執行精準檢索，候選自動注入電話號碼，0ms 秒級命中並由 Level 1 電話規則賦予 1.0 信心度通過，確保極端拼音店名（如 Yamatoshi -> 七代目 山利）下的 100% 召回率。
-- **卡片排版驗證防誤殺 (Fuzzy Guardrail Validation)**：
-  - 驗證器對反引號店名實施去除空白與繁日漢字正規化容錯，相容 Google 純英文羅馬拼音、LLM 自動還原為日文漢字之跨語言場景，杜絕誤殺作廢合格卡片。
-- **對話歷史淨化與反向問候意圖保底機制 (State 1 Sanitization & Inverse Greeting Guard)**：
-  - 意圖解析時，將上一輪長篇推薦卡片（>100 字或含卡片格式）淨化為簡要摘要，杜絕微型 LLM 產生 Few-shot 模仿偏見導致輸出非 JSON。
-  - **反向問候保底 (Inverse Greeting Fallback)**：不窮舉拉麵、壽司等特定菜品白名單，改為反向排除純打招呼問候語（`你好|早安|謝謝`），其餘任何實質提問一律安全保底為 `search`，確保天婦羅、鰻魚飯等百種料理 100% 進入檢索流程。
-- **全日本 47 都道府縣行政區劃泛用正則**：
-  - 採用 `(?:[^\d\s,，]{2,3}[都道府縣])?\s*([^\d\s,，]{2,6}?[市區町村島])`，完美覆蓋神戶（兵庫）、沖繩那霸、廣島、仙台（宮城）等全日本 47 個縣市，不再寫死任何地名。
-- **維護保證：CI 雙向合約測試防禦 (Contract Testing in CI/CD)**：
-  - 於 `tests/test_pipeline.py` 建立自動化合約測試，每次執行 `pytest` 或 `git push`（Pre-push Hook）時，自動驗證 `config/prompts/agent_system.md` 定義的關鍵字與 Guardrail 正則錨點是否 100% 同步。
-  - 任何提示詞變更若破壞了護欄錨點，CI 立即報警阻擋合併，徹底根除規則隨時間腐化的維護盲點。
+  - LLM 在生成高生動度推薦卡片時存在機率性微調數值幻覺（如將 3.78 筆誤寫成 3.70），高敏感美食評分失真將嚴重損害用戶信任。
+  - 若使用二次 LLM 審核（LLM-as-a-Judge）會增加 >1s 延遲與 Token 成本；若使用寬鬆正則，極易誤傷內文中的非評分數值（如「排隊 3.5 小時」）。
+- **Scoped Anchor 區塊錨點隔離護欄 (`src/agent/pipeline.py`)**：
+  - **店家區塊隔離 (Per-Store Scoping)**：以店家序號與日文店名將 Markdown 切割為獨立片段，個別店家的比對校正互不干擾，杜絕跨店串位。
+  - **前後雙向語境錨定 (Context Anchoring)**：精準錨定評分關鍵字與數值模式，內文數值 100% 受到上下文隔離保護。
+  - **極致效能 (Zero Latency & Cost)**：純 Python 記憶體運算耗時 <0.5ms，0 額外 API 成本；格式異常時自動平滑回退至精準模板引擎。
+- **卡片排版防禦與防誤殺體系 (`src/agent/validator.py`)**：
+  - **版型合規稽核**：強制要求一鍵複製反引號店名、步行距離、雙平台評分與支付方式，杜絕鬆散未預期之表格語法。
+  - **跨語言正規化容錯**：驗證器對店名實施空白與日繁漢字正規化，相容 Google 英文羅馬拼音與 LLM 還原漢字場景，避免誤殺合格卡片。
+- **實體對齊漏斗與階梯備援 (`src/services/entity_resolver.py`)**：
+  - **商圈錨定檢索**：自動附加搜尋區域以確保在地分店優先進榜；支援日本電話號碼精準檢索與階梯備援，杜絕搜尋雜訊阻斷。
+  - **跨語言 Micro-LLM 智慧裁決**：當字面相似度因跨語系落差過大時，自動流向 Level 2 Micro-LLM，結合地址、品類與發音進行語意判定。
+- **老饕潛力預篩、自適應查驗與重排演算法 (`src/agent/pipeline.py`)**：
+  - **Google 記憶體端老饕潛力預篩 (State 2.5)**：Google Places 單次調用直取 20 筆周邊店家，在記憶體中依評分、評論數與距離綜合預篩出 4 筆主選與 2 筆備選種子。
+  - **自適應漸進查驗與提早終止 (State 3.1 & 3.2)**：第一梯隊並行查驗 4 家；若高分名店（Tabelog $\ge 3.45$ 或百名店）$\ge 2$ 家即觸發 Early Stop 提早終止，多數場景 0 額外延遲；品質不足時動態查驗備選店家救援。
+  - **$S_i$ 綜合老饕計分重排**：以 Tabelog 評分為核心權重（未命中時 Google 評分安全折算），疊加百名店/Award 加分與距離微幅懲罰，精選 Top 3 店家並注入 `🥇/🥈/🥉` 排名徽章。
+- **防腐保證：CI 雙向合約測試防禦 (Contract Testing in CI/CD)**：
+  - 於 `tests/test_pipeline.py` 建立自動化合約測試，驗證 System Prompt 定義的排版格式與 Guardrail 錨點 100% 同步；任何提示詞變更若破壞了護欄合約，CI 立即報警阻擋合併。
 - **即時監控：DevOps 遠端健康度巡檢 (`src/agent/devops.py`)**：
   - 於系統指標與 Telegram `@debug` 指令中整合「護欄對齊狀態」掃描，隨時可一鍵秒級檢核。
 

@@ -226,32 +226,31 @@ def generate_html_dashboard(
             t1_data,
         )
 
-        # Step 2: Places 智慧階梯搜尋
+        # Step 2: Places 智慧階梯搜尋與潛力預篩
         is_expanded = "2500m" if c.category == "multi_turn_more" else "800m ➔ 1800m"
         step2_kv = [
             ("搜尋階梯半徑", f"<code>{is_expanded}</code>"),
+            ("老饕潛力預篩", "Google 評分權重 + 評論數對數平滑 - 距離扣分 (0ms 選拔種子)"),
             ("去重排除名單", "啟用 (累積過濾歷史推薦店家)" if c.category == "multi_turn_more" else "無重複店家"),
             ("步行起點與時間", f"從「{t1_data.get('location') or '附近地標'}」步行約 3~5 分鐘"),
         ]
         step2_card = _format_step_card(
             2,
-            "Google Places 智慧階梯檢索與去重過濾",
-            "自適應擴圈半徑與歷史已看過店家累積排除",
-            "Places Ladder Ready",
+            "Google Places 智慧階梯檢索與潛力預篩",
+            "直取至多 20 家並於記憶體中預篩出最具備 Tabelog 高分潛力的種子店家",
+            "Places Ladder & Seeds",
             step2_kv,
-            {"search_radius": is_expanded, "dedup": True},
+            {"search_radius": is_expanded, "prefiltered_seeds": 6, "dedup": True},
         )
 
-        # Step 3: Tabelog 實體對齊與評論重排
+        # Step 3: Tabelog 自適應查驗與老饕綜合重排
         conf = t2_data.get("confidence", 1.0) if t2_data else 1.0
         method = t2_data.get("match_method", "phone_exact") if t2_data else "phone_exact"
         step3_kv = [
             ("實體匹配機制", f"<code>{method}</code> (信心度: {conf * 100:.0f}%)"),
+            ("自適應查驗策略", "Early Stopping (高分店 >= 2 即提早收工，零多餘延遲)"),
+            ("老饕綜合重排", "Tabelog 評分為主軸 + 百名店/榮譽加分 + 距離微調 ➔ 精選 Top 3"),
             ("支付方式標記", "支援 PayPay / 信用卡 (VISA, JCB)"),
-            (
-                "pgvector 評論重排",
-                "依在地老饕評論 Embedding 相似度加權" if c.category == "taste_rag" else "依綜合評分排序",
-            ),
         ]
         sample_cand = c.details.get("tier2", {}).get("match_result", {}).get("candidate")
         loc_str = t1_data.get("location") or "東京"
@@ -272,9 +271,9 @@ def generate_html_dashboard(
 
         step3_card = _format_step_card(
             3,
-            "Tabelog 雙平台實體對齊與評論向量重排",
-            "電話優先 100% 信心比對、支付方式抓取與 pgvector halfvec 重排",
-            f"F1 Match: {conf:.2f}",
+            "Tabelog 自適應漸進查驗與老饕綜合加權重排",
+            "電話保底階梯精準對齊、Early Stopping 提早終止與老饕評分核心權重重排",
+            f"F1 Match: {conf:.2f} (Rank Top 3)",
             step3_kv,
             t2_data,
             extra_html=step3_extra,
@@ -282,6 +281,7 @@ def generate_html_dashboard(
 
         # Step 4: 推薦卡片排版與數值護欄校驗
         step4_kv = [
+            ("排名徽章層次", "🥇/🥈/🥉 老饕首選層次標記"),
             ("店名 Code 區塊校驗", "✅ 通過 (日文原名於反引號，支援一鍵點擊複製)"),
             ("起點步行距離校驗", "✅ 通過 (起點地標與步行分鐘數明確置頂)"),
             ("0 幻覺評分核對", "✅ 通過 (Tabelog / Google 分數與快取完全吻合)"),
