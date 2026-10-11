@@ -63,8 +63,9 @@ class TabelogScraper:
         seen_urls: set[str] = set()
 
         for item in soup.select("section, .sw-Card"):
-            classes = item.get("class", [])
-            if any("AnswerGourmetSpot__plan" in str(c) for c in classes):
+            raw_classes = item.get("class")
+            class_str = " ".join(raw_classes) if isinstance(raw_classes, list) else str(raw_classes or "")
+            if "AnswerGourmetSpot__plan" in class_str:
                 continue
 
             text = item.get_text(" ", strip=True)
