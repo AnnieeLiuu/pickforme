@@ -94,8 +94,10 @@ Whenever modifying code, schemas, configurations, or business logic, AI Agents a
    - **嚴禁將個別函式的程式碼筆記、正則語法小撇步、特定 HTML CSS 選擇器、API 參數技巧或特定店家修復歷程追加至本文件**。
 3. **知識職責分流原則 (Separation of Concerns)**：
    - **Bug 個案防禦** ➡️ 唯一收斂至單元測試與 [`tests/test_real_world_regressions.py`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/tests/test_real_world_regressions.py)。
-   - **演算法與系統架構** ➡️ 唯一收斂至 [`docs/ARCHITECTURE.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/ARCHITECTURE.md)。
+   - **現行系統架構 (Living State)** ➡️ 唯一收斂至 [`docs/ARCHITECTURE.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/ARCHITECTURE.md)。
+   - **重大架構取捨與技術決策 (ADR)** ➡️ 唯一收斂至 [`docs/adr/`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/adr/)。
+   - **版本演進與變更歷史 (Timeline)** ➡️ 唯一收斂至 [`CHANGELOG.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/CHANGELOG.md)。
    - **HTML 剖析規則** ➡️ 唯一收斂至 [`docs/tabelog_structure.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/tabelog_structure.md)。
    - **函式邊界與用法** ➡️ 唯一收斂至程式碼內部 Docstring 與 Type Annotations。
 4. **篇幅警戒線 (Length Limit)**：
-   - 本文件行數應嚴格維持在 **100 行以內**。若非涉及專案級全局開發方針的重大修訂，**嚴禁隨意擴增此文件**。
+   - 本文件行數應嚴格維持在 **105 行以內**。若非涉及專案級全局開發方針的重大修訂，**嚴禁隨意擴增此文件**。
