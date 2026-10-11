@@ -347,3 +347,105 @@ def test_fallback_card_renders_payment_methods(mock_fsm):
     ]
     card = mock_fsm._render_template_fallback_card(stores, "拉麵")
     assert "💳 **支付方式**：可使用 信用卡 (VISA、JCB) / PayPay" in card
+
+
+def test_validator_rejects_markdown_table():
+    from src.agent.validator import validate_recommendation_card
+
+    table_card = """
+| 店名 | 位置 | 特色 |
+|---|---|---|
+| 壽司店 | 橫濱站 | 好吃 |
+    """
+    stores = [{"name_ja": "壽司店"}]
+    is_valid, reasons = validate_recommendation_card(table_card, stores)
+    assert not is_valid
+    assert any("Markdown 表格" in r for r in reasons)
+
+
+def test_validator_accepts_valid_card():
+    from src.agent.validator import validate_recommendation_card
+
+    valid_card = """
+🍱 **壽司名店精選**
+
+🍱 `すし 銀座 ひろ`
+🚶 **步行距離**：從「橫濱站」步行約 4 分鐘 (320m)
+⭐️ **雙平台評分**：⭐️ Tabelog 3.75 / Google 4.3
+💳 **支付方式**：可使用 信用卡 / PayPay
+📍 **老饕推薦理由**：魚料新鮮，師傅手藝一流。
+    """
+    stores = [{"name_ja": "すし 銀座 ひろ"}]
+    is_valid, reasons = validate_recommendation_card(valid_card, stores)
+    assert is_valid
+    assert len(reasons) == 0
+
+
+@pytest.mark.asyncio
+async def test_state_4_falls_back_when_llm_outputs_table(mock_fsm):
+    """測試若 LLM 違規輸出 Markdown 表格，State 4 自動攔截並切換為合規保底卡片"""
+    mock_fsm.llm_client.call_text.return_value = (
+        "| 店名 | 位置 |\n|---|---|\n| 壽司大漁 | 橫濱站 |",
+        "openai/gpt-oss-120b",
+        100,
+    )
+    stores = [
+        {
+            "name_ja": "壽司大漁",
+            "tabelog_rating": 3.55,
+            "google_rating": 4.2,
+            "walking_desc": "從「橫濱」步行約 5 分鐘",
+        }
+    ]
+    card = await mock_fsm.execute_state_4_synthesis(stores, "壽司", "橫濱")
+    # 斷言輸出中絕無 Markdown 表格語法
+    assert "|---|---|" not in card
+    # 斷言自動切換到保底模板，且包含反引號店名與步行距離
+    assert "`壽司大漁`" in card
+    assert "步行距離" in card
+
+
+@pytest.mark.asyncio
+async def test_state_1_sanitizes_long_assistant_card(mock_fsm):
+    """測試若對話歷史中包含上一輪長篇卡片，State 1 會自動淨化歷史，避免 Few-shot 污染"""
+    mock_fsm.llm_client.call_structured_json.return_value = (
+        {"intent": "search", "location": "橫濱", "cuisine": "壽司"},
+        "qwen/qwen3.8-27b",
+        20,
+    )
+    history = [
+        {"role": "user", "content": "我想吃咖喱"},
+        {
+            "role": "assistant",
+            "content": "🍱 **橫濱咖喱精選**\n\n🍱 `咖喱店`\n🚶 步行約 3 分鐘\n⭐️ Tabelog 3.6\n💳 支付方式：現金" * 10,
+        },
+    ]
+    parsed = await mock_fsm.execute_state_1_intent(
+        user_message="橫濱車站附近的好吃壽司",
+        user_location=None,
+        conversation_history=history,
+    )
+    assert parsed["intent"] == "search"
+    # 檢驗傳入 llm_client 的 messages 中，assistant 訊息已被淨化縮短
+    called_messages = mock_fsm.llm_client.call_structured_json.call_args[0][0]
+    assistant_msgs = [m for m in called_messages if m["role"] == "assistant"]
+    assert len(assistant_msgs) == 1
+    assert "已為您提供上一輪美食推薦卡片。" == assistant_msgs[0]["content"]
+
+
+@pytest.mark.asyncio
+async def test_llm_client_fallback_to_search_on_food_keywords():
+    """測試當 LLM 回傳非法 JSON 時，若使用者訊息含有美食詞彙，應安全降級為 search 而非 chitchat"""
+    from unittest.mock import AsyncMock, patch
+
+    client = LLMClient()
+    with patch.object(client, "call_text", new_callable=AsyncMock) as mock_call:
+        # 模擬 LLM 回傳純文字卡片而不是 JSON
+        mock_call.return_value = ("這是一篇壽司推薦介紹，不是 JSON", "qwen", 50)
+        messages = [
+            {"role": "system", "content": "請輸出 JSON"},
+            {"role": "user", "content": "橫濱車站附近的好吃壽司"},
+        ]
+        parsed, _, _ = await client.call_structured_json(messages)
+        # 應觸發關鍵詞保底為 search，避免進入 chitchat
+        assert parsed["intent"] == "search"

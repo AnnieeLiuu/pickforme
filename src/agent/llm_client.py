@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import re
 from typing import Any, Optional
 
 import httpx
@@ -169,6 +170,7 @@ class LLMClient:
     async def call_text(
         self,
         messages: list[dict[str, Any]],
+        response_format: Optional[dict[str, Any]] = None,
     ) -> tuple[str, str, int]:
         """純文字問答呼叫 (回傳 content, model_used, tokens)"""
         errors: list[str] = []
@@ -182,7 +184,7 @@ class LLMClient:
             pipeline = [self._try_gemini, self._try_groq, self._try_ollama]
 
         for try_fn in pipeline:
-            result = await try_fn(messages, errors, response_format=None)
+            result = await try_fn(messages, errors, response_format=response_format)
             if result is not None:
                 return result
 
@@ -193,7 +195,13 @@ class LLMClient:
         messages: list[dict[str, Any]],
     ) -> tuple[dict[str, Any], str, int]:
         """結構化 JSON 輸出呼叫 (保證解析為 dict，回傳 parsed_json, model_used, tokens)"""
-        content, model, tokens = await self.call_text(messages)
+        try:
+            # 優先嘗試強制 JSON 物件模式 (OpenAI/Groq compatible)
+            content, model, tokens = await self.call_text(messages, response_format={"type": "json_object"})
+        except Exception:
+            # 若後端模型不支援 response_format 參數，降級為純文字解析
+            content, model, tokens = await self.call_text(messages, response_format=None)
+
         # 嘗試從內容中解析 JSON (容許 Markdown ```json ``` 包覆)
         cleaned = content.strip()
         if "```" in cleaned:
@@ -220,5 +228,19 @@ class LLMClient:
         except json.JSONDecodeError as e:
             logger.warning(f"Could not parse LLM JSON response: {e}. Content: {content[:200]}")
 
-        # 若解析失敗回傳安全預設值
+        # 若解析失敗，檢視使用者輸入是否具備明顯美食搜尋特徵
+        last_user_msg = ""
+        for m in reversed(messages):
+            if m.get("role") == "user":
+                last_user_msg = str(m.get("content") or "")
+                break
+
+        food_search_pattern = (
+            r"(?:好吃|美食|餐廳|附近|推薦|拉麵|壽司|咖喱|咖哩|布丁|燒肉|居酒屋|甜點|火鍋|牛排|店|想吃)"
+        )
+        if re.search(food_search_pattern, last_user_msg):
+            logger.info("JSON 解析失敗，但檢測到美食搜尋關鍵特徵，安全降級為 search 意圖")
+            return {"intent": "search", "location": None, "cuisine": None}, model, tokens
+
+        # 若無美食關鍵詞，才回傳閒聊預設值
         return {"intent": "chitchat", "location": None, "cuisine": None}, model, tokens

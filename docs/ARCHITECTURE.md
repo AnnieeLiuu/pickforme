@@ -265,6 +265,13 @@ flowchart TD
   - **前後雙向強關鍵字錨點 (Context Anchoring)**：只匹配 `(?:Tabelog|食べログ)[^\d\n]{0,25}?(\d\.\d{1,2})`，精準校正數值，內文的「排隊 3.5 小時」100% 受到語境保護不受影響。
   - **極致效能 (Zero Latency & Cost)**：純 Python 運算耗時 <0.5ms，0 額外 API 調用成本。
   - **Fail-Safe 兜底機制**：未匹配到錨點時維持原文，絕不盲目置換；若結構嚴重毀損自動降級為模板直出。
+- **卡片排版防禦體系：嚴格版型驗證器 (`src/agent/validator.py`)**：
+  - **拒絕未預期表格**：嚴格偵測並拒絕 Markdown 表格語法（`|---|`），確保不會退化成生硬表格。
+  - **必備維度稽核**：強制要求一鍵複製反引號店名（`` `店名` ``）、步行距離（`🚶 **步行距離**`）、雙平台評分與支付方式（`💳 **支付方式**`）。
+  - **State 4 自動回退**：若 LLM 產生的卡片未能通過驗證，自動降級為確定性精準模板卡片，保證送到使用者的排版永遠 100% 規範統一。
+- **對話歷史淨化機制 (State 1 Conversation History Sanitization)**：
+  - 意圖解析時，將上一輪長篇推薦卡片（>100 字或含卡片格式）淨化為簡要摘要，杜絕微型 LLM 產生 Few-shot 模仿偏見導致輸出非 JSON。
+  - 整合 JSON Mode 與美食關鍵字雙重保底，杜絕美食搜尋誤判為閒聊 (`chitchat`)。
 - **維護保證：CI 雙向合約測試防禦 (Contract Testing in CI/CD)**：
   - 於 `tests/test_pipeline.py` 建立自動化合約測試，每次執行 `pytest` 或 `git push`（Pre-push Hook）時，自動驗證 `config/prompts/agent_system.md` 定義的關鍵字與 Guardrail 正則錨點是否 100% 同步。
   - 任何提示詞變更若破壞了護欄錨點，CI 立即報警阻擋合併，徹底根除規則隨時間腐化的維護盲點。
@@ -274,7 +281,7 @@ flowchart TD
 ### F. 工程維護品質與軟體最佳實踐 (Engineering & Maintainability Practices)
 - **品質防線與 CI 守門 (Code Quality Gates)**：
   - **靜態檢查與型別標註**：全面採用 `ruff` (代碼規範/格式化) 與 `mypy` (Python 3.11 嚴格型別校驗)，確保程式碼可讀性與型別安全。
-  - **自動化測試與覆蓋率**：建立 54 項覆蓋核心邏輯之單元與合約測試，整合 `pytest-cov` Cobertura XML 報告與 GitLab CI/CD Pipeline (`.gitlab-ci.yml`)，未通過品質關卡禁止合併主線。
+  - **自動化測試與覆蓋率**：建立 81 項覆蓋核心邏輯之單元與合約測試，整合 `pytest-cov` Cobertura XML 報告與 GitLab CI/CD Pipeline (`.gitlab-ci.yml`)，未通過品質關卡禁止合併主線。
 - **資安防護與存取控制 (Security & Access Control)**：
   - **Telegram Webhook Secret Token 驗證**：要求驗證 `X-Telegram-Bot-Api-Secret-Token` 標頭，防止惡意流量觸發 Cloud Run。
   - **白名單過濾**：以 `TELEGRAM_ALLOWED_USER_ID` 限制存取權限。

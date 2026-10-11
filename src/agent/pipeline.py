@@ -11,6 +11,7 @@ from uuid import UUID
 
 from src.agent.llm_client import LLMClient
 from src.agent.trace import AgentTraceLogger
+from src.agent.validator import validate_recommendation_card
 from src.db.repositories.restaurant import RestaurantRepository
 from src.db.repositories.session import SessionRepository
 from src.db.repositories.vector import VectorRepository
@@ -133,12 +134,14 @@ class FoodRecommendationFSM:
         """State 1: 0.3s 微型 LLM 結構化意圖與座標解析"""
         messages: list[dict[str, Any]] = [{"role": "system", "content": INTENT_PARSER_SYSTEM_PROMPT}]
 
-        # 帶入前輪簡短上下文
+        # 帶入前輪簡短上下文 (淨化長篇推薦卡片，避免模型產生 Few-shot 格式模仿偏見)
         if conversation_history:
             for item in conversation_history[-2:]:
                 r = item.get("role", "user")
                 c = item.get("content", "")
                 if c:
+                    if r == "assistant" and (len(c) > 100 or "🍱" in c or "Tabelog" in c or "🚶" in c):
+                        c = "已為您提供上一輪美食推薦卡片。"
                     messages.append({"role": r, "content": c})
 
         messages.append({"role": "user", "content": user_message})
@@ -732,6 +735,24 @@ class FoodRecommendationFSM:
 
             # 🛡️ 執行 Scoped Anchor 毫秒級數值防偽校正護欄
             card_text = self._sanitize_card_ratings(card_text, stores)
+
+            # 🛡️ 排版規範驗證 (Card Layout Guardrail)
+            is_valid, reasons = validate_recommendation_card(card_text, stores)
+            if not is_valid:
+                logger.warning(
+                    f"[CardGuardrail] LLM generated non-compliant card layout ({', '.join(reasons)}). "
+                    f"Falling back to deterministic template card."
+                )
+                fallback_card = self._render_template_fallback_card(stores, cuisine)
+                latency = int((time.time() - t0) * 1000)
+                await self.trace_logger.log_step(
+                    action_type="state_4_synthesis",
+                    tool_name="card_synthesis_format_fallback",
+                    tool_input={"stores_count": len(stores), "cuisine": cuisine, "invalid_reasons": reasons},
+                    tool_output={"card_content": fallback_card, "length": len(fallback_card)},
+                    latency_ms=latency,
+                )
+                return fallback_card
 
             latency = int((time.time() - t0) * 1000)
             await self.trace_logger.log_step(
