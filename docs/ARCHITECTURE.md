@@ -287,7 +287,7 @@ flowchart TD
 ### F. 工程維護品質與軟體最佳實踐 (Engineering & Maintainability Practices)
 - **品質防線與 CI 守門 (Code Quality Gates)**：
   - **靜態檢查與型別標註**：全面採用 `ruff` (代碼規範/格式化) 與 `mypy` (Python 3.11 嚴格型別校驗)，確保程式碼可讀性與型別安全。
-  - **自動化測試與覆蓋率**：建立 87 項覆蓋核心邏輯之單元與合約測試，整合 `pytest-cov` Cobertura XML 報告與 GitLab CI/CD Pipeline (`.gitlab-ci.yml`)，未通過品質關卡禁止合併主線。
+  - **自動化測試與覆蓋率**：建立 101 項覆蓋核心邏輯之單元、合約與黃金回歸測試 (`tests/test_real_world_regressions.py`)，整合 `pytest-cov` Cobertura XML 報告與 GitLab CI/CD Pipeline (`.gitlab-ci.yml`)，未通過品質關卡禁止合併主線。
 - **資安防護與存取控制 (Security & Access Control)**：
   - **Telegram Webhook Secret Token 驗證**：要求驗證 `X-Telegram-Bot-Api-Secret-Token` 標頭，防止惡意流量觸發 Cloud Run。
   - **白名單過濾**：以 `TELEGRAM_ALLOWED_USER_ID` 限制存取權限。

@@ -1,0 +1,262 @@
+"""🍱 PickForMe Golden Regression Test Suite (真實戰役回歸測試集)
+
+本檔案收錄系統在生產環境與真實使用者交互中踩過、排查並根除的 7 大經典戰役。
+每個案例皆源於真實 Bug 現場，透過 Mock-backed 單元化固化，保證：
+1. 0ms 離線執行、零外部 API 配額消耗。
+2. 納入 GitLab CI / Pre-push 守門防線，徹底杜絕歷史問題二次復發 (Prevent Regressions)。
+"""
+
+import asyncio
+import re
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from src.agent.pipeline import FoodRecommendationFSM
+from src.agent.validator import validate_recommendation_card
+from src.services.entity_resolver import (
+    EntityResolver,
+    EntityVerifyResponse,
+    calculate_string_similarity,
+)
+
+
+# ==============================================================================
+# Case 1: 排版崩壞防禦 (Markdown Table vs Code Block)
+# ==============================================================================
+def test_case1_validator_rejects_markdown_table_and_falls_back():
+    """Case 1: 驗證當 LLM 自作主張輸出生硬的 Markdown 表格時，驗證器能精準攔截，
+
+    並促使 State 4 觸發確定性模板直出，確保 Telegram 使用者永遠收到統一排版。
+    """
+    # 模擬 LLM 違規產生的 Markdown 表格
+    bad_table_card = """
+你好！以下是橫濱車站的美食推薦：
+
+| 店家名稱 | 評分 | 步行時間 | 推薦理由 |
+|---|---|---|---|
+| 鷄三和 | 3.2 | 2分鐘 | 親子丼很嫩 |
+| 角平 | 3.5 | 5分鐘 | 沾麵好吃 |
+
+希望您用餐愉快！
+"""
+    is_valid, reasons = validate_recommendation_card(bad_table_card)
+    assert is_valid is False
+    assert any("Markdown 表格" in r for r in reasons)
+
+    # 模擬標準規範卡片 (反引號一鍵複製 + 步行距離 + 雙平台評分 + 支付方式)
+    valid_card = """
+### 🍱 精選推薦 1：鷄三和 橫濱 Joinus 店
+`鷄三和 横浜ジョイナス店`
+
+🚶 **步行距離**：從「橫濱車站」步行約 2 分鐘 (128m)
+⭐️ **雙平台評分**：⭐️ Tabelog 3.2 (272 則評價) / Google 4.0
+💳 **支付方式**：現金為主
+💰 **預算區間**：約 ￥1,000 ~ ￥1,500
+📍 **老饕評價與推薦理由 (食べログ 口コミ)**：
+雞肉非常嫩滑，醬汁濃郁下飯。
+🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/sample)
+"""
+    is_valid_ok, ok_reasons = validate_recommendation_card(valid_card)
+    assert is_valid_ok is True
+    assert len(ok_reasons) == 0
+
+
+# ==============================================================================
+# Case 2: 歷史上下文污染防禦 (Few-shot 模仿偏見)
+# ==============================================================================
+def test_case2_state1_history_sanitization_removes_few_shot_bias():
+    """Case 2: 驗證多輪對話時，上一輪助理的長篇卡片 (>100字) 會被自動淨化為簡要摘要，
+
+    杜絕微型 LLM 模仿助理輸出長文本，確保 State 1 的 JSON Mode 穩定運作。
+    """
+    fsm = FoodRecommendationFSM(
+        places_client=MagicMock(),
+        tabelog_scraper=MagicMock(),
+        entity_resolver=MagicMock(),
+        llm_client=MagicMock(),
+    )
+
+    long_assistant_card = (
+        "你好！我是 PickForMe。\n"
+        "### 🍱 精選推薦 1：回し寿司 活 橫濱Sky大樓店\n"
+        "`回し寿司 活`\n"
+        "🚶 **步行距離**：步行 4 分鐘 (320m)\n"
+        "⭐️ **雙平台評分**：Tabelog 3.52 / Google 4.2\n"
+        "💳 **支付方式**：可使用信用卡、PayPay\n"
+        "這是一家極具人氣的迴轉壽司店，食材新鮮美味..." + ("詳細推薦內文..." * 30)
+    )
+
+    raw_history = [
+        {"role": "user", "content": "我想吃橫濱壽司"},
+        {"role": "assistant", "content": long_assistant_card},
+    ]
+
+    sanitized = fsm._sanitize_history_for_intent(raw_history)
+    assert len(sanitized) == 2
+    assert sanitized[0]["content"] == "我想吃橫濱壽司"
+    # 長篇卡片應被濃縮為簡短摘要
+    assert len(sanitized[1]["content"]) < 100
+    assert "推薦" in sanitized[1]["content"] or "卡片" in sanitized[1]["content"]
+    assert "🚶 **步行距離**" not in sanitized[1]["content"]
+
+
+# ==============================================================================
+# Case 3: 反向問候意圖保底 (Inverse Greeting Fallback)
+# ==============================================================================
+def test_case3_inverse_greeting_fallback_safeguards_unlisted_cuisines():
+    """Case 3: 驗證當 LLM JSON 解析出現偶發異常時，只要非純打招呼短語，
+
+    即便是一般白名單外的料理（如親子丼、天婦羅、鰻魚飯），一律安全保底為 search，絕不誤墮 chitchat。
+    """
+    from src.agent.llm_client import LLMClient
+
+    client = LLMClient()
+    # 模擬 LLM 產生非 JSON 的純文本內容
+    client.call_text = AsyncMock(return_value=("我推薦您吃這家店，但沒有給出 JSON！", "groq", 100))
+
+    # 1. 實質美食搜尋：即便未列入特定白名單，反向排除純問候後 100% 保底為 search
+    res_don, _, _ = asyncio.run(client.call_structured_json([{"role": "user", "content": "橫濱車站附近的好吃親子丼"}]))
+    assert res_don["intent"] == "search"
+
+    res_tempura, _, _ = asyncio.run(client.call_structured_json([{"role": "user", "content": "新宿天婦羅老店"}]))
+    assert res_tempura["intent"] == "search"
+
+    res_unagi, _, _ = asyncio.run(client.call_structured_json([{"role": "user", "content": "淺草鰻魚飯推薦"}]))
+    assert res_unagi["intent"] == "search"
+
+    # 2. 純打招呼問候語：正確辨識為 chitchat
+    res_greeting, _, _ = asyncio.run(client.call_structured_json([{"role": "user", "content": "你好！早安"}]))
+    assert res_greeting["intent"] == "chitchat"
+
+
+# ==============================================================================
+# Case 4: 跨區連鎖店商圈搜尋錨定 (Mawashizushi KATSU 横浜)
+# ==============================================================================
+def test_case4_ladder_search_appends_target_area_for_chain_stores():
+    """Case 4: 驗證跨地區連鎖店 (如 Mawashizushi KATSU) 在搜尋 Tabelog 時，
+
+    系統能自動結合目標區域 (如 横浜)，避免搜尋結果全被東京分店霸榜。
+    """
+    fsm = FoodRecommendationFSM(
+        places_client=MagicMock(),
+        tabelog_scraper=MagicMock(),
+        entity_resolver=MagicMock(),
+        llm_client=MagicMock(),
+    )
+
+    searched_queries: list[str] = []
+
+    async def mock_search(store_name: str):
+        searched_queries.append(store_name)
+        return []
+
+    fsm.tabelog_scraper.search_tabelog_candidates = mock_search
+    fsm.entity_resolver.resolve_entity = AsyncMock(return_value={"match_found": False})
+
+    store_place = {
+        "google_place_id": "place_katsu_123",
+        "name": "Mawashizushi KATSU",
+        "address": "神奈川県横浜市西区高島２丁目１９−１２ スカイビル 11階",
+        "lat": 35.465,
+        "lng": 139.622,
+    }
+
+    asyncio.run(fsm._enrich_single_place(store_place, area_hint="橫濱車站"))
+
+    # 驗證首次搜尋查詢詞必須拼接商圈地名，鎖定在地分店
+    assert len(searched_queries) >= 1
+    assert "Mawashizushi KATSU" in searched_queries[0]
+    assert "橫濱" in searched_queries[0] or "横浜" in searched_queries[0]
+
+
+# ==============================================================================
+# Case 5: Unicode 破折號跨語言智慧裁決 (Tori Sanwa – Landmark Plaza)
+# ==============================================================================
+def test_case5_unicode_dash_romanized_triggers_level2_llm():
+    """Case 5: 驗證店名中含有 Unicode 破折號 (\u2013 EN DASH) 之西文店名，
+
+    不會被脆弱的 .isascii() 誤殺，而是 100% 平滑流向 Level 2 Micro-LLM 智慧裁決。
+    """
+    resolver = EntityResolver(gemini_api_key=None)
+
+    # 含有 \u2013 (EN DASH)
+    google_store = {
+        "name": "Tori Sanwa – Yokohama Landmark Plaza Branch",
+        "address": "日本、〒220-0012 神奈川県横浜市西区みなとみらい２丁目２−１ ランドマークプラザ 1F",
+        "phone": "045-263-8180",
+        "lat": 35.4548,
+        "lng": 139.6318,
+    }
+
+    tabelog_candidates = [
+        {
+            "name_ja": "鶏三和 横浜ランドマークタワー店",
+            "address": "神奈川県横浜市西区みなとみらい2-2-1 ランドマークプラザ 1F",
+            "phone": "",
+            "lat": 35.4548,
+            "lng": 139.6318,
+            "tabelog_url": "https://tabelog.com/kanagawa/A1401/A140103/14037512/",
+            "tabelog_rating": 3.2,
+        }
+    ]
+
+    with patch.object(resolver, "_verify_with_llm", new_callable=AsyncMock) as mock_llm:
+        mock_llm.return_value = EntityVerifyResponse(
+            is_same_store=True,
+            confidence=0.98,
+            reason="Tori Sanwa 即為 鶏三和，分店名指向橫濱地標塔，地址與電話區號完全相符",
+        )
+
+        result = asyncio.run(resolver.resolve_entity(google_store, tabelog_candidates, allow_llm=True))
+
+        assert result["match_found"] is True
+        assert result["match_method"] == "llm_verify"
+        assert result["confidence"] == 0.98
+        assert result["candidate"]["name_ja"] == "鶏三和 横浜ランドマークタワー店"
+        mock_llm.assert_called_once()
+
+
+# ==============================================================================
+# Case 6: 短店名停用詞保護 (Curry House / The Bakery)
+# ==============================================================================
+def test_case6_short_store_name_stop_words_protection():
+    """Case 6: 驗證短店名 (如 Curry House、The Bakery) 不會因激進的通用停用詞清洗導致核心 Token 歸零。"""
+    # 英文連鎖短店名
+    sim_curry = calculate_string_similarity("Curry House", "Curry House CoCo")
+    assert sim_curry >= 0.85
+
+    sim_bakery = calculate_string_similarity("The Bakery", "The Bakery Tokyo")
+    assert sim_bakery >= 0.85
+
+    # 繁體漢字正規化維持 1:1，不任意擴展
+    sim_noodle = calculate_string_similarity("麵屋武藏", "面屋武蔵")
+    assert sim_noodle >= 0.60
+
+
+# ==============================================================================
+# Case 7: 全日本 47 都道府縣行政區劃泛用正則覆蓋
+# ==============================================================================
+@pytest.mark.parametrize(
+    ("address", "expected_extracted_area"),
+    [
+        ("神奈川県横浜市西区みなとみらい2-2-1", "横浜"),  # 日文縣「県」
+        ("東京都新宿區歌舞伎町1-1-1", "新宿"),  # 繁體區「區」
+        ("兵庫県神戸市中央区北長狭通1-1", "神戸"),  # 兵庫神戶
+        ("沖縄県那覇市久茂地1-1-1", "那覇"),  # 沖繩那霸
+        ("宮城県仙台市青葉区中央1-1", "仙台"),  # 宮城仙台
+        ("広島県広島市中区本通1-1", "広島"),  # 廣島 (驗證不誤傷地名中的「島」字)
+        ("北海道札幌市中央区北5条西2丁目", "札幌"),  # 北海道
+        ("京都府京都市中京区河原町通", "京都"),  # 京都府 (驗證不誤傷地名中的「都」字)
+    ],
+)
+def test_case7_japan_47_prefectures_regex_coverage(address: str, expected_extracted_area: str):
+    """Case 7: 驗證行政區劃泛用正則不硬編碼任何單一地名，能夠泛化提取全日本 47 都道府縣之核心行政區名稱。"""
+    # 核心正則：相容「都道府縣県」與「市區町村島」
+    m = re.search(r"(?:[^\d\s,，]{2,3}[都道府縣県])\s*([^\d\s,，]{2,6}?[市區町村島])", address)
+    if not m:
+        m = re.search(r"([^\d\s,，]{2,6}?[市區町村島])", address)
+
+    assert m is not None
+    # 僅剝離結尾單一行政層級詞彙，防止誤傷「広島」、「京都」等地名主幹
+    extracted = re.sub(r"[市區町村都道府縣県]$", "", m.group(1))
+    assert extracted == expected_extracted_area

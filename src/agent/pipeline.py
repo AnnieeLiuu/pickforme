@@ -124,6 +124,21 @@ class FoodRecommendationFSM:
         self.vector_repo = vector_repo or VectorRepository()
         self.embedding_service = embedding_service or EmbeddingService()
 
+    def _sanitize_history_for_intent(
+        self, conversation_history: Optional[list[dict[str, str]]]
+    ) -> list[dict[str, str]]:
+        """帶入前輪簡短上下文 (淨化長篇推薦卡片，避免模型產生 Few-shot 格式模仿偏見)"""
+        clean_msgs: list[dict[str, str]] = []
+        if conversation_history:
+            for item in conversation_history[-2:]:
+                r = item.get("role", "user")
+                c = item.get("content", "")
+                if c:
+                    if r == "assistant" and (len(c) > 100 or "🍱" in c or "Tabelog" in c or "🚶" in c):
+                        c = "已為您提供上一輪美食推薦卡片。"
+                    clean_msgs.append({"role": r, "content": c})
+        return clean_msgs
+
     async def execute_state_1_intent(
         self,
         user_message: str,
@@ -133,17 +148,7 @@ class FoodRecommendationFSM:
     ) -> dict[str, Any]:
         """State 1: 0.3s 微型 LLM 結構化意圖與座標解析"""
         messages: list[dict[str, Any]] = [{"role": "system", "content": INTENT_PARSER_SYSTEM_PROMPT}]
-
-        # 帶入前輪簡短上下文 (淨化長篇推薦卡片，避免模型產生 Few-shot 格式模仿偏見)
-        if conversation_history:
-            for item in conversation_history[-2:]:
-                r = item.get("role", "user")
-                c = item.get("content", "")
-                if c:
-                    if r == "assistant" and (len(c) > 100 or "🍱" in c or "Tabelog" in c or "🚶" in c):
-                        c = "已為您提供上一輪美食推薦卡片。"
-                    messages.append({"role": r, "content": c})
-
+        messages.extend(self._sanitize_history_for_intent(conversation_history))
         messages.append({"role": "user", "content": user_message})
 
         t0 = time.time()
@@ -324,7 +329,7 @@ class FoodRecommendationFSM:
                 if not m:
                     m = re.search(r"([^\d\s,，]{2,6}?[市區町村島])", place["address"])
                 if m:
-                    target_area = m.group(1).rstrip("市區町村島都道府縣県")
+                    target_area = re.sub(r"[市區町村都道府縣県]$", "", m.group(1))
 
             if target_area and target_area.lower() not in store_name.lower():
                 search_query = f"{store_name} {target_area}".strip()
