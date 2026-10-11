@@ -14,9 +14,9 @@
 
 ## ⚡ 延遲基準統計 (Latency Benchmark)
 
-- **平均延遲 (Average Latency)**：`0.0 ms`
+- **平均延遲 (Average Latency)**：`0.1 ms`
 - **P50 延遲**：`0.0 ms`
-- **P90 延遲**：`0.0 ms`
+- **P90 延遲**：`1.0 ms`
 
 ## 📋 測試案例執行矩陣 (Cases Execution Matrix)
 
@@ -29,13 +29,13 @@
 | `eval_005` | `multi_turn_more` | 我想找更在地的老店 | ✅ | ✅ | ✅ | 0ms |
 | `eval_006` | `follow_up` | 第2家今天有開嗎？ | ✅ | ✅ | ✅ | 0ms |
 | `eval_007` | `follow_up` | 第一家可以刷信用卡或 PayPay 嗎？ | ✅ | ✅ | ✅ | 0ms |
-| `eval_008` | `chitchat` | 哈囉你好！請問你可以幫我做什麼？ | ✅ | ✅ | ✅ | 0ms |
+| `eval_008` | `chitchat` | 哈囉你好！請問你可以幫我做什麼？ | ✅ | ✅ | ✅ | 2ms |
 | `eval_009` | `need_location` | 我想吃炸豬排 | ✅ | ✅ | ✅ | 0ms |
 | `eval_010` | `typo_colloquial` | 澀谷平價居酒屋，預算3000日幣內 | ✅ | ✅ | ✅ | 0ms |
 | `eval_011` | `taste_rag` | 京都 祇園 適合長輩吃的清淡湯豆腐 | ✅ | ✅ | ✅ | 0ms |
 | `eval_012` | `typo_colloquial` | 原宿竹下通排隊人氣可麗餅 | ✅ | ✅ | ✅ | 0ms |
 | `eval_013` | `multi_turn_more` | 有沒有更便宜一點的？ | ✅ | ✅ | ✅ | 0ms |
-| `eval_014` | `chitchat` | 明天東京會下雨嗎？ | ✅ | ✅ | ✅ | 0ms |
+| `eval_014` | `chitchat` | 明天東京會下雨嗎？ | ✅ | ✅ | ✅ | 1ms |
 | `eval_015` | `multi_landmark` | 秋葉原跟御茶之水中間有名的日式咖哩 | ✅ | ✅ | ✅ | 0ms |
 | `eval_016` | `taste_rag` | 新宿 想要牛舌厚切多汁的炭火燒肉 | ✅ | ✅ | ✅ | 0ms |
 | `eval_017` | `follow_up` | 第3家可以線上訂位或打電話預約嗎？ | ✅ | ✅ | ✅ | 0ms |

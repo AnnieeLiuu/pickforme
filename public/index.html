@@ -374,7 +374,7 @@
             <div class="kpi-card">
                 <span class="kpi-title">P50 延遲基準</span>
                 <span class="kpi-value">0 ms</span>
-                <span class="kpi-sub">P90: 0 ms | 確定性回放 0 成本</span>
+                <span class="kpi-sub">P90: 1 ms | 確定性回放 0 成本</span>
             </div>
         </section>
 
@@ -1451,7 +1451,7 @@
             <td class="text-center"><span class="pill pill-green">PASS</span></td>
             <td class="text-center"><span class="pill pill-green">PASS</span></td>
             <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
-            <td class="text-right latency-text">0 ms</td>
+            <td class="text-right latency-text">2 ms</td>
         </tr>
         <tr id="case-eval_008" class="stepper-drawer" style="display: none;">
             <td colspan="8">
@@ -2328,7 +2328,7 @@
             <td class="text-center"><span class="pill pill-green">PASS</span></td>
             <td class="text-center"><span class="pill pill-green">PASS</span></td>
             <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
-            <td class="text-right latency-text">0 ms</td>
+            <td class="text-right latency-text">1 ms</td>
         </tr>
         <tr id="case-eval_014" class="stepper-drawer" style="display: none;">
             <td colspan="8">
@@ -3362,6 +3362,295 @@
                 </thead>
                 <tbody>
                     
+            <tr class="live-row" onclick="toggleCaseDetails('live-6893f8ad-bde4-431d-bcd6-5a105b93d3d4')">
+                <td><code>6893f8ad</code></td>
+                <td><span class="cat-pill">Live Telegram</span></td>
+                <td class="query-col">可以接受距離遠一點的走路15分鐘內都可以</td>
+                <td class="text-center"><code>N/A</code></td>
+                <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+                <td class="text-right latency-text">10,211 ms</td>
+            </tr>
+            <tr id="case-live-6893f8ad-bde4-431d-bcd6-5a105b93d3d4" class="stepper-drawer" style="display: none;">
+                <td colspan="6">
+                    <div class="stepper-container">
+                        <div class="drawer-header">
+                            <h4>⚡ 真實線上問答執行軌跡 (Run ID: 6893f8ad-bde4-431d-bcd6-5a105b93d3d4 | 提問時間: 2026-10-11T10:02:42.915864+00:00)</h4>
+                        </div>
+                        <div class="steps-flow">
+                            
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 1</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_1_intent (intent_parser)</div>
+                <div class="step-sub-title">單步耗時: 377 ms</div>
+            </div>
+            <span class="step-badge">377ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">377 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;message&quot;: &quot;可以接受距離遠一點的走路15分鐘內都可以&quot;
+  },
+  &quot;output&quot;: {
+    &quot;intent&quot;: &quot;more&quot;,
+    &quot;cuisine&quot;: &quot;壽喜燒&quot;,
+    &quot;location&quot;: &quot;新宿車站&quot;,
+    &quot;modifier&quot;: &quot;走路15分鐘內&quot;,
+    &quot;question&quot;: null,
+    &quot;target_index&quot;: null
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 2</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_2_places (search_nearby_ladder)</div>
+                <div class="step-sub-title">單步耗時: 463 ms</div>
+            </div>
+            <span class="step-badge">463ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">463 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;lat&quot;: 35.6896067,
+    &quot;lng&quot;: 139.7005713,
+    &quot;keyword&quot;: &quot;壽喜燒 走路15分鐘內&quot;,
+    &quot;excluded_count&quot;: 3
+  },
+  &quot;output&quot;: {
+    &quot;count&quot;: 6
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 3</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_3_tabelog (parallel_tabelog_enrichment)</div>
+                <div class="step-sub-title">單步耗時: 3905 ms</div>
+            </div>
+            <span class="step-badge">3905ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">3905 ms</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (3 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 海底撈火鍋新宿店</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.50 (2,310 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「位於歌舞伎町的第二東亞會館大樓6樓，是一家來自中國的火鍋店。 - 地點- 從西武新宿站步行1分鐘從JR新宿站東口步行4分鐘 離... ... 【新宿】用自己喜好的醬料...」</em></div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 新宿燒肉牛舌之檸檬總本店</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.50 (1,536 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「從新宿站西口步行6分鐘 從大江戶線新宿西口站（D5出口）步行2分鐘 從西武新宿站步行5分鐘. 距离西武新宿200 米 · 星期一，星期二，星期三，星期四，星期日. 1...」</em></div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 一蘭新宿歌舞伎町店</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.10 (281 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「一蘭 新宿歌舞伎町店 (新宿西口/ラーメン) 営業時間 24時間営業 ※営業時間は変更になる場合がございます …」</em></div>
+        </div>
+        </div>
+    </div>
+    
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;stores_count&quot;: 6,
+    &quot;stores_searched&quot;: [
+      {
+        &quot;name&quot;: &quot;Haidilao Shinjuku Branch&quot;,
+        &quot;phone&quot;: &quot;03-6278-9799&quot;,
+        &quot;google_rating&quot;: 4.7
+      },
+      {
+        &quot;name&quot;: &quot;Gyu Tongue Lemon Shinjuku&quot;,
+        &quot;phone&quot;: &quot;03-6279-3997&quot;,
+        &quot;google_rating&quot;: 4.7
+      },
+      {
+        &quot;name&quot;: &quot;ICHIRAN Shinjuku Kabukicho&quot;,
+        &quot;phone&quot;: &quot;050-3733-3393&quot;,
+        &quot;google_rating&quot;: 4.4
+      },
+      {
+        &quot;name&quot;: &quot;Shinjuku Golden-Gai&quot;,
+        &quot;phone&quot;: &quot;03-3209-6418&quot;,
+        &quot;google_rating&quot;: 4.3
+      },
+      {
+        &quot;name&quot;: &quot;Hotel Gracery Shinjuku&quot;,
+        &quot;phone&quot;: &quot;03-6833-1111&quot;,
+        &quot;google_rating&quot;: 4.3
+      },
+      {
+        &quot;name&quot;: &quot;ICHIRAN Shinjuku Station Central East Exit&quot;,
+        &quot;phone&quot;: &quot;050-1808-2529&quot;,
+        &quot;google_rating&quot;: 4.3
+      }
+    ]
+  },
+  &quot;output&quot;: {
+    &quot;aligned_stores&quot;: [
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;海底撈火鍋新宿店&quot;,
+        &quot;rank_badge&quot;: &quot;🥇&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13213528/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 2310,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;位於歌舞伎町的第二東亞會館大樓6樓，是一家來自中國的火鍋店。 - 地點- 從西武新宿站步行1分鐘從JR新宿站東口步行4分鐘 離... ... 【新宿】用自己喜好的醬料品嚐絕品火鍋！在 ...&quot;,
+            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;位於歌舞伎町的第二東亞會館大樓6樓，是一家來自中國的火鍋店。 - 地點- 從西武新宿站步行1分鐘從JR新宿站東口步行4分鐘 離... ... 【新宿】用自己喜好的醬料品嚐絕品火鍋！在 ...&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.5,
+        &quot;supports_paypay&quot;: false
+      },
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;新宿燒肉牛舌之檸檬總本店&quot;,
+        &quot;rank_badge&quot;: &quot;🥈&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13264721/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 1536,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;從新宿站西口步行6分鐘 從大江戶線新宿西口站（D5出口）步行2分鐘 從西武新宿站步行5分鐘. 距离西武新宿200 米 · 星期一，星期二，星期三，星期四，星期日. 11:30 - 15:00 ...&quot;,
+            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;從新宿站西口步行6分鐘 從大江戶線新宿西口站（D5出口）步行2分鐘 從西武新宿站步行5分鐘. 距离西武新宿200 米 · 星期一，星期二，星期三，星期四，星期日. 11:30 - 15:00 ...&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.5,
+        &quot;supports_paypay&quot;: false
+      },
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;一蘭新宿歌舞伎町店&quot;,
+        &quot;rank_badge&quot;: &quot;🥉&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13194434/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 281,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;一蘭 新宿歌舞伎町店 (新宿西口/ラーメン) 営業時間 24時間営業 ※営業時間は変更になる場合がございます …&quot;,
+            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;一蘭 新宿歌舞伎町店 (新宿西口/ラーメン) 営業時間 24時間営業 ※営業時間は変更になる場合がございます …&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.1,
+        &quot;supports_paypay&quot;: false
+      }
+    ],
+    &quot;selected_count&quot;: 3
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 4</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_4_synthesis (card_synthesis_format_fallback)</div>
+                <div class="step-sub-title">單步耗時: 885 ms</div>
+            </div>
+            <span class="step-badge">885ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis_format_fallback</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">885 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;cuisine&quot;: &quot;壽喜燒 走路15分鐘內&quot;,
+    &quot;stores_count&quot;: 3,
+    &quot;invalid_reasons&quot;: [
+      &quot;缺少一鍵複製店名反引號代碼塊 (`店名`)&quot;,
+      &quot;缺少步行距離標記 (🚶 **步行距離**)&quot;,
+      &quot;缺少評分資訊標記 (⭐️ **雙平台評分**)&quot;,
+      &quot;缺少支付方式標記 (💳 **支付方式**)&quot;
+    ]
+  },
+  &quot;output&quot;: {
+    &quot;length&quot;: 1189,
+    &quot;card_content&quot;: &quot;🍱 **已為您精選「壽喜燒 走路15分鐘內」指標推薦餐廳如下：**\n\n### 🥇 精選推薦 1：`海底撈火鍋新宿店`\n🚶 **步行距離**：從「新宿車站」步行約 8 分鐘 (629m)\n⭐️ **Tabelog 評分**：3.50 分 (2310 則評價)\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n📍 **地址**：Japan, 〒160-0021 Tokyo, Shinjuku City, Kabukichō, 1-chōme−21−１ 第二東亜会館ビル 6F\n🔗 [食べログ詳細頁面](https://tabelog.com/tokyo/A1304/A130401/13213528/)\n📍 **老饕推薦理由 (食べログ 口コミ)**：位於歌舞伎町的第二東亞會館大樓6樓，是一家來自中國的火鍋店。 - 地點- 從西武新宿站步行1分鐘從JR新宿站東口步行4分鐘 離... ... 【新宿】用自己喜好的醬料品嚐絕品火鍋！在 ...\n\n### 🥈 精選推薦 2：`新宿燒肉牛舌之檸檬總本店`\n🚶 **步行距離**：從「新宿車站」步行約 10 分鐘 (765m)\n⭐️ **Tabelog 評分**：3.50 分 (1536 則評價)\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n📍 **地址**：Japan, 〒160-0023 Tokyo, Shinjuku City, Nishishinjuku, 7-chōme−16−１２ YSビル B1F\n🔗 [食べログ詳細頁面](https://tabelog.com/tokyo/A1304/A130401/13264721/)\n📍 **老饕推薦理由 (食べログ 口コミ)**：從新宿站西口步行6分鐘 從大江戶線新宿西口站（D5出口）步行2分鐘 從西武新宿站步行5分鐘. 距离西武新宿200 米 · 星期一，星期二，星期三，星期四，星期日. 11:30 - 15:00 ...\n\n### 🥉 精選推薦 3：`一蘭新宿歌舞伎町店`\n🚶 **步行距離**：從「新宿車站」步行約 7 分鐘 (536m)\n⭐️ **Tabelog 評分**：3.10 分 (281 則評價)\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n📍 **地址**：1-chōme-17-10 Kabukichō, Shinjuku City, Tokyo 160-0021, Japan\n🔗 [食べログ詳細頁面](https://tabelog.com/tokyo/A1304/A130401/13194434/)\n📍 **老饕推薦理由 (食べログ 口コミ)**：一蘭 新宿歌舞伎町店 (新宿西口/ラーメン) 営業時間 24時間営業 ※営業時間は変更になる場合がございます …&quot;
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            
+
             <tr class="live-row" onclick="toggleCaseDetails('live-9131d1de-72a0-459f-8346-5e5d19404258')">
                 <td><code>9131d1de</code></td>
                 <td><span class="cat-pill">Live Telegram</span></td>
@@ -7917,217 +8206,6 @@
   &quot;output&quot;: {
     &quot;length&quot;: 622,
     &quot;card_content&quot;: &quot;你好！我是你的日本美食導航員 PickForMe。\n\n經過仔細比對你提供的候選清單，我必須誠實地告訴你：**這份清單中並沒有符合「咖喱飯」類別的餐廳。**\n\n*   **店家 1 (カレーマニア045)**：雖然店名含「カレー」，但根據 Tabelog 資料與地址（Apollo Hills 內），這通常是一家**酒吧/居酒屋**，而非專門提供咖喱飯的餐廳。\n*   **店家 2 (O&#x27;denbar うまみ)**：這是一家**關東煮/海鮮居酒屋**，主打出汁與日本酒。\n*   **店家 3 (Abura)**：這是一家**油そば（油麵）**專門店。\n*   **店家 4 (横濱深夜食堂)**：這是一家**土鍋飯/蕎麥/居酒屋**，雖然有提到咖喱烏冬，但並非咖喱飯專門店。\n\n為了不浪費你的時間，我無法從這份清單中推薦咖喱飯。\n\n---\n\n### 💡 特派員建議：\n橫濱車站與棒球場附近其實有幾家非常著名的**咖喱專門店**（例如：*Curry House CoCo Ichibanya* 的旗艦店、*Gusto*、或老舖 *Katsu Curry* 專門店）。\n\n**請告訴我：**\n1. 你是否願意擴大搜尋範圍至**橫濱車站周邊 10 分鐘內**的其他高評價咖喱店？\n2. 或者，你偏好哪種風格的咖喱？（例如：日式濃稠、印度風味、炸豬排咖喱、或海鮮咖喱？）\n\n我可以立即為你重新搜尋並推薦 3~5 家真正符合「咖喱飯」需求的高評價餐廳！&quot;
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-                        </div>
-                    </div>
-                </td>
-            </tr>
-            
-
-            <tr class="live-row" onclick="toggleCaseDetails('live-1f727fdd-8e56-478c-8284-052cd2b1399a')">
-                <td><code>1f727fdd</code></td>
-                <td><span class="cat-pill">Live Telegram</span></td>
-                <td class="query-col">想要在橫濱棒球場或橫濱車站附近的咖啡店</td>
-                <td class="text-center"><code>N/A</code></td>
-                <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
-                <td class="text-right latency-text">8,696 ms</td>
-            </tr>
-            <tr id="case-live-1f727fdd-8e56-478c-8284-052cd2b1399a" class="stepper-drawer" style="display: none;">
-                <td colspan="6">
-                    <div class="stepper-container">
-                        <div class="drawer-header">
-                            <h4>⚡ 真實線上問答執行軌跡 (Run ID: 1f727fdd-8e56-478c-8284-052cd2b1399a | 提問時間: 2026-10-10T14:41:41.906009+00:00)</h4>
-                        </div>
-                        <div class="steps-flow">
-                            
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 1</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_1_intent (intent_parser)</div>
-                <div class="step-sub-title">單步耗時: 403 ms</div>
-            </div>
-            <span class="step-badge">403ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">403 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;message&quot;: &quot;想要在橫濱棒球場或橫濱車站附近的咖啡店&quot;
-  },
-  &quot;output&quot;: {
-    &quot;intent&quot;: &quot;search&quot;,
-    &quot;cuisine&quot;: &quot;咖啡店&quot;,
-    &quot;location&quot;: &quot;橫濱棒球場或橫濱車站&quot;,
-    &quot;modifier&quot;: null,
-    &quot;question&quot;: null,
-    &quot;target_index&quot;: null
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 2</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_2_places (search_nearby_ladder)</div>
-                <div class="step-sub-title">單步耗時: 383 ms</div>
-            </div>
-            <span class="step-badge">383ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">383 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;lat&quot;: 35.4432233,
-    &quot;lng&quot;: 139.6401002,
-    &quot;keyword&quot;: &quot;咖啡店&quot;,
-    &quot;excluded_count&quot;: 0
-  },
-  &quot;output&quot;: {
-    &quot;count&quot;: 4
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 3</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_3_tabelog (parallel_tabelog_enrichment)</div>
-                <div class="step-sub-title">單步耗時: 2312 ms</div>
-            </div>
-            <span class="step-badge">2312ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2312 ms</span></div></div>
-            
-    <div class="aligned-stores-section">
-        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (1 間):</div>
-        <div class="aligned-stores-grid">
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 AnchorKnot</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Google 4.0 </span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「Chill with knowledge staff If u looking for good shisha u should」</em></div>
-        </div>
-        </div>
-    </div>
-    
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;stores_count&quot;: 4,
-    &quot;stores_searched&quot;: [
-      {
-        &quot;name&quot;: &quot;ハニトーカフェ横浜関内店&quot;,
-        &quot;phone&quot;: &quot;0120-911-753&quot;,
-        &quot;google_rating&quot;: 4.7
-      },
-      {
-        &quot;name&quot;: &quot;BLANK Shisha Cafe&amp;Bar YOKOHAMA BASHAMICHI&quot;,
-        &quot;phone&quot;: &quot;045-515-7001&quot;,
-        &quot;google_rating&quot;: 5
-      },
-      {
-        &quot;name&quot;: &quot;RB160&quot;,
-        &quot;phone&quot;: &quot;070-4455-5608&quot;,
-        &quot;google_rating&quot;: 4.9
-      },
-      {
-        &quot;name&quot;: &quot;みなとみらいシーシャ Anchor Knot&quot;,
-        &quot;phone&quot;: &quot;045-264-6545&quot;,
-        &quot;google_rating&quot;: 4.9
-      }
-    ]
-  },
-  &quot;output&quot;: {
-    &quot;aligned_stores&quot;: [
-      {
-        &quot;name_ja&quot;: &quot;AnchorKnot&quot;,
-        &quot;name_en&quot;: &quot;みなとみらいシーシャ Anchor Knot&quot;,
-        &quot;address&quot;: &quot;Japan, 〒231-0011 Kanagawa, Yokohama, Naka Ward, Ōtamachi, 2-chōme−３０ みどりビル 2Ｆ&quot;,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140104/14087687/&quot;,
-        &quot;tabelog_rating&quot;: null,
-        &quot;review_count&quot;: null,
-        &quot;price_lunch&quot;: null,
-        &quot;price_dinner&quot;: null,
-        &quot;supports_paypay&quot;: false,
-        &quot;credit_cards&quot;: [],
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;zh&quot;: &quot;Chill with knowledge staff\nIf u looking for good shisha u should&quot;,
-            &quot;ja&quot;: &quot;Chill with knowledge staff\nIf u looking for good shisha u should&quot;
-          },
-          {
-            &quot;zh&quot;: &quot;Best Shisha bar in the MM area!&quot;,
-            &quot;ja&quot;: &quot;Best Shisha bar in the MM area!&quot;
-          },
-          {
-            &quot;zh&quot;: &quot;A little bit overpriced but tobacco offer is good. Darkside and black burn.&quot;,
-            &quot;ja&quot;: &quot;A little bit overpriced but tobacco offer is good. Darkside and black burn.&quot;
-          }
-        ]
-      }
-    ],
-    &quot;enriched_count&quot;: 4
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 4</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_4_synthesis (card_synthesis)</div>
-                <div class="step-sub-title">單步耗時: 2045 ms</div>
-            </div>
-            <span class="step-badge">2045ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2045 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;cuisine&quot;: &quot;咖啡店&quot;,
-    &quot;location&quot;: &quot;橫濱棒球場或橫濱車站&quot;,
-    &quot;stores_count&quot;: 4
-  },
-  &quot;output&quot;: {
-    &quot;length&quot;: 1273,
-    &quot;card_content&quot;: &quot;🍱 **橫濱車站周邊精選咖啡與特色飲品推薦**\n\n為您精選了 3 家風格各異、評分極高的咖啡與飲品店，涵蓋經典咖啡、話題水煙咖啡與高評價精品咖啡，滿足不同需求：\n\n---\n\n🍱 **AnchorKnot**\n`AnchorKnot`\n🚶 **步行距離**：從「橫濱車站」步行約 6 分鐘 (411m)\n⭐️ **雙平台評分**：⭐️ Google 5.0 分 (155 則評價) ｜ Tabelog 暫無評分\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n💰 **預算區間**：約 ￥800~￥1,500 (參考價)\n📍 **老饕評價與推薦理由**：位於大町的隱世精品咖啡，Google 高分認證。以嚴選豆與精緻拉花聞名，環境安靜舒適，適合想安靜享受一杯好咖啡的遊客。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/kanagawa/A1401/A140104/14087687/)\n\n---\n\n🍱 **RB160**\n`RB160`\n🚶 **步行距離**：從「橫濱車站」步行約 4 分鐘 (291m)\n⭐️ **雙平台評分**：⭐️ Google 4.9 分 (79 則評價) ｜ Tabelog 暫無評分\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：約 ￥700~￥1,200 (參考價)\n📍 **老饕評價與推薦理由**：距離車站最近的超高評價咖啡廳，位於第二東商大樓 1F。以穩定的手沖品質與親切服務著稱，是趕時間或剛下火車時最方便的高品質選擇。\n🔗 **店家連結**：[Google Maps 搜尋](https://www.google.com/maps/search/RB160+Yokohama)\n\n---\n\n🍱 **BLANK Shisha Cafe&amp;Bar YOKOHAMA BASHAMICHI**\n`BLANK Shisha Cafe&amp;Bar YOKOHAMA BASHAMICHI`\n🚶 **步行距離**：從「橫濱車站」步行約 9 分鐘 (679m)\n⭐️ **雙平台評分**：⭐️ Google 5.0 分 (59 則評價) ｜ Tabelog 暫無評分\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：約 ￥1,500~￥3,000 (含水煙/飲品)\n📍 **老饕評價與推薦理由**：滿分評價的新開幕話題店！結合水煙 (Shisha) 與咖啡/酒吧，內部裝潢 Cozy 且充滿氛圍感。適合想體驗日本特色水煙文化、追求獨特拍照打卡體驗的年輕族群。\n🔗 **店家連結**：[Google Maps 搜尋](https://www.google.com/maps/search/BLANK+Shisha+Cafe+Yokohama)\n\n---\n\n💡 特派員提醒：這三家店均**不支援信用卡**，請務必提前兌換日圓現鈔；若想體驗獨特氛圍可選 BLANK，追求純咖啡品質則首選 AnchorKnot。&quot;
   }
 }</code></pre>
             </details>

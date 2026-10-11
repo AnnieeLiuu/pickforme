@@ -38,6 +38,16 @@ pytest-job:
         coverage_format: cobertura
         path: coverage.xml
 
+observability-pages-gate:
+  stage: test
+  script:
+    - python scripts/run_eval.py --output-html test_artifacts/index.html
+    - test -s test_artifacts/index.html
+    - echo "✅ Observability dashboard compilation verified across branches."
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH != "main"
+
 pages:
   stage: deploy
   script:
