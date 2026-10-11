@@ -6,7 +6,9 @@
 
 ## [Unreleased]
 ### Added
-- 
+- **Cloud Run 自動化生產環境部署腳本 (`scripts/deploy_cloud_run.sh`)**：支援一鍵讀取環境變數、GCP 容器建構、Cloud Run 服務部署、自動綁定 Telegram Webhook 與 `--dry-run` 模擬演練。
+- **GitLab CI/CD Cloud Run 自動部署 Job (`deploy-cloud-run`)**：配置於 `deploy` stage，支援 Google Cloud SDK 認證、手動觸發與 Git Tag 自動發布。
+- **Pre-push Hook `--dry-run` 無副作用驗證**：支援評測無磁碟污染執行，根除 Git Push 造成的 Working Tree 髒檔案問題。
 
 ---
 

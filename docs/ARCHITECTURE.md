@@ -200,6 +200,9 @@ flowchart TD
 - **OTel 格式 Trace 可觀測性 (Structured Observability & Trace Deep-Dive)**：
   - 每筆 Agent 執行同步記錄至 Neon `agent_runs` 與 `agent_steps`，量化分析 Model 降級率、Tool Latency (ms) 與 Token 成本。
   - **DuckDB 冷熱雙模歷程透視 CLI (`scripts/analyze_traces.py`)**：支援從冷層 Snappy Parquet 或 Neon DB 熱層一鍵提取近期問答清單，選定特定問答後即可輸出完整「端到端歷程透視報告」，包含提問句、最終回答卡片、中間每個 State 流程節點、個別耗時 (ms) 與精確之 Input/Output JSON 結構。
+- **生產環境自動化上雲部署 (Cloud Run CI/CD & Auto-Deploy)**：
+  - **自動化部署腳本 (`scripts/deploy_cloud_run.sh`)**：支援一鍵讀取環境變數與金鑰，呼叫 Google Cloud Build 構建容器映像檔並推送至 Artifact Registry，更新 Cloud Run 服務資源規格（1Gi 記憶體、1 CPU、0-5 自動水平伸縮），並支援 `--dry-run` 模擬演練與 `--setup-webhook` 自動綁定 Telegram Webhook。
+  - **GitLab CI/CD 雲端管線 (`.gitlab-ci.yml`)**：於 `deploy` stage 配置 `deploy-cloud-run` job，整合 Google Cloud SDK，支援手動確認觸發 (`when: manual`) 或 Git Release Tag 自動發布。
 
 ---
 
