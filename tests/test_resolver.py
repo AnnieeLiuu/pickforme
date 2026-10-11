@@ -168,7 +168,12 @@ def test_resolve_jiichiro_pudding_match():
     asyncio.run(_test())
 
 
-def test_resolve_building_address_exact_match():
+def test_resolve_romanized_name_triggers_llm():
+    """測試當 Google 店名為純英數羅馬拼音 (ASCII) 時，跨語言文字鴻溝能正確引導至 Level 2 LLM 裁決"""
+    from unittest.mock import AsyncMock, patch
+
+    from src.services.entity_resolver import EntityVerifyResponse
+
     async def _test():
         resolver = EntityResolver(gemini_api_key=None)
         google_store = {
@@ -187,10 +192,34 @@ def test_resolve_building_address_exact_match():
                 "tabelog_rating": 3.52,
             }
         ]
-        result = await resolver.resolve_entity(google_store, tabelog_candidates, allow_llm=False)
-        assert result["match_found"] is True
-        assert result["match_method"] == "building_address_exact"
-        assert result["confidence"] >= 0.90
-        assert result["candidate"]["name_ja"] == "回し寿司活 活美登利横浜スカイビル店"
+
+        with patch.object(resolver, "_verify_with_llm", new_callable=AsyncMock) as mock_llm:
+            mock_llm.return_value = EntityVerifyResponse(
+                is_same_store=True,
+                confidence=0.95,
+                reason="Mawashizushi KATSU 即為日文 回し寿司 活，且位於相同大樓",
+            )
+            result = await resolver.resolve_entity(google_store, tabelog_candidates, allow_llm=True)
+            assert result["match_found"] is True
+            assert result["match_method"] == "llm_verify"
+            assert result["confidence"] == 0.95
+            assert result["candidate"]["name_ja"] == "回し寿司活 活美登利横浜スカイビル店"
 
     asyncio.run(_test())
+
+
+def test_short_store_name_stop_words_protection():
+    """測試短店名 (如 Curry House) 不會因通用停用詞清空而使相似度歸零"""
+    sim1 = calculate_string_similarity("Curry House", "Curry House CoCo")
+    assert sim1 >= 0.85
+
+    sim2 = calculate_string_similarity("The Bakery", "The Bakery Tokyo")
+    assert sim2 >= 0.85
+
+
+def test_kanji_normalization_preserves_single_character():
+    """測試漢字正規化維持 1:1 映射，不作任意語意詞擴展"""
+    norm = normalize_store_name("麻辣醬麵")
+    # 確保不會膨脹成 "麻辣醤油面"
+    assert "醤油" not in norm
+    assert "面" in norm

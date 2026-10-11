@@ -12,19 +12,17 @@ from src.agent.bridge import IDEAgentBridge
 
 logger = logging.getLogger(__name__)
 
-# 常見 繁體中文 ↔ 日文新字體/簡體 漢字對照表
+# 常見 繁體中文 ↔ 日文新字體/簡體 漢字對照表 (維持嚴格 1:1 漢字映射，避免多字語意擴展)
 KANJI_NORMALIZE_MAP = {
     "麵": "面",
     "藏": "蔵",
     "燒": "焼",
-    "醬": "醤油",
     "國": "国",
     "樂": "楽",
     "廣": "広",
     "澤": "沢",
     "瀧": "滝",
     "龍": "竜",
-    "之": "の",
 }
 
 
@@ -139,6 +137,14 @@ def calculate_string_similarity(s1: str, s2: str) -> float:
             return max(base_ratio, 0.90)
         if core1.issubset(core2) or core2.issubset(core1):
             return max(base_ratio, 0.88)
+    elif raw_tokens1 and raw_tokens2:
+        # 短店名停用詞保護 (例如 Curry House, The Bakery 避免核心 Token 被清空為 0 分)
+        s_raw1 = set(raw_tokens1)
+        s_raw2 = set(raw_tokens2)
+        if s_raw1 == s_raw2:
+            return max(base_ratio, 0.88)
+        if s_raw1.issubset(s_raw2) or s_raw2.issubset(s_raw1):
+            return max(base_ratio, 0.85)
 
     return base_ratio
 
@@ -195,56 +201,6 @@ class EntityResolver:
                         "confidence": 1.0,
                         "reason": f"電話號碼完全吻合 ({google_phone})",
                     }
-
-        # Step 1.2: 商業大樓/樓層與近距地址比對 (Building/Floor Exact Match, < 300m)
-        google_addr = (google_store.get("address") or "").lower()
-        common_buildings = [
-            "スカイビル",
-            "ジョイナス",
-            "joinus",
-            "ルミネ",
-            "lumine",
-            "高島屋",
-            "takashimaya",
-            "パルコ",
-            "parco",
-            "ヒカリエ",
-            "hikarie",
-            "ヒルズ",
-            "hills",
-            "ポルタ",
-            "porta",
-            "ミッドタウン",
-            "midtown",
-        ]
-        if google_addr:
-            for cand in tabelog_candidates:
-                cand_addr = (cand.get("address") or "").lower()
-                cand_name = (cand.get("name_ja") or "").lower()
-                if cand_addr:
-                    cand_lat = cand.get("lat")
-                    cand_lng = cand.get("lng")
-                    dist = 9999.0
-                    if cand_lat and cand_lng and google_lat and google_lng:
-                        dist = calculate_distance_meters(google_lat, google_lng, cand_lat, cand_lng)
-
-                    # 1. 同一商業大樓名稱 (比對 address 或店名中的大樓標記)
-                    matched_building = any(
-                        b in google_addr and (b in cand_addr or b in cand_name) for b in common_buildings
-                    )
-                    # 2. 相同樓層 (如 11f, 11階, b1f)
-                    g_floors = set(re.findall(r"(?:b\d|\d{1,2})[f階]", google_addr))
-                    c_floors = set(re.findall(r"(?:b\d|\d{1,2})[f階]", cand_addr))
-                    same_floor = bool(g_floors and c_floors and (g_floors & c_floors))
-
-                    if (matched_building or same_floor) and (dist < 300 or not (cand_lat and cand_lng)):
-                        return {
-                            "match_found": True,
-                            "candidate": cand,
-                            "match_method": "building_address_exact",
-                            "confidence": 0.95,
-                            "reason": f"同商業大樓/樓層地址吻合 ({cand.get('name_ja')})",
-                        }
 
         # Step 2: 店名相似度 + 距離計算
         for cand in tabelog_candidates:

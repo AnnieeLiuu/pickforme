@@ -434,21 +434,52 @@ async def test_state_1_sanitizes_long_assistant_card(mock_fsm):
 
 
 @pytest.mark.asyncio
-async def test_llm_client_fallback_to_search_on_food_keywords():
-    """測試當 LLM 回傳非法 JSON 時，若使用者訊息含有美食詞彙，應安全降級為 search 而非 chitchat"""
+async def test_llm_client_fallback_inverse_greeting_check():
+    """測試非純問候語 (如天婦羅、鰻魚飯等百種料理) 異常時安全保底為 search，而純問候語判定為 chitchat"""
     from unittest.mock import AsyncMock, patch
 
     client = LLMClient()
     with patch.object(client, "call_text", new_callable=AsyncMock) as mock_call:
-        # 模擬 LLM 回傳純文字卡片而不是 JSON
-        mock_call.return_value = ("這是一篇壽司推薦介紹，不是 JSON", "qwen", 50)
-        messages = [
+        mock_call.return_value = ("非 JSON 內容", "qwen", 50)
+
+        # 案例 1: 實質美食提問 (天婦羅，未列入任何食物白名單)
+        messages_food = [
             {"role": "system", "content": "請輸出 JSON"},
-            {"role": "user", "content": "橫濱車站附近的好吃壽司"},
+            {"role": "user", "content": "我想在新宿吃天婦羅"},
         ]
-        parsed, _, _ = await client.call_structured_json(messages)
-        # 應觸發關鍵詞保底為 search，避免進入 chitchat
-        assert parsed["intent"] == "search"
+        parsed_food, _, _ = await client.call_structured_json(messages_food)
+        assert parsed_food["intent"] == "search"
+
+        # 案例 2: 純禮貌打招呼
+        messages_greet = [
+            {"role": "system", "content": "請輸出 JSON"},
+            {"role": "user", "content": "哈囉！你好呀～"},
+        ]
+        parsed_greet, _, _ = await client.call_structured_json(messages_greet)
+        assert parsed_greet["intent"] == "chitchat"
+
+
+def test_prefecture_regex_supports_all_japan():
+    """測試全日本 47 都道府縣正則能正確解析神戶(兵庫)、沖繩、仙台(宮城)等地區"""
+    import re
+
+    def extract_area(addr: str) -> str:
+        m = re.search(r"(?:[^\d\s,，]{2,3}[都道府縣県])\s*([^\d\s,，]{2,6}?[市區町村島])", addr)
+        if not m:
+            m = re.search(r"([^\d\s,，]{2,6}?[市區町村島])", addr)
+        return m.group(1).rstrip("市區町村島都道府縣県") if m else ""
+
+    # 1. 兵庫縣神戶市
+    assert extract_area("兵庫県神戸市中央区北長狭通1-1") == "神戸"
+
+    # 2. 沖繩縣那霸市
+    assert extract_area("沖縄県那覇市久茂地1-1-1") == "那覇"
+
+    # 3. 宮城縣仙台市
+    assert extract_area("宮城県仙台市青葉区中央1-1") == "仙台"
+
+    # 4. 無都道府縣前綴 (橫濱市)
+    assert extract_area("横浜市西区高島2-19") == "横浜"
 
 
 @pytest.mark.asyncio
@@ -465,7 +496,7 @@ async def test_enrich_single_place_appends_area_hint(mock_fsm):
         "match_found": True,
         "candidate": cand,
         "confidence": 0.95,
-        "match_method": "building_address_exact",
+        "match_method": "llm_verify",
     }
     mock_fsm.tabelog_scraper.scrape_restaurant_details.return_value = {
         "tabelog_rating": 3.52,

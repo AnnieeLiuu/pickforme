@@ -228,19 +228,25 @@ class LLMClient:
         except json.JSONDecodeError as e:
             logger.warning(f"Could not parse LLM JSON response: {e}. Content: {content[:200]}")
 
-        # 若解析失敗，檢視使用者輸入是否具備明顯美食搜尋特徵
+        # 若解析失敗，判定是否為純問候/打招呼（Chitchat）
+        # 反向原則：在日本美食導航 Bot 中，除純打招呼/禮貌問候外，任何實質文字輸入一律安全保底為 search，絕不窮舉食物名稱
         last_user_msg = ""
         for m in reversed(messages):
             if m.get("role") == "user":
-                last_user_msg = str(m.get("content") or "")
+                last_user_msg = str(m.get("content") or "").strip()
                 break
 
-        food_search_pattern = (
-            r"(?:好吃|美食|餐廳|附近|推薦|拉麵|壽司|咖喱|咖哩|布丁|燒肉|居酒屋|甜點|火鍋|牛排|店|想吃)"
+        greeting_kw = r"(?:你好|您好|嗨|早安|午安|晚安|哈囉|hello|hi|hey|你是誰|謝謝|多謝|掰掰|再見)"
+        action_kw = r"(?:吃|去|找|想|有|推薦|餐廳|美食|店|壽司|拉麵|咖喱|咖哩|燒肉)"
+        is_pure_greeting = (
+            bool(re.search(greeting_kw, last_user_msg, flags=re.IGNORECASE))
+            and len(last_user_msg) <= 12
+            and not re.search(action_kw, last_user_msg)
         )
-        if re.search(food_search_pattern, last_user_msg):
-            logger.info("JSON 解析失敗，但檢測到美食搜尋關鍵特徵，安全降級為 search 意圖")
-            return {"intent": "search", "location": None, "cuisine": None}, model, tokens
+        if is_pure_greeting:
+            logger.info("JSON 解析失敗，使用者為純問候語，安全降級為 chitchat 意圖")
+            return {"intent": "chitchat", "location": None, "cuisine": None}, model, tokens
 
-        # 若無美食關鍵詞，才回傳閒聊預設值
-        return {"intent": "chitchat", "location": None, "cuisine": None}, model, tokens
+        # 其餘任何實質提問/搜尋，安全保底為 search
+        logger.info(f"JSON 解析失敗，使用者非純問候語 ('{last_user_msg[:30]}')，安全保底為 search 意圖")
+        return {"intent": "search", "location": None, "cuisine": None}, model, tokens

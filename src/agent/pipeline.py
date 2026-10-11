@@ -318,11 +318,13 @@ class FoodRecommendationFSM:
             target_area = (area_hint or "").strip()
             if not target_area and place.get("address"):
                 m = re.search(
-                    r"(?:東京都|大阪府|京都府|神奈川県|愛知県|北海道|福岡県)?\s*([^\d\s,，]+?[市區町村島])",
+                    r"(?:[^\d\s,，]{2,3}[都道府縣県])\s*([^\d\s,，]{2,6}?[市區町村島])",
                     place["address"],
                 )
+                if not m:
+                    m = re.search(r"([^\d\s,，]{2,6}?[市區町村島])", place["address"])
                 if m:
-                    target_area = m.group(1).rstrip("市區町村島")
+                    target_area = m.group(1).rstrip("市區町村島都道府縣県")
 
             if target_area and target_area.lower() not in store_name.lower():
                 search_query = f"{store_name} {target_area}".strip()
