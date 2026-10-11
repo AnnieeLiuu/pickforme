@@ -391,9 +391,11 @@ class FoodRecommendationFSM:
                 google_pref = extract_prefecture_from_address(place.get("address"))
                 if cached_pref and google_pref and cached_pref != google_pref:
                     logger.warning(
-                        f"Poisoned cache detected for '{store_name}': Google in '{google_pref}' but cached Tabelog in '{cached_pref}'. Invalidating."
+                        f"Poisoned cache detected for '{store_name}': Google in '{google_pref}' but cached Tabelog in '{cached_pref}'. Self-healing: invalidating and purging dirty record."
                     )
                     is_fresh = False
+                    if cached.get("id"):
+                        asyncio.create_task(self.restaurant_repo.delete_by_id(cached["id"]))
 
             if is_fresh:
                 rid = cached.get("id")

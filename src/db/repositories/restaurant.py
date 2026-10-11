@@ -121,3 +121,18 @@ class RestaurantRepository:
 
                 await conn.commit()
                 return restaurant_id
+
+    async def delete_by_id(self, restaurant_id: Any) -> bool:
+        """透過 id 刪除餐廳及其相關快取 (tabelog_cache ON DELETE CASCADE)"""
+        pool = await get_db_pool()
+        query = "DELETE FROM restaurants WHERE id = %s;"
+        try:
+            async with pool.connection() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute(query, (restaurant_id,))
+                await conn.commit()
+            logger.info(f"Successfully deleted invalid restaurant record: {restaurant_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to delete restaurant {restaurant_id}: {e}")
+            return False
