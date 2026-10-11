@@ -225,8 +225,8 @@ class EntityResolver:
                 "reason": f"店名極高度相似 ({round(best_score, 2)})",
             }
 
-        # Step 3: 灰色地帶判定 (0.60 ~ 0.85)
-        if best_candidate and 0.60 <= best_score < 0.85:
+        # Step 3: 灰色地帶判定 (0.45 ~ 0.85 啟動 Tier 2 LLM 智慧裁決)
+        if best_candidate and 0.45 <= best_score < 0.85:
             if not allow_llm:
                 # 預熱/離線純規則模式：相似度 >= 0.70 直接採納為中等信心匹配，不消耗雲端 LLM API Key
                 if best_score >= 0.70:

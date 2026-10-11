@@ -229,7 +229,7 @@ flowchart TD
             FetchTabelog --> CheckWaf{"403 WAF 阻擋 / 0筆?"}
             CheckWaf -- "Yes (WAF 觸發)" --> GroundingFallback["啟動 Web Grounding 搜尋備援<br/>(提取官方標準評分、評論數與百名店標章)"]
             CheckWaf -- "No (順利連線)" --> EntityResolver
-            GroundingFallback --> EntityResolver["EntityResolver (電話優先 ➔ 店名相似度)"]
+            GroundingFallback --> EntityResolver["EntityResolver 雙層漏斗對齊<br/>(Tier 1: 0ms 規則快篩 ➔ Tier 2: LLM 模糊裁決)"]
             EntityResolver --> MatchCheck{"比對成功?"}
             MatchCheck -- Yes --> ScrapeDetail["彙整評分/百名店/URL"] --> SaveCache["寫入 Neon DB tabelog_cache 快取<br/>(後續查詢 0ms 永久命中)"]
             MatchCheck -- No --> FallbackGoogle["保底：標註「Tabelog 暫無評分，以 Google 為依據」"]

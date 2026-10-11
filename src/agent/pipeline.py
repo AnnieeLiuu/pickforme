@@ -314,7 +314,7 @@ class FoodRecommendationFSM:
             match_res = await self.entity_resolver.resolve_entity(
                 google_store=place,
                 tabelog_candidates=candidates,
-                allow_llm=False,  # 0 API 消耗，嚴守速度
+                allow_llm=True,  # 雙層漏斗：明確者 0ms 通過，模糊者由 Tier 2 LLM 智慧裁決
             )
 
             if match_res and match_res.get("match_found") and match_res.get("candidate"):

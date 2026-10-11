@@ -77,3 +77,39 @@ def test_entity_resolver_no_match():
         assert result["match_method"] == "no_match"
 
     asyncio.run(_test())
+
+
+def test_entity_resolver_llm_verify():
+    from unittest.mock import AsyncMock
+
+    from src.services.entity_resolver import EntityVerifyResponse
+
+    async def _test():
+        resolver = EntityResolver(gemini_api_key=None)
+        # 相似度約 0.54 (落在 0.45 ~ 0.85 灰色區間)
+        google_store = {
+            "name": "一蘭 歌舞伎町店",
+            "phone": "",
+            "lat": 35.6948,
+            "lng": 139.7025,
+        }
+        tabelog_candidates = [
+            {"name_ja": "天然とんこつラーメン一蘭 新宿歌舞伎町店", "phone": "", "lat": 35.6949, "lng": 139.7026},
+        ]
+
+        # 模擬 Tier 2 LLM 裁決返回 True
+        resolver._verify_with_llm = AsyncMock(
+            return_value=EntityVerifyResponse(
+                is_same_store=True,
+                confidence=0.95,
+                reason="LLM 語意辨識兩者皆為新宿歌舞伎町之一蘭拉麵實體分店",
+            )
+        )
+
+        result = await resolver.resolve_entity(google_store, tabelog_candidates, allow_llm=True)
+        assert result["match_found"] is True
+        assert result["match_method"] == "llm_verify"
+        assert result["confidence"] == 0.95
+
+    asyncio.run(_test())
+
