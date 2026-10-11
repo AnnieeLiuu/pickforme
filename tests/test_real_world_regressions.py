@@ -11,12 +11,17 @@ import re
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from src.agent.pipeline import FoodRecommendationFSM
+from src.agent.pipeline import FoodRecommendationFSM, resolve_search_constraints
 from src.agent.validator import validate_recommendation_card
 from src.services.entity_resolver import (
     EntityResolver,
     EntityVerifyResponse,
     calculate_string_similarity,
+)
+from src.services.review_sanitizer import (
+    is_pure_metadata_noise,
+    sanitize_review_snippet,
+    synthesize_store_recommendation_reason,
 )
 
 
@@ -601,3 +606,113 @@ async def test_case12_smart_prefiltering_early_stopping_and_foodie_ranking():
     assert len(final_top3) == 3
     assert final_top3[0]["name_ja"] == "Shop 1"
     assert final_top3[0]["rank_badge"] == "🥇"
+
+
+# ==============================================================================
+# Case 13: 結構化搜尋約束解耦與食評雜訊濾網 (Distance Modifier & Review Sanitizer)
+# 現場還原：使用者提問「可以接受距離遠一點的走路15分鐘內都可以」(接續壽喜燒)
+# 歷史問題：
+# 1. 關鍵字被粗暴拼接為「壽喜燒 走路15分鐘內」，導致 Places 搜尋嚴重語意漂移 (誤召回海底撈、牛舌、一蘭)。
+# 2. 模板直出時未過濾雜訊，將「営業時間 24時間営業」「西武新宿駅徒歩1分」等生硬元資料誤當老饕口感推薦。
+# 防禦機制：
+# 1. resolve_search_constraints 將空間約束分流至半徑階梯，Places keyword 100% 保持純淨。
+# 2. ReviewSanitizer 自動剔除營業時間與交通路線，以結構化權威指標合成有溫度推薦理由。
+# ==============================================================================
+@pytest.mark.asyncio
+async def test_case13_distance_modifier_cleansing_and_review_noise_filtering() -> None:
+    # 1. 驗證結構化搜尋約束 (Structured Search Constraints)
+    # 測試情境 A: 真實現場「可以接受距離遠一點的走路15分鐘內都可以」
+    kw1, radii1, style1 = resolve_search_constraints(
+        cuisine="壽喜燒",
+        modifier="可以接受距離遠一點的走路15分鐘內都可以",
+    )
+    assert kw1 == "壽喜燒", f"關鍵字必須維持純淨壽喜燒，但得到: {kw1}"
+    assert radii1[0] == 1200, f"15分鐘應對應 1200m 半徑，但得到: {radii1[0]}"
+    assert "走路" not in kw1
+    assert "15分鐘" not in kw1
+
+    # 測試情境 B: 包含實質風格詞「更在地老店」
+    kw2, radii2, style2 = resolve_search_constraints(
+        cuisine="壽喜燒",
+        modifier="我想找更在地老店",
+    )
+    assert "老店" in kw2
+    assert radii2 == [800, 1200, 1800]
+    assert style2 == "我想找更在地老店"
+
+    # 測試情境 C: 空間與風格混合「走路10分鐘以內、平價一點」
+    kw3, radii3, style3 = resolve_search_constraints(
+        cuisine="拉麵",
+        modifier="走路10分鐘以內 平價一點",
+    )
+    assert "平價一點" in kw3
+    assert "走路" not in kw3
+    assert "10分鐘" not in kw3
+    assert radii3[0] == 800  # 10 * 80 = 800m
+
+    # 2. 驗證食評雜訊濾網 (Metadata Noise Rejection)
+    noise_ichiran = (
+        "一蘭 新宿歌舞伎町店 (新宿西口/ラーメン) 営業時間 24時間営業 ※営業時間は変更になる場合がございます …"
+    )
+    assert is_pure_metadata_noise(noise_ichiran) is True
+    assert sanitize_review_snippet(noise_ichiran) is None
+
+    noise_lemon = "從新宿站西口步行6分鐘 從大江戶線新宿西口站（D5出口）步行2分鐘 從西武新宿站步行5分鐘. 距离西武新宿200 米 · 11:30 - 15:00"
+    assert is_pure_metadata_noise(noise_lemon) is True
+    assert sanitize_review_snippet(noise_lemon) is None
+
+    # 真實口感心得應順利保留
+    real_review = "肉質非常軟嫩，湯頭濃郁順口，特製松露蛋拌飯超級好吃！"
+    cleaned_real = sanitize_review_snippet(real_review)
+    assert cleaned_real is not None
+    assert "肉質非常軟嫩" in cleaned_real
+
+    # 3. 驗證智慧合成推薦理由 (Synthesized Reason Fallback)
+    store_pure_noise = {
+        "name_ja": "一蘭 新宿歌舞伎町店",
+        "tabelog_rating": 3.10,
+        "sample_reviews": [{"text": noise_ichiran}],
+    }
+    reason, badge = synthesize_store_recommendation_reason(store_pure_noise, cuisine="拉麵")
+    assert "24時間" not in reason
+    assert "営業時間" not in reason
+    assert "ラーメン" not in reason
+    assert "道地 拉麵 風味" in reason or "美味" in reason or "精選" in reason
+
+    store_hyakumeiten = {
+        "name_ja": "高級壽喜燒名店",
+        "tabelog_rating": 3.75,
+        "awards": ["壽喜燒 百名店 2026"],
+        "sample_reviews": [{"text": noise_lemon}],
+    }
+    reason_h, badge_h = synthesize_store_recommendation_reason(store_hyakumeiten, cuisine="壽喜燒")
+    assert "百名店" in reason_h
+    assert "步行" not in reason_h
+    assert badge_h == "百名店指標"
+
+    # 4. 驗證端到端模板直出卡片排版
+    mock_llm = MagicMock()
+    mock_places = MagicMock()
+    mock_scraper = MagicMock()
+    fsm = FoodRecommendationFSM(llm_client=mock_llm, places_client=mock_places, tabelog_scraper=mock_scraper)
+
+    test_stores = [
+        {
+            "name_ja": "壽喜燒極",
+            "tabelog_rating": 3.52,
+            "review_count": 820,
+            "sample_reviews": [{"text": noise_ichiran}],
+            "walking_desc": "從「新宿車站」步行約 8 分鐘 (629m)",
+            "payment_methods_desc": "現金為主",
+            "address": "東京都新宿區",
+            "tabelog_url": "https://tabelog.com/tokyo/dummy",
+        }
+    ]
+    card = fsm._render_template_fallback_card(test_stores, cuisine="壽喜燒", is_format_fallback=True)
+
+    # 驗證卡片中 100% 絕無生硬營業時間或雜訊
+    assert "24時間" not in card
+    assert "営業時間" not in card
+    assert "老饕推薦理由" in card
+    assert "3.52" in card
+    assert "`壽喜燒極`" in card

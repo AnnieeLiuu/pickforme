@@ -18,6 +18,7 @@ from src.db.repositories.vector import VectorRepository
 from src.services.embedding import EmbeddingService
 from src.services.entity_resolver import EntityResolver, calculate_distance_meters
 from src.services.google_places import GooglePlacesClient
+from src.services.review_sanitizer import synthesize_store_recommendation_reason
 from src.services.tabelog_scraper import TabelogScraper
 
 logger = logging.getLogger(__name__)
@@ -28,8 +29,8 @@ AGENT_SYSTEM_PROMPT_PATH = PROMPTS_DIR / "agent_system.md"
 INTENT_PARSER_SYSTEM_PROMPT = """你是一位嚴格的日本美食搜尋意圖解析器。請分析使用者的輸入與上下文，並輸出標準 JSON 格式。
 
 可能的 intent 欄位值：
-1. "search": 使用者想尋找美食餐廳。請精準抽取 location (地名/車站/商圈/景點，若未提及請設為 null) 與 cuisine (料理類別/關鍵字，若未指定請設為 "熱門人氣美食")。
-2. "more": 使用者想要「換一批」、「還有更多推薦嗎」、「還有別家嗎」，或是對上一輪推薦提出風格轉向（例如：「我想找更在地的老店」、「有沒有更平價一點的」、「想吃清淡一點的」）。請抽取 modifier (風格修飾語/新要求，例如 "更在地老店"、"平價"、"偏清淡"，若無請設為 null)。注意：若為 "more" 且使用者未重複輸入地名或料理，請優先從對話歷史的上一輪中繼承 location 與 cuisine！
+1. "search": 使用者想尋找美食餐廳。請精準抽取 location (地名/車站/商圈/景點，若未提及請設為 null) 與 cuisine (料理類別/食物核心名詞，例如「壽喜燒」、「拉麵」，嚴禁包含距離或時間詞，若未指定請設為 "熱門人氣美食")。
+2. "more": 使用者想要「換一批」、「還有更多推薦嗎」、「還有別家嗎」，或是對上一輪推薦提出風格轉向（例如：「我想找更在地的老店」、「有沒有更平價一點的」、「可以接受遠一點走路15分鐘」）。請抽取 modifier (修飾語/新要求，例如 "更在地老店"、"平價"、"走路15分鐘內"，若無請設為 null)。注意：若為 "more" 且使用者未重複輸入地名或料理，請優先從對話歷史的上一輪中繼承 location 與 cuisine！
 3. "follow_up": 使用者針對上一輪推薦的店家追問細節 (例如: "第2家有開嗎", "第一家多少錢", "有沒有信用卡")。請抽取 target_index (整數 1, 2 或 3) 與 question。
 4. "chitchat": 純打招呼、禮貌問候、詢問系統功能或非美食主題。
 5. "need_location": 使用者想吃特定食物但未提供任何地名，且系統上下文無 GPS 與無歷史地名。
@@ -97,6 +98,61 @@ def format_payment_methods(
     elif supports_paypay is False:
         return "不支援 PayPay (建議備足日圓現鈔或實體信用卡)"
     return "現金為主 (建議備足日圓現鈔)"
+
+
+def resolve_search_constraints(
+    cuisine: str,
+    modifier: Optional[str] = None,
+) -> tuple[str, list[int], Optional[str]]:
+    """解析並分離料理名稱、風格修飾語與物理距離約束 (非 Hardcode，杜絕 Places 搜尋脫靶)
+
+    Returns:
+        tuple[str, list[int], Optional[str]]:
+            - clean_keyword: 純淨之 Google Places 檢索關鍵字 (例: "壽喜燒")
+            - radii_ladder: 物理階梯半徑清單 (例: 15分鐘步行 -> [1200, 1700, 2500])
+            - style_tag: 僅供卡片或語意重排之風格標籤 (例: "老店", "平價")
+    """
+    clean_cuisine = (cuisine or "熱門美食").strip()
+
+    # 1. 偵測並移除誤混入 cuisine 的空間詞
+    clean_cuisine = re.sub(r"(?:走路|步行|走)?\s*\d{1,2}\s*(?:分鐘|min|mins)[^\s]*", "", clean_cuisine).strip()
+    clean_cuisine = re.sub(r"(?:遠一點|近一點|大圈一點|附近)", "", clean_cuisine).strip()
+    if not clean_cuisine:
+        clean_cuisine = "熱門美食"
+
+    radii_ladder = [800, 1200, 1800]
+    style_tag: Optional[str] = None
+
+    if not modifier:
+        return clean_cuisine, radii_ladder, None
+
+    mod = modifier.strip()
+
+    # 2. 物理空間約束：提取具體分鐘數 (以日本 80m/min 步行標準換算)
+    walk_match = re.search(r"(?:走路|步行|走)?\s*(\d{1,2})\s*(?:分鐘|min|mins)", mod)
+    if walk_match:
+        mins = int(walk_match.group(1))
+        # 換算為公尺，例如 15 分鐘 -> 1200m
+        base_r = max(800, min(2500, mins * 80))
+        radii_ladder = [base_r, min(2500, base_r + 500), 2500]
+    elif any(kw in mod for kw in ["遠一點", "大圈一點", "距離遠", "擴大", "遠些"]):
+        radii_ladder = [1200, 1800, 2500]
+    elif any(kw in mod for kw in ["近一點", "最近", "附近", "腳程短", "不想走"]):
+        radii_ladder = [500, 800, 1200]
+
+    # 3. 剝離空間詞，檢驗是否有實質風格/口味詞 (如 "老店", "平價", "清淡", "濃郁")
+    rem_style = re.sub(r"(?:走路|步行|走)?\s*\d{1,2}\s*(?:分鐘|min|mins)[^\s]*", "", mod)
+    rem_style = re.sub(
+        r"(?:可以接受|距離|遠一點|近一點|大圈一點|擴大|以內|內都可以|都可以|附近|能接受)", "", rem_style
+    ).strip()
+
+    clean_keyword = clean_cuisine
+    if rem_style and len(rem_style) >= 2:
+        style_tag = rem_style
+        # 只有實質風格詞才安全疊加到 keyword
+        clean_keyword = f"{clean_cuisine} {rem_style}"
+
+    return clean_keyword, radii_ladder, style_tag
 
 
 class FoodRecommendationFSM:
@@ -231,6 +287,7 @@ class FoodRecommendationFSM:
         origin_name: Optional[str] = None,
         exclude_place_ids: Optional[set[str]] = None,
         max_candidates: int = 6,
+        custom_radii: Optional[list[int]] = None,
     ) -> list[dict[str, Any]]:
         """State 2: Google Places 智慧階梯檢索 (800m ➔ 1200m ➔ 1800m ➔ 2500m 擴圈保底) + 潛力預篩"""
         t0 = time.time()
@@ -238,7 +295,7 @@ class FoodRecommendationFSM:
         origin_prefix = f"從「{origin_name}」" if origin_name else "從「您目前位置」"
         exclude_set = set(exclude_place_ids or set())
 
-        radii = [800, 1200, 1800]
+        radii = custom_radii or [800, 1200, 1800]
         for r in radii:
             raw_places = await self.places_client.search_nearby(lat=lat, lng=lng, radius=r, keyword=keyword)
             # 過濾重複與已看過店家
@@ -753,25 +810,9 @@ class FoodRecommendationFSM:
                 lines.append(f"📍 **地址**：{s.get('address')}")
             if s.get("tabelog_url"):
                 lines.append(f"🔗 [食べログ詳細頁面]({s.get('tabelog_url')})")
-            # 老饕短評 (註明來源，精要截斷避免未總結之長篇英文洗版)
-            rev_txt = s.get("foodie_review_highlight")
-            rev_badge = "食べログ 口コミ"
-            if not rev_txt:
-                s_revs = s.get("sample_reviews") or []
-                if s_revs and isinstance(s_revs, list):
-                    f_rev = s_revs[0]
-                    if isinstance(f_rev, dict):
-                        rev_txt = f_rev.get("text") or f_rev.get("original_text") or f_rev.get("zh")
-                        if f_rev.get("source") != "tabelog":
-                            rev_badge = "Google 在地評價"
-                    elif isinstance(f_rev, str):
-                        rev_txt = f_rev
-
-            if rev_txt:
-                clean_rev = rev_txt.strip()
-                if len(clean_rev) > 130:
-                    clean_rev = clean_rev[:125] + "..."
-                lines.append(f"📍 **老饕推薦理由 ({rev_badge})**：{clean_rev}")
+            # 老饕短評 (透過 ReviewSanitizer 淨化雜訊並智慧合成，絕不輸出生硬營業時間/交通資訊)
+            rev_txt, rev_badge = synthesize_store_recommendation_reason(s, cuisine=cuisine)
+            lines.append(f"📍 **老饕推薦理由 ({rev_badge})**：{rev_txt}")
             lines.append("")
 
         return "\n".join(lines).strip()
@@ -1095,8 +1136,8 @@ class FoodRecommendationFSM:
             loc_name = parsed.get("location")
             modifier = parsed.get("modifier")
 
-            # 若有風格修飾語（例如「更在地老店」、「偏平價」），疊加進搜尋關鍵字
-            search_keyword = f"{cuisine} {modifier}" if modifier else cuisine
+            # 結構化搜尋約束解析：解耦料理核心詞、物理半徑階梯與風格修飾語 (杜絕關鍵字污染)
+            search_keyword, radii_ladder, style_tag = resolve_search_constraints(cuisine=cuisine, modifier=modifier)
 
             # 若為換一批 (intent: more)，取得過去累積看過的所有店家 ID 進行黑名單過濾
             exclude_ids: set[str] = set()
@@ -1121,6 +1162,7 @@ class FoodRecommendationFSM:
                 keyword=search_keyword,
                 origin_name=loc_name,
                 exclude_place_ids=exclude_ids,
+                custom_radii=radii_ladder,
             )
             if not candidates:
                 await self.trace_logger.finish_run(status="completed")
