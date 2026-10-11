@@ -49,6 +49,25 @@ pytest
 
 ---
 
+## 🧪 生產錯誤修正回歸測試強制規範 (Bug-Driven Regression Test Mandate)
+
+為徹底根除系統在迭代過程中「歷史問題死灰復燃 (Regression)」的風險，AI Agents 與開發者在排查或修復任何錯誤時 **MUST** 恪守以下規範：
+
+1. **一處修復，必加回歸 (One Fix, One Regression Test)**：
+   - 凡是在生產環境、日常使用或對話測試中發現之缺陷、邊界異常（Corner Cases）或個案修復（例如：特定店名檢索失敗、Unicode 特殊標點阻斷比對、排版遭誤殺、意圖解析異常等），**強制一律必須在 [`tests/test_real_world_regressions.py`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/tests/test_real_world_regressions.py) 或對應單元測試中新增專屬測試案例**。
+   - **嚴禁只改代碼不補測試**：任何未附帶對應回歸測試的 Bug Fix，皆視為不完整且違規之提交。
+
+2. **真實案例場景固化 (Battle-Tested Case Preservation)**：
+   - 測試案例必須真實還原觸發 Bug 的原始邊界輸入（例如特定的店家名稱、Unicode 字元、對話歷史 Payload），並在 Test Docstring 中清楚註明該戰役的根本原因與防禦邏輯。
+
+3. **0ms 離線 Mock 原則 (Fast & Deterministic)**：
+   - 所有回歸測試必須依循 Mock-backed 原則（使用 `AsyncMock` / `MagicMock` 模擬 LLM 及外部 API），絕不可依賴 live network 或消耗真實 API Key，保證測試能在本機與 GitLab CI 中於毫秒級內穩定 100% 通過。
+
+4. **歷史倒退零容忍 (Zero Regression Tolerance)**：
+   - 專案既有的黃金回歸測試集為最高優先級守門防線。未來任何程式重構、架構演進或更換底層模型時，若破壞了任何一項歷史回歸案例，Git Pre-push Hook 與 CI 必須直接攔截並阻止上線。
+
+---
+
 ## 🔄 Scratch Code Promotion & Graduation SOP
 
 Temporary scripts created in `scratch/` during exploratory phase MUST follow this lifecycle:
