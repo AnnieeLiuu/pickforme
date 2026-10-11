@@ -380,6 +380,21 @@ class FoodRecommendationFSM:
                 if (now - updated_at).days >= 7:
                     is_fresh = False
 
+            # 快取行政區一致性防禦：避免歷史髒快取導致跨縣市漂移
+            if is_fresh and cached.get("tabelog_url"):
+                from src.services.entity_resolver import (
+                    extract_prefecture_from_address,
+                    extract_prefecture_from_tabelog_url,
+                )
+
+                cached_pref = extract_prefecture_from_tabelog_url(cached.get("tabelog_url"))
+                google_pref = extract_prefecture_from_address(place.get("address"))
+                if cached_pref and google_pref and cached_pref != google_pref:
+                    logger.warning(
+                        f"Poisoned cache detected for '{store_name}': Google in '{google_pref}' but cached Tabelog in '{cached_pref}'. Invalidating."
+                    )
+                    is_fresh = False
+
             if is_fresh:
                 rid = cached.get("id")
                 if rid and place.get("reviews"):
