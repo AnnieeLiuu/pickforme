@@ -49,7 +49,9 @@ INTENT_PARSER_SYSTEM_PROMPT = """你是一位嚴格的日本美食搜尋意圖�
 RECOMMENDATION_CARD_SYSTEM_PROMPT = """你是一位專業、熱情的日本美食特派員「PickForMe (美食導航員)」，請依據所提供的候選店家完整資料，以繁體中文為使用者排版生成引人入勝、專業的美食推薦卡片。
 
 排版規範：
-1. 請依據候選資料推薦 3 ~ 5 家精選餐廳（預設呈現 3 ~ 4 家差異化風格名店，如歷史老舖、平價排隊名店、特色專門店）。
+1. 動態精選推薦梯隊（真實呈現 1 ~ 4 家，絕不湊數）：
+   - 根據給予的候選餐廳清單推薦符合條件的店家。
+   - 【嚴格真實性禁令】：絕對禁止自行補充、腦補或推薦任何未列於輸入候選清單中的店家！若候選名單只有 1~2 家，就只誠實呈現該 1~2 家；店家連結必須使用輸入提供的真實連結，嚴禁自行產生 google.com/maps/search/ 搜尋字串或捏造網址！
 2. 每家餐廳排版格式規範（嚴格依序）：
    - 🍱 **店名**：請務必將「日文原名」單獨放在 Code 區塊中（例如：`寿々喜家 本店`），方便 Telegram 一鍵點擊複製！
    - 🚶 **步行距離（緊接在店名最前排）**：必須明確標明起點地標，例如：`🚶 **步行距離**：從「新宿御苑」步行約 3 分鐘 (240m)`（若為 GPS 定位則為 `從「您目前位置」步行約...`），提供遊客最明確直覺的腳程參考！
@@ -59,11 +61,11 @@ RECOMMENDATION_CARD_SYSTEM_PROMPT = """你是一位專業、熱情的日本美�
    - 🏆 **獲獎/支付**：若有「百名店/Award」或支援「PayPay / 信用卡」請重點標註。
    - 💰 **預算區間**：午餐/晚餐預算。
    - 📍 **簡短特色與老饕推薦理由**：招牌菜色與口感層次（1~2 句）。
-   - 🔗 **店家連結**：附上 Google 地圖或 Tabelog 連結。
+   - 🔗 **店家連結**：附上提供的真實 Tabelog 或 Google 地圖頁面連結。
 3. **特派員提醒與收斂引導（極簡凝練，嚴格限 1 ~ 2 句話）**：
    - 請在卡片末尾以「💡 特派員提醒：...」簡短作結。
-   - **嚴格限制在 1 ~ 2 句話之內**（例如：提醒排隊熱門時段、或若想進一步縮小範圍至特定流派口味可隨時告訴我）。
-   - **嚴禁長篇大論、嚴禁長串條列式說教提醒**，保持精煉清爽！
+   - 誠實範圍引導：若推薦店家僅有 1 ~ 2 家，請誠實說明（例如提醒目前此範圍內僅有該名店，若想探索更多可建議擴大範圍至鄰近商圈）。
+   - **嚴格限制在 1 ~ 2 句話之內**，保持精煉清爽！
 
 請保持親切、專業、條理分明。直接輸出 Markdown 卡片內容。"""
 
@@ -708,14 +710,37 @@ class FoodRecommendationFSM:
         stores: list[dict[str, Any]],
         top_k: int = 3,
     ) -> list[dict[str, Any]]:
-        """依老饕綜合得分降序重排，並選取 Top K 高分店家，注入排名徽章"""
+        """依老饕綜合得分降序重排，並進行嚴格去重 (Deduplication)，選取 Top K 高分店家，注入排名徽章"""
         if not stores:
             return []
 
         ranked = sorted(stores, key=self._calculate_foodie_score, reverse=True)
-        top_stores = ranked[:top_k]
 
-        rank_badges = ["🥇", "🥈", "🥉"]
+        deduped: list[dict[str, Any]] = []
+        seen_tabelog_urls: set[str] = set()
+        seen_names: set[str] = set()
+
+        for s in ranked:
+            t_url = s.get("tabelog_url")
+            raw_name = s.get("name_ja") or s.get("name") or ""
+            clean_name = re.sub(r"[\s\-_・，,（）()]+", "", raw_name).lower()
+
+            if t_url and t_url in seen_tabelog_urls:
+                continue
+            if clean_name and clean_name in seen_names:
+                continue
+
+            if t_url:
+                seen_tabelog_urls.add(t_url)
+            if clean_name:
+                seen_names.add(clean_name)
+
+            deduped.append(s)
+            if len(deduped) >= top_k:
+                break
+
+        top_stores = deduped
+        rank_badges = ["🥇", "🥈", "🥉", "🏅", "🎖️"]
         for idx, s in enumerate(top_stores):
             s["rank_index"] = idx + 1
             s["rank_badge"] = rank_badges[idx] if idx < len(rank_badges) else f"#{idx + 1}"
@@ -843,6 +868,11 @@ class FoodRecommendationFSM:
             lines.append(f"📍 **老饕推薦理由 ({rev_badge})**：{rev_txt}")
             lines.append("")
 
+        if len(stores) < 3:
+            lines.append(
+                f"💡 **特派員提醒**：目前此範圍內精選出 {len(stores)} 家符合條件的名店；若想探索更多選擇，可隨時告訴我擴大搜尋半徑或換個商圈！\n"
+            )
+
         return "\n".join(lines).strip()
 
     def _sanitize_card_ratings(self, card_text: str, stores: list[dict[str, Any]]) -> str:
@@ -927,10 +957,14 @@ class FoodRecommendationFSM:
         cuisine: str,
         location_name: Optional[str],
     ) -> str:
-        """State 4: 單輪 LLM 卡片生成 (含 LLM 異常時的純模板保底)"""
         t0 = time.time()
+        honest_notice = ""
+        if len(stores) < 3:
+            honest_notice = f"（特別提醒：目前此範圍內符合條件之高評價店家僅有 {len(stores)} 家，請誠實僅呈現這 {len(stores)} 家，絕對禁止無中生有自行腦補其他店家或搜尋連結，並請在特派員提醒中建議使用者若想看更多可擴大半徑或換個商圈）\n"
+
         prompt_content = (
-            f"目標地點：{location_name or '指定區域'}\n美食類別：{cuisine or '熱門美食'}\n\n候選餐廳詳細數據如下：\n"
+            f"目標地點：{location_name or '指定區域'}\n美食類別：{cuisine or '熱門美食'}\n"
+            f"候選餐廳總數：共 {len(stores)} 家 {honest_notice}\n候選餐廳詳細數據如下：\n"
         )
         for idx, s in enumerate(stores, 1):
             rank_badge = s.get("rank_badge") or (["🥇", "🥈", "🥉"][idx - 1] if idx <= 3 else f"#{idx}")
@@ -1205,7 +1239,7 @@ class FoodRecommendationFSM:
 
             # 方案 1A 二段式進度更新 (進度 2 - 準備寫卡片)
             if on_progress:
-                await on_progress("✍️ 已精選 3 家高評價指標餐廳，正在為您生成專屬推薦卡片...")
+                await on_progress(f"✍️ 已精選 {len(enriched_stores)} 家高評價指標餐廳，正在為您生成專屬推薦卡片...")
 
             # 4. State 4: 單輪卡片生成
             final_card = await self.execute_state_4_synthesis(

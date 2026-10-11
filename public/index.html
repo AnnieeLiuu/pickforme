@@ -3362,6 +3362,338 @@
                 </thead>
                 <tbody>
                     
+            <tr class="live-row" onclick="toggleCaseDetails('live-bad8bc5f-ea5c-4b2c-ae50-cc1f4a704e2c')">
+                <td><code>bad8bc5f</code></td>
+                <td><span class="cat-pill">Live Telegram</span></td>
+                <td class="query-col">橫濱公園附近的壽喜燒</td>
+                <td class="text-center"><code>N/A</code></td>
+                <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+                <td class="text-right latency-text">7,658 ms</td>
+            </tr>
+            <tr id="case-live-bad8bc5f-ea5c-4b2c-ae50-cc1f4a704e2c" class="stepper-drawer" style="display: none;">
+                <td colspan="6">
+                    <div class="stepper-container">
+                        <div class="drawer-header">
+                            <h4>⚡ 真實線上問答執行軌跡 (Run ID: bad8bc5f-ea5c-4b2c-ae50-cc1f4a704e2c | 提問時間: 2026-10-11T15:39:14.049552+00:00)</h4>
+                        </div>
+                        <div class="steps-flow">
+                            
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 1</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_1_intent (intent_parser)</div>
+                <div class="step-sub-title">單步耗時: 383 ms</div>
+            </div>
+            <span class="step-badge">383ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">383 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;message&quot;: &quot;橫濱公園附近的壽喜燒&quot;
+  },
+  &quot;output&quot;: {
+    &quot;intent&quot;: &quot;search&quot;,
+    &quot;cuisine&quot;: &quot;壽喜燒&quot;,
+    &quot;location&quot;: &quot;橫濱公園&quot;,
+    &quot;modifier&quot;: null,
+    &quot;question&quot;: null,
+    &quot;target_index&quot;: null
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 2</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_2_places (search_nearby_ladder)</div>
+                <div class="step-sub-title">單步耗時: 326 ms</div>
+            </div>
+            <span class="step-badge">326ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">326 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;lat&quot;: 35.4442082,
+    &quot;lng&quot;: 139.6406544,
+    &quot;keyword&quot;: &quot;壽喜燒&quot;,
+    &quot;excluded_count&quot;: 0
+  },
+  &quot;output&quot;: {
+    &quot;count&quot;: 6
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 3</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_3_tabelog (parallel_tabelog_enrichment)</div>
+                <div class="step-sub-title">單步耗時: 2403 ms</div>
+            </div>
+            <span class="step-badge">2403ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2403 ms</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (3 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 荒井屋 本店</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.60 (664 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「時代を超え引き継ぐ“開花のお味”。創業120余年の牛鍋屋で頬を緩める至福の時をここ 横浜 で。 横浜 港の開港を機に、西洋及び肉食文化が流入した安政6年。」</em></div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 荒井屋 本店</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.60 (664 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「We came for the Sukiyaki course menu. Great overall experience with lots of flavour...」</em></div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 Janomeya</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.50 (217 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「The meat was among the best I&#x27;ve tasted during my 8 years in Japan. The vegetables ...」</em></div>
+        </div>
+        </div>
+    </div>
+    
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;stores_count&quot;: 6,
+    &quot;stores_searched&quot;: [
+      {
+        &quot;name&quot;: &quot;YOKOHAMA 馬車道 NABE STARS&quot;,
+        &quot;phone&quot;: &quot;050-5597-6634&quot;,
+        &quot;google_rating&quot;: 4.9
+      },
+      {
+        &quot;name&quot;: &quot;Araiya&quot;,
+        &quot;phone&quot;: &quot;045-226-5003&quot;,
+        &quot;google_rating&quot;: 4.3
+      },
+      {
+        &quot;name&quot;: &quot;Araiya&quot;,
+        &quot;phone&quot;: &quot;045-251-5001&quot;,
+        &quot;google_rating&quot;: 4.3
+      },
+      {
+        &quot;name&quot;: &quot;Janomeya&quot;,
+        &quot;phone&quot;: &quot;045-251-0832&quot;,
+        &quot;google_rating&quot;: 4.3
+      },
+      {
+        &quot;name&quot;: &quot;Kisoji Bashamichiten&quot;,
+        &quot;phone&quot;: &quot;045-664-2961&quot;,
+        &quot;google_rating&quot;: 4
+      },
+      {
+        &quot;name&quot;: &quot;Ningyocho Imahan Yokohama Takashimaya&quot;,
+        &quot;phone&quot;: &quot;045-317-4340&quot;,
+        &quot;google_rating&quot;: 4.5
+      }
+    ]
+  },
+  &quot;output&quot;: {
+    &quot;aligned_stores&quot;: [
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;荒井屋 本店&quot;,
+        &quot;rank_badge&quot;: &quot;🥇&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140104/14003068/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 664,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;時代を超え引き継ぐ“開花のお味”。創業120余年の牛鍋屋で頬を緩める至福の時をここ 横浜 で。 横浜 港の開港を機に、西洋及び肉食文化が流入した安政6年。&quot;,
+            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;時代を超え引き継ぐ“開花のお味”。創業120余年の牛鍋屋で頬を緩める至福の時をここ 横浜 で。 横浜 港の開港を機に、西洋及び肉食文化が流入した安政6年。&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.6,
+        &quot;supports_paypay&quot;: false
+      },
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;荒井屋 本店&quot;,
+        &quot;rank_badge&quot;: &quot;🥈&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140104/14003068/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 664,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;We came for the Sukiyaki course menu.\nGreat overall experience with lots of flavours and beautiful servings. Especially the meat was excellent.\nThe only things that I think can be improved is the alcohol/drink servings, it was pretty standard and not as creative as the food servings/flavours.&quot;,
+            &quot;author&quot;: &quot;Denis Bortnik&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;We came for the Sukiyaki course menu.\nGreat overall experience with lots of flavours and beautiful servings. Especially the meat was excellent.\nThe only things that I think can be improved is the alcohol/drink servings, it was pretty standard and not as creative as the food servings/flavours.&quot;
+          },
+          {
+            &quot;text&quot;: &quot;Superb sukiyaki and the most attentive service!! They cook everything for you perfectly, the meat is very high quality and the flavours are delicious. Really recommend for authentic Japanese experience, definitely worth the price&quot;,
+            &quot;author&quot;: &quot;SS&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;Superb sukiyaki and the most attentive service!! They cook everything for you perfectly, the meat is very high quality and the flavours are delicious. Really recommend for authentic Japanese experience, definitely worth the price&quot;
+          },
+          {
+            &quot;text&quot;: &quot;We had a family lunch 6 adults 2 toddler and 1 baby. Love the Japanese style interiors, everything is so clean. They have lift and toilet for disabled and baby. Overall facility is really good.\nAs for taste no doubt it’s super good!&quot;,
+            &quot;author&quot;: &quot;Veronica Puspita&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;We had a family lunch 6 adults 2 toddler and 1 baby. Love the Japanese style interiors, everything is so clean. They have lift and toilet for disabled and baby. Overall facility is really good.\nAs for taste no doubt it’s super good!&quot;
+          },
+          {
+            &quot;text&quot;: &quot;lined up 30 minutes before the restaurant had opened, there was no wait times. this was on a saturday. ordered gyunobe not knowing really what it was other than it was hotpot. came with premium sirloin. the lady or man working there will prepare the entire hotpot for you and serve you without you having to touch the hot pot. the hotpot itself is heavily marinated and gives you a strong but good taste. would recommend to anyone’s first time getting hotpot in japan.&quot;,
+            &quot;author&quot;: &quot;Tan Le&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;lined up 30 minutes before the restaurant had opened, there was no wait times. this was on a saturday. ordered gyunobe not knowing really what it was other than it was hotpot. came with premium sirloin. the lady or man working there will prepare the entire hotpot for you and serve you without you having to touch the hot pot. the hotpot itself is heavily marinated and gives you a strong but good taste. would recommend to anyone’s first time getting hotpot in japan.&quot;
+          },
+          {
+            &quot;text&quot;: &quot;Excellent quality dishes that are carefully prepared and presented. An exceptional dinning experience.&quot;,
+            &quot;author&quot;: &quot;Cris Kelley&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;Excellent quality dishes that are carefully prepared and presented. An exceptional dinning experience.&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.6,
+        &quot;supports_paypay&quot;: false
+      },
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;Janomeya&quot;,
+        &quot;rank_badge&quot;: &quot;🥉&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140306/14001121/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 217,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;The meat was among the best I&#x27;ve tasted during my 8 years in Japan. The vegetables were fresh and delicious, and the broth was just the right mix of sweet and umami. The service was attentive and helpful. Will definitely go again.&quot;,
+            &quot;author&quot;: &quot;Dave Habgood&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;The meat was among the best I&#x27;ve tasted during my 8 years in Japan. The vegetables were fresh and delicious, and the broth was just the right mix of sweet and umami. The service was attentive and helpful. Will definitely go again.&quot;
+          },
+          {
+            &quot;text&quot;: &quot;Our first real meal in Japan! We wanted to go to another place nearby which is the oldest gyu nabe restaurant in Yokohama but they were fully booked even though our hotel called the day reservations opened supposedly. The beef set we got was really good. The meat was soft and delicious. The mushroom was the silkiest I’ve ever had.  Their nabe sauce is different and very good. I only wish they cooked for you though because I don’t think we balanced the sauce well.&quot;,
+            &quot;author&quot;: &quot;C P&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;Our first real meal in Japan! We wanted to go to another place nearby which is the oldest gyu nabe restaurant in Yokohama but they were fully booked even though our hotel called the day reservations opened supposedly. The beef set we got was really good. The meat was soft and delicious. The mushroom was the silkiest I’ve ever had.  Their nabe sauce is different and very good. I only wish they cooked for you though because I don’t think we balanced the sauce well.&quot;
+          },
+          {
+            &quot;text&quot;: &quot;Taste is good, but operation is too slow.&quot;,
+            &quot;author&quot;: &quot;Apple Pomme&quot;,
+            &quot;rating&quot;: 3,
+            &quot;original_text&quot;: &quot;Taste is good, but operation is too slow.&quot;
+          },
+          {
+            &quot;text&quot;: &quot;Good&quot;,
+            &quot;author&quot;: &quot;yoshinobu sasagawa&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;Good&quot;
+          },
+          {
+            &quot;text&quot;: &quot;I went with two friends.\n\nWe thoroughly enjoyed the sukiyaki course meal. The meat was superb, as expected from one of Yokohama&#x27;s top three sukiyaki restaurants.&quot;,
+            &quot;author&quot;: &quot;じゅんじい&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;友人と三人で伺いました。\nコース料理の牛鍋を美味しくいただきました。流石横浜三大牛鍋店のお肉素晴らしかったです。&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.5,
+        &quot;supports_paypay&quot;: false
+      }
+    ],
+    &quot;selected_count&quot;: 3
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 4</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_4_synthesis (card_synthesis)</div>
+                <div class="step-sub-title">單步耗時: 1395 ms</div>
+            </div>
+            <span class="step-badge">1395ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">1395 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;cuisine&quot;: &quot;壽喜燒&quot;,
+    &quot;location&quot;: &quot;橫濱公園&quot;,
+    &quot;stores_count&quot;: 3
+  },
+  &quot;output&quot;: {
+    &quot;length&quot;: 774,
+    &quot;card_content&quot;: &quot;🍱 **精選推薦：橫濱公園周邊壽喜燒**\n\n🥇 **荒井屋 本店**\n`荒井屋 本店`\n🚶 **步行距離**：從「橫濱公園」步行約 10 分鐘 (758m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.6 (664 則評價) / Google 4.3\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n💰 **預算區間**：未提供 (建議備妥現金)\n📍 **老饕推薦理由 (食べログ 口コミ)**：創業 120 餘年的橫濱老字號牛鍋名店，傳承自開港時代的「開化之味」。老饕盛讚其肉質軟嫩、湯頭獨特，是體驗橫濱歷史肉食文化的至福之地。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/kanagawa/A1401/A140104/14003068/)\n\n🥉 **Janomeya**\n`Janomeya`\n🚶 **步行距離**：從「橫濱公園」步行約 17 分鐘 (1286m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.5 (217 則評價) / Google 4.3\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n💰 **預算區間**：未提供 (建議備妥現金)\n📍 **老饕推薦理由 (食べログ 口コミ)**：位於伊勢佐木異人街的經典牛鍋店，顧客評價牛肉軟嫩美味，蘑菇口感絲滑，且鍋物醬汁風味獨特，是體驗在地傳統壽喜燒的優質選擇。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/kanagawa/A1401/A140306/14001121/)\n\n💡 特派員提醒：這兩家老字號均僅接受現金，請務必提前備好日圓現鈔；若追求更豐富的壽喜燒選擇，建議擴大範圍至鄰近的「伊勢佐木異人街」或「中華街」周邊探索。&quot;
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            
+
             <tr class="live-row" onclick="toggleCaseDetails('live-fbf9f5bf-bf8a-4023-b8a9-56023df1952a')">
                 <td><code>fbf9f5bf</code></td>
                 <td><span class="cat-pill">Live Telegram</span></td>
@@ -7911,334 +8243,6 @@
   &quot;output&quot;: {
     &quot;length&quot;: 1555,
     &quot;card_content&quot;: &quot;⚠️ **AI 語意模型連線異常，已為您自動載入直出精準美食卡片：**\n\n精選「丼飯」指標餐廳如下：\n\n### 1. `Densetsunosutadonya Yokohamanishiguchiten`\n🚶 **步行距離**：從「橫濱車站」步行約 9 分鐘 (700m)\n⭐️ **評分資訊**：Google 3.7 分 (Tabelog 暫無評分，以 Google 評價為依據)\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n📍 **地址**：1-chōme-13-11 Okano, Nishi Ward, Yokohama, Kanagawa 220-0073, Japan\n📍 **老饕推薦理由 (Google 在地評價)**：More than worth for paying..\n\n### 2. `三﨑市場橫濱Joinus店`\n🚶 **步行距離**：從「橫濱車站」步行約 2 分鐘 (92m)\n⭐️ **Tabelog 評分**：3.30 分 (211 則評價)\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n📍 **地址**：1-chōme-5-1 Minamisaiwai, Nishi Ward, Yokohama, Kanagawa 220-0005, Japan\n🔗 [食べログ詳細頁面](https://tabelog.com/kanagawa/A1401/A140101/14043665/)\n📍 **老饕推薦理由 (食べログ 口コミ)**：詳細資訊 ; 無法預約 · 橫濱站西口相鐵Joinas地下一層 . 距离橫濱114 米 · 星期一，星期二，星期三，星期四，星期五，星期六，星期日. 11:00 - 21:00. L.O. 20:45. □店休日 ...\n\n### 3. `Gohan Susumu 橫濱PORTA店`\n🚶 **步行距離**：從「橫濱車站」步行約 2 分鐘 (130m)\n⭐️ **Tabelog 評分**：3.50 分 (411 則評價)\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n📍 **地址**：Japan, 〒220-0011 Kanagawa, Yokohama, Nishi Ward, Takashima, 2-chōme−16, 横浜東口地下街ポルタ B1\n🔗 [食べログ詳細頁面](https://tabelog.com/kanagawa/A1401/A140101/14085501/)\n📍 **老饕推薦理由 (食べログ 口コミ)**：JR橫濱站中央閘口、京急線橫濱站中央閘口步行1分鐘 。東急東橫線正面閘口、南閘口、相鐵線2樓閘口、橫濱市營地下鐵閘口步行5分鐘。\n\n### 4. `吉野家橫濱JOINUS店`\n🚶 **步行距離**：從「橫濱車站」步行約 3 分鐘 (226m)\n⭐️ **Tabelog 評分**：3.10 分 (81 則評價)\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n📍 **地址**：1-chōme-5-1 Minamisaiwai, Nishi Ward, Yokohama, Kanagawa 220-0005, Japan\n🔗 [食べログ詳細頁面](https://tabelog.com/kanagawa/A1401/A140101/14086996/)\n📍 **老饕推薦理由 (食べログ 口コミ)**：詳細資訊 ; 無法預約 · 橫濱站南西口徒步1分鐘 . 距离橫濱243 米 · 星期一，星期二，星期三，星期四，星期五，星期六，星期日. 04:00 - 01:00. 營業時間和節假日可能會發生變化 ...&quot;
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-                        </div>
-                    </div>
-                </td>
-            </tr>
-            
-
-            <tr class="live-row" onclick="toggleCaseDetails('live-597a3da9-2839-4537-a51b-67f36895e67e')">
-                <td><code>597a3da9</code></td>
-                <td><span class="cat-pill">Live Telegram</span></td>
-                <td class="query-col">橫濱車站附近的好吃親子丼</td>
-                <td class="text-center"><code>N/A</code></td>
-                <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
-                <td class="text-right latency-text">9,559 ms</td>
-            </tr>
-            <tr id="case-live-597a3da9-2839-4537-a51b-67f36895e67e" class="stepper-drawer" style="display: none;">
-                <td colspan="6">
-                    <div class="stepper-container">
-                        <div class="drawer-header">
-                            <h4>⚡ 真實線上問答執行軌跡 (Run ID: 597a3da9-2839-4537-a51b-67f36895e67e | 提問時間: 2026-10-11T07:54:10.101758+00:00)</h4>
-                        </div>
-                        <div class="steps-flow">
-                            
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 1</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_1_intent (intent_parser)</div>
-                <div class="step-sub-title">單步耗時: 364 ms</div>
-            </div>
-            <span class="step-badge">364ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">364 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;message&quot;: &quot;橫濱車站附近的好吃親子丼&quot;
-  },
-  &quot;output&quot;: {
-    &quot;intent&quot;: &quot;search&quot;,
-    &quot;cuisine&quot;: &quot;親子丼&quot;,
-    &quot;location&quot;: &quot;橫濱車站&quot;,
-    &quot;modifier&quot;: null,
-    &quot;question&quot;: null,
-    &quot;target_index&quot;: null
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 2</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_2_places (search_nearby_ladder)</div>
-                <div class="step-sub-title">單步耗時: 467 ms</div>
-            </div>
-            <span class="step-badge">467ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">467 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;lat&quot;: 35.46598110000001,
-    &quot;lng&quot;: 139.622062,
-    &quot;keyword&quot;: &quot;親子丼&quot;,
-    &quot;excluded_count&quot;: 0
-  },
-  &quot;output&quot;: {
-    &quot;count&quot;: 4
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 3</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_3_tabelog (parallel_tabelog_enrichment)</div>
-                <div class="step-sub-title">單步耗時: 3159 ms</div>
-            </div>
-            <span class="step-badge">3159ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">3159 ms</span></div></div>
-            
-    <div class="aligned-stores-section">
-        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (4 間):</div>
-        <div class="aligned-stores-grid">
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 鷄三和橫濱Joinus店</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.20 (272 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「詳細資訊 ; 無法預約 · 距离 橫濱 145 米 · 星期一，星期二，星期三，星期四，星期五，星期六，星期日. 11:00 - 23:00. L.O. 22:30....」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 英治 横浜店</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.30 (179 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「【横浜駅4分】 蕎麦 屋が手掛ける「秘伝かえし」の 焼鳥 と、〆の囲み 蕎麦 を堪能。 食べログHOTレストラン2026受賞【 焼鳥 と 蕎麦 富治】の姉妹店。 蕎麦...」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 Tori Sanwa – Yokohama Landmark Plaza Branch</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Google 4.0 (225 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「Very cute restaurant located within Landmark tower. Surrounded by many other restau...」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 野毛Kadohei</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.50 (249 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「這是一家立食式、採用食券制度的獨特壽司店。 每當我去野毛時，總是會光顧這裡。 店鋪距離櫻木町站步行約五分鐘， 位於大馬路旁的角落，位置明顯，容易進入。 進店後，首先 ...」</em></div>
-        </div>
-        </div>
-    </div>
-    
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;stores_count&quot;: 4,
-    &quot;stores_searched&quot;: [
-      {
-        &quot;name&quot;: &quot;Torisanwa Yokohama JOINUS&quot;,
-        &quot;phone&quot;: &quot;045-534-7335&quot;,
-        &quot;google_rating&quot;: 3.6
-      },
-      {
-        &quot;name&quot;: &quot;Eiji Yakitori and Soba&quot;,
-        &quot;phone&quot;: &quot;050-5448-9961&quot;,
-        &quot;google_rating&quot;: 4.6
-      },
-      {
-        &quot;name&quot;: &quot;Tori Sanwa – Yokohama Landmark Plaza Branch&quot;,
-        &quot;phone&quot;: &quot;045-263-8180&quot;,
-        &quot;google_rating&quot;: 4
-      },
-      {
-        &quot;name&quot;: &quot;Kadohei&quot;,
-        &quot;phone&quot;: &quot;045-321-4341&quot;,
-        &quot;google_rating&quot;: 4.2
-      }
-    ]
-  },
-  &quot;output&quot;: {
-    &quot;aligned_stores&quot;: [
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;鷄三和橫濱Joinus店&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140101/14058920/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 272,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;詳細資訊 ; 無法預約 · 距离 橫濱 145 米 · 星期一，星期二，星期三，星期四，星期五，星期六，星期日. 11:00 - 23:00. L.O. 22:30. □店休日不定休（依據相鐵JOYナス）. 營業 ...&quot;,
-            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
-            &quot;source&quot;: &quot;tabelog&quot;,
-            &quot;original_text&quot;: &quot;詳細資訊 ; 無法預約 · 距离 橫濱 145 米 · 星期一，星期二，星期三，星期四，星期五，星期六，星期日. 11:00 - 23:00. L.O. 22:30. □店休日不定休（依據相鐵JOYナス）. 營業 ...&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.2,
-        &quot;supports_paypay&quot;: false
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;英治 横浜店&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140212/14102698/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 179,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;【横浜駅4分】 蕎麦 屋が手掛ける「秘伝かえし」の 焼鳥 と、〆の囲み 蕎麦 を堪能。 食べログHOTレストラン2026受賞【 焼鳥 と 蕎麦 富治】の姉妹店。 蕎麦 屋の伝統を活かした「秘伝 ...&quot;,
-            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
-            &quot;source&quot;: &quot;tabelog&quot;,
-            &quot;original_text&quot;: &quot;【横浜駅4分】 蕎麦 屋が手掛ける「秘伝かえし」の 焼鳥 と、〆の囲み 蕎麦 を堪能。 食べログHOTレストラン2026受賞【 焼鳥 と 蕎麦 富治】の姉妹店。 蕎麦 屋の伝統を活かした「秘伝 ...&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.3,
-        &quot;supports_paypay&quot;: false
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;Tori Sanwa – Yokohama Landmark Plaza Branch&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: null,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 225,
-        &quot;rating_source&quot;: &quot;Google&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;Very cute restaurant located within Landmark tower. Surrounded by many other restaurants. We went on a Friday afternoon around 6pm and there was plenty of available seats and no wait time. Counter seating for people sitting alone and tables for 2-4 people. Can host 10-15 people in total. You order first at the counter and then receive your food after sitting down. Small menu, but all items are delicious. Highly recommend the katsu set. It was juicy without being fatty and was very tasty. With each set you have the option of either a sour plum or a meatball. Personally, we preferred the meatball. Decent portion sizes and you can get a larger meal for a higher price. Bathroom is located outside the restaurant in landmark tower. Servers were very friendly. Food came hot and fast (within 5-10 min). Great experience, would come again. Everything is about 1000-2000 yen. The standard katsu set is about 1060 yen.&quot;,
-            &quot;author&quot;: &quot;Bianca H&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;Very cute restaurant located within Landmark tower. Surrounded by many other restaurants. We went on a Friday afternoon around 6pm and there was plenty of available seats and no wait time. Counter seating for people sitting alone and tables for 2-4 people. Can host 10-15 people in total. You order first at the counter and then receive your food after sitting down. Small menu, but all items are delicious. Highly recommend the katsu set. It was juicy without being fatty and was very tasty. With each set you have the option of either a sour plum or a meatball. Personally, we preferred the meatball. Decent portion sizes and you can get a larger meal for a higher price. Bathroom is located outside the restaurant in landmark tower. Servers were very friendly. Food came hot and fast (within 5-10 min). Great experience, would come again. Everything is about 1000-2000 yen. The standard katsu set is about 1060 yen.&quot;
-          },
-          {
-            &quot;text&quot;: &quot;On my way back from a meeting, the picture of the yolk caught my attention and sucked me inside. Trying to eat as healthy as possible, ordered the minced chicken bowl, which comes with chicken soup and plum (which I have no clue when I was supposed to eat). Just like the picture outside, the yolk was golden and simply beautiful. With delicious pieces of chicken and egg, Japanese chicken is not to be underestimated! Perfect way to recharge yourself on a Wednesday afternoon!\n\nCrowd Size: Very High\nPayment Method: SUICA&quot;,
-            &quot;author&quot;: &quot;Akira Simizu&quot;,
-            &quot;rating&quot;: 4,
-            &quot;original_text&quot;: &quot;On my way back from a meeting, the picture of the yolk caught my attention and sucked me inside. Trying to eat as healthy as possible, ordered the minced chicken bowl, which comes with chicken soup and plum (which I have no clue when I was supposed to eat). Just like the picture outside, the yolk was golden and simply beautiful. With delicious pieces of chicken and egg, Japanese chicken is not to be underestimated! Perfect way to recharge yourself on a Wednesday afternoon!\n\nCrowd Size: Very High\nPayment Method: SUICA&quot;
-          },
-          {
-            &quot;text&quot;: &quot;We hadn&#x27;t tried Oyacodon before, and I loved it. This dish isn&#x27;t just a chicken and rice dish; it&#x27;s a delicate and flavorful combination of chicken and egg rice. If you have the chance to be in the area, don&#x27;t hesitate to try it; you&#x27;ll love it.&quot;,
-            &quot;author&quot;: &quot;Paqui Román&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;We hadn&#x27;t tried Oyacodon before, and I loved it. This dish isn&#x27;t just a chicken and rice dish; it&#x27;s a delicate and flavorful combination of chicken and egg rice. If you have the chance to be in the area, don&#x27;t hesitate to try it; you&#x27;ll love it.&quot;
-          },
-          {
-            &quot;text&quot;: &quot;The food comes out quickly.\nThe bill comes first, so you can leave as soon as you finish eating.&quot;,
-            &quot;author&quot;: &quot;oseery&quot;,
-            &quot;rating&quot;: 3,
-            &quot;original_text&quot;: &quot;The food comes out quickly.\nThe bill comes first, so you can leave as soon as you finish eating.&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Fried chicken balls are awesome. Eating inside is slightly tight&quot;,
-            &quot;author&quot;: &quot;Boss&quot;,
-            &quot;rating&quot;: 4,
-            &quot;original_text&quot;: &quot;Fried chicken balls are awesome. Eating inside is slightly tight&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: null,
-        &quot;supports_paypay&quot;: null
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;野毛Kadohei&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140102/14096135/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 249,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;這是一家立食式、採用食券制度的獨特壽司店。 每當我去野毛時，總是會光顧這裡。 店鋪距離櫻木町站步行約五分鐘， 位於大馬路旁的角落，位置明顯，容易進入。 進店後，首先 ...&quot;,
-            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
-            &quot;source&quot;: &quot;tabelog&quot;,
-            &quot;original_text&quot;: &quot;這是一家立食式、採用食券制度的獨特壽司店。 每當我去野毛時，總是會光顧這裡。 店鋪距離櫻木町站步行約五分鐘， 位於大馬路旁的角落，位置明顯，容易進入。 進店後，首先 ...&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.5,
-        &quot;supports_paypay&quot;: false
-      }
-    ],
-    &quot;enriched_count&quot;: 4
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 4</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_4_synthesis (card_synthesis)</div>
-                <div class="step-sub-title">單步耗時: 2165 ms</div>
-            </div>
-            <span class="step-badge">2165ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2165 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;cuisine&quot;: &quot;親子丼&quot;,
-    &quot;location&quot;: &quot;橫濱車站&quot;,
-    &quot;stores_count&quot;: 4
-  },
-  &quot;output&quot;: {
-    &quot;length&quot;: 1509,
-    &quot;card_content&quot;: &quot;你好！我是你的日本美食導航員 PickForMe。\n\n針對你在**橫濱車站**附近尋找**親子丼**的需求，我仔細比對了候選清單。需要特別向你說明的是，清單中的「英治」主要經營燒鳥與蕎麥，「野毛Kadohei」則是立食壽司店，並非親子丼專門店。\n\n因此，我從清單中精選出**2 家**真正符合「親子丼」品項且評價穩定的餐廳，並額外補充了該區域最經典的親子丼名店（雖不在原始清單，但為橫濱車站周邊必吃，若你接受額外推薦可參考，以下嚴格基於你提供的數據進行推薦）：\n\n根據你提供的數據，**店家 1 (鷄三和)** 與 **店家 3 (Tori Sanwa)** 是清單中明確提供親子丼/雞肉飯的選項。為了滿足「3~5 家」的推薦梯隊，我會將這兩家作為核心推薦，並針對其特色進行深度解析。\n\n以下是為你精選的親子丼推薦：\n\n---\n\n### 🍱 精選推薦 1：鷄三和 橫濱 Joinus 店\n`鷄三和 横浜ジョイナス店`\n\n🚶 **步行距離**：從「橫濱車站」步行約 2 分鐘 (128m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.2 (272 則評價) / Google 4.0\n💳 **支付方式**：💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n💰 **預算區間**：約 ￥1,000 ~ ￥1,500 (參考雞肉飯類平均價)\n📍 **老饕評價與推薦理由 (食べログ 口コミ)**：\n位於相鐵 JOYNAS B1F，是橫濱車站西口最方便的雞肉飯選擇之一。雖然 Tabelog 評分中等，但 Google 評價顯示其「雞肉嫩度」與「醬汁濃度」獲得不少遊客肯定。適合剛下火車、不想走遠路，想快速補充能量的旅客。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/kanagawa/A1401/A140101/14058920/)\n\n---\n\n### 🍱 精選推薦 2：Tori Sanwa – Yokohama Landmark Plaza Branch\n`Tori Sanwa – Yokohama Landmark Plaza Branch`\n\n🚶 **步行距離**：從「橫濱車站」步行約 19 分鐘 (1464m)\n⭐️ **雙平台評分**：⭐️ Google 4.0 (225 則評價) ｜ Tabelog 暫無評分\n💳 **支付方式**：💳 **支付方式**：現金為主 (建議備足日圓現鈔) *註：Google 評價提及支援 SUICA，建議現場確認*\n💰 **預算區間**：約 ￥1,200 ~ ￥1,800\n📍 **推薦理由 (Google 在地評價)**：\n位於橫濱地標廣場 (Landmark Plaza) 1F，環境明亮乾淨。Google 網友特別提到「生蛋黃金黃漂亮」、「雞肉塊大且美味」，是適合在購物或觀光途中，享受一頓精緻雞肉飯的好地方。雖然距離車站較遠，但適合前往港未來 (Minatomirai) 方向的遊客。\n🔗 **店家連結**：[Google Maps 搜尋](https://www.google.com/maps/search/Tori+Sanwa+Yokohama+Landmark+Plaza)\n\n---\n\n### 💡 特派員提醒：\n清單中另外兩家（英治、野毛Kadohei）並非親子丼專門店，若你堅持要吃「正宗親子丼」，建議優先選擇 **鷄三和**（近車站）或 **Tori Sanwa**（環境好）。\n⚠️ **重要提醒**：這兩家店皆以**現金**為主，請務必在橫濱車站的 ATM 備足日圓現鈔！&quot;
   }
 }</code></pre>
             </details>

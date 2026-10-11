@@ -830,3 +830,79 @@ async def test_case14_cross_prefecture_hard_veto_and_cross_lingual_recall():
     assert recall_res["match_method"] == "llm_verify"
     assert recall_res["candidate"]["name_ja"] == "荒井屋 本店"
     assert recall_res["candidate"]["tabelog_rating"] == 3.60
+
+
+@pytest.mark.asyncio
+async def test_case_15_yokohama_sukiyaki_zero_hallucination_and_grounding():
+    """Case 15: 橫濱公園壽喜燒防幻覺與 Grounding 守門 (避免憑空捏造「一蘭」、「吉田」等假店家與 maps/search 偽造連結)
+
+    真實案例回歸：
+    使用者提問「橫濱公園附近的壽喜燒」。
+    候選名單經去重後僅有 1 家經典名店「荒井屋 本店」。
+    LLM 為了「湊滿 3 家」引發嚴重幻覺，自造不存在的「壽喜燒 一蘭」、「壽喜燒 吉田」，並偽造 maps/search 連結。
+
+    守門防禦目標：
+    1. Validator 檢測到 maps/search 偽造連結或未在候選池中的店名，強制一票否決！
+    2. 自動觸發 Template Fallback 保底機制，安全輸出 100% 真實店家的推薦卡片。
+    3. 卡片中誠實標註目前範圍僅有該名店，並引導使用者擴大商圈。
+    """
+    fsm = FoodRecommendationFSM(
+        places_client=MagicMock(),
+        tabelog_scraper=MagicMock(),
+        entity_resolver=MagicMock(),
+        llm_client=MagicMock(),
+    )
+
+    real_stores = [
+        {
+            "name": "Araiya",
+            "name_ja": "荒井屋 本店",
+            "tabelog_url": "https://tabelog.com/kanagawa/A1401/A140104/14003068/",
+            "tabelog_rating": 3.60,
+            "review_count": 664,
+            "google_rating": 4.3,
+            "walking_desc": "從「橫濱公園」步行約 14 分鐘 (1,069m)",
+            "payment_methods_desc": "現金為主 (不支援信用卡/行動支付，請備足現鈔)",
+            "price_dinner": "￥3,000~￥5,000",
+            "address": "神奈川県横浜市中区旭町",
+        }
+    ]
+
+    # 模擬 LLM 嚴重幻覺輸出（包含腦補的一蘭與 maps/search 連結）
+    hallucinated_llm_output = """
+#### 1. 荒井屋 本店 (Araiya Honten)
+`荒井屋 本店`
+🚶 **步行距離**：從「橫濱公園」步行約 14 分鐘 (1,069m)
+⭐️ **雙平台評分**：⭐️ Tabelog 3.60 (664 則評價) / Google 4.3
+💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)
+💰 **預算區間**：晚餐約 ￥3,000~￥5,000
+📍 **老饕推薦理由 (食べログ 口コミ)**：創業 120 年以上的歷史老舖。
+🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/kanagawa/A1401/A140104/14003068/)
+
+#### 2. 壽喜燒 一蘭 (Sukiyaki Ichiran) - *補充推薦*
+`寿喜焼 一蘭`
+🚶 **步行距離**：從「橫濱公園」步行約 8 分鐘 (600m)
+⭐️ **雙平台評分**：⭐️ Tabelog 3.55 / Google 4.2
+💳 **支付方式**：可使用信用卡 / PayPay
+💰 **預算區間**：晚餐約 ￥2,500~￥4,000
+📍 **老饕推薦理由 (食べログ 口コミ)**：位於關內核心區。
+🔗 **店家連結**：[Google Maps 搜尋](https://www.google.com/maps/search/寿喜焼+一蘭+横浜)
+"""
+    fsm.llm_client.call_text.return_value = (hallucinated_llm_output, "llama-3.3-70b-versatile", 250)
+
+    # 執行 State 4 合成
+    result_card = await fsm.execute_state_4_synthesis(
+        stores=real_stores,
+        cuisine="壽喜燒",
+        location_name="橫濱公園",
+    )
+
+    # 驗證守門攔截生效：結果卡片絕不含「一蘭」或「maps/search」
+    assert "一蘭" not in result_card
+    assert "google.com/maps/search" not in result_card
+    # 驗證自動觸發了安全保底模板，呈現真實店家「荒井屋 本店」
+    assert "`荒井屋 本店`" in result_card
+    assert "3.60" in result_card
+    # 驗證包含少於 3 家時的誠實引導
+    assert "特派員提醒" in result_card
+    assert "1 家" in result_card

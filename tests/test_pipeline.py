@@ -381,6 +381,87 @@ def test_validator_accepts_valid_card():
     assert len(reasons) == 0
 
 
+def test_validator_rejects_fake_maps_search_link():
+    from src.agent.validator import validate_recommendation_card
+
+    fake_link_card = """
+🍱 `荒井屋 本店`
+🚶 **步行距離**：從「橫濱公園」步行約 14 分鐘 (1,069m)
+⭐️ **雙平台評分**：⭐️ Tabelog 3.60 / Google 4.3
+💳 **支付方式**：現金為主
+📍 **老饕推薦理由**：肉質鮮美。
+🔗 **店家連結**：[Google Maps 搜尋](https://www.google.com/maps/search/寿喜焼+一蘭+横浜)
+    """
+    stores = [{"name_ja": "荒井屋 本店"}]
+    is_valid, reasons = validate_recommendation_card(fake_link_card, stores)
+    assert not is_valid
+    assert any("偽造的 Google Maps 搜尋連結" in r for r in reasons)
+
+
+def test_validator_rejects_unlisted_hallucinated_store():
+    from src.agent.validator import validate_recommendation_card
+
+    hallucinated_card = """
+🍱 `荒井屋 本店`
+🚶 **步行距離**：從「橫濱公園」步行約 14 分鐘
+⭐️ **雙平台評分**：⭐️ Tabelog 3.60 / Google 4.3
+💳 **支付方式**：現金為主
+📍 **老饕推薦理由**：肉質鮮美。
+
+🍱 `寿喜焼 一蘭`
+🚶 **步行距離**：從「橫濱公園」步行約 8 分鐘
+⭐️ **雙平台評分**：⭐️ Tabelog 3.55 / Google 4.2
+💳 **支付方式**：可使用 信用卡
+📍 **老饕推薦理由**：老饕盛讚。
+    """
+    stores = [{"name_ja": "荒井屋 本店"}]
+    is_valid, reasons = validate_recommendation_card(hallucinated_card, stores)
+    assert not is_valid
+    assert any("超過輸入之候選店家數" in r or "未授權/虛構店家" in r for r in reasons)
+
+
+def test_rank_and_select_top_stores_deduplicates_same_tabelog_url():
+    from unittest.mock import MagicMock
+
+    from src.agent.pipeline import FoodRecommendationFSM
+
+    fsm = FoodRecommendationFSM(
+        places_client=MagicMock(),
+        tabelog_scraper=MagicMock(),
+        entity_resolver=MagicMock(),
+        llm_client=MagicMock(),
+    )
+    raw_stores = [
+        {
+            "name": "Araiya Kannai",
+            "name_ja": "荒井屋 本店",
+            "tabelog_url": "https://tabelog.com/kanagawa/A1401/A140104/14003068/",
+            "tabelog_rating": 3.60,
+            "distance_meters": 500,
+        },
+        {
+            "name": "Araiya Kaigandori",
+            "name_ja": "荒井屋 本店",
+            "tabelog_url": "https://tabelog.com/kanagawa/A1401/A140104/14003068/",
+            "tabelog_rating": 3.60,
+            "distance_meters": 1200,
+        },
+        {
+            "name": "Seryna",
+            "name_ja": "瀬里奈",
+            "tabelog_url": "https://tabelog.com/kanagawa/A1401/A140104/14001234/",
+            "tabelog_rating": 3.45,
+            "distance_meters": 300,
+        },
+    ]
+    top_stores = fsm.rank_and_select_top_stores(raw_stores, top_k=3)
+    # 兩家荒井屋本店命中相同 tabelog_url，應自動去重並只保留距離較近者 (500m)
+    assert len(top_stores) == 2
+    assert top_stores[0]["name_ja"] == "荒井屋 本店"
+    assert top_stores[0]["distance_meters"] == 500
+    assert top_stores[1]["name_ja"] == "瀬里奈"
+
+
 @pytest.mark.asyncio
 async def test_state_4_falls_back_when_llm_outputs_table(mock_fsm):
     """測試若 LLM 違規輸出 Markdown 表格，State 4 自動攔截並切換為合規保底卡片"""
