@@ -42,6 +42,11 @@ async def main() -> int:
         default="docs/eval_report.md",
         help="Markdown 報告輸出路徑 (預設: docs/eval_report.md)",
     )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="僅執行評測與檢查門檻，不覆寫磁碟上的 HTML 與 Markdown 檔案 (供 Git Hook 檢查使用)",
+    )
 
     args = parser.parse_args()
 
@@ -56,10 +61,13 @@ async def main() -> int:
 
     # 2. 寫入 Markdown 報告檔案
     md_path = Path(args.output_md)
-    md_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(md_path, "w", encoding="utf-8") as f:
-        f.write(md_report)
-    print(f"📝 Markdown 評測報告已儲存至: {md_path.resolve()}")
+    if not args.dry_run:
+        md_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(md_path, "w", encoding="utf-8") as f:
+            f.write(md_report)
+        print(f"📝 Markdown 評測報告已儲存至: {md_path.resolve()}")
+    else:
+        print("📝 [Dry-Run] 已驗證 Markdown 評測報告生成成功 (略過磁碟寫入)")
 
     # 3. 嘗試讀取真實線上對話 Traces (優先 Live DB 1.5s 逾時保護，備援 DuckDB 冷層 Parquet)
     live_runs = None
@@ -133,14 +141,27 @@ async def main() -> int:
             pass
 
     # 4. 輸出 HTML 儀表板
-    html_path = Path(args.output_html)
-    generate_html_dashboard(
-        summary,
-        html_path,
-        live_runs=live_runs,
-        live_steps_by_run=live_steps,
-    )
-    print(f"🌐 GitLab Pages HTML 儀表板已生成至: {html_path.resolve()}")
+    if not args.dry_run:
+        html_path = Path(args.output_html)
+        generate_html_dashboard(
+            summary,
+            html_path,
+            live_runs=live_runs,
+            live_steps_by_run=live_steps,
+        )
+        print(f"🌐 GitLab Pages HTML 儀表板已生成至: {html_path.resolve()}")
+    else:
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_html = Path(tmpdir) / "index.html"
+            generate_html_dashboard(
+                summary,
+                tmp_html,
+                live_runs=live_runs,
+                live_steps_by_run=live_steps,
+            )
+        print("🌐 [Dry-Run] 已驗證 HTML 儀表板生成邏輯成功 (略過覆寫磁碟檔案)")
 
     if summary.all_passed_gate:
         print("\n✅ 所有 4-Tier 硬性門檻皆已達標 (CI Gatekeeper: PASSED)")
