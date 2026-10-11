@@ -112,4 +112,3 @@ def test_entity_resolver_llm_verify():
         assert result["confidence"] == 0.95
 
     asyncio.run(_test())
-
