@@ -502,3 +502,102 @@ async def test_case11_search_noise_unblocking_and_phone_grounding_rescue():
     assert enriched["review_count"] == 637
     # 驗證確實觸發了電話搜尋
     mock_tabelog_scraper.search_via_grounding.assert_called_once_with(store_name="045-534-5234", area_name="")
+
+
+# ==============================================================================
+# Case 12: 自適應老饕預篩、Early Stopping 與高分優先重排驗證 (Smart Pre-filtering & Adaptive Ranking)
+# ==============================================================================
+@pytest.mark.asyncio
+async def test_case12_smart_prefiltering_early_stopping_and_foodie_ranking():
+    """Case 12: 驗證：
+
+    1. Google 端老饕潛力預篩 (0ms) 能正確挑選高評分、近距離之高潛力種子店家。
+    2. 自適應漸進查驗：當 Tier 1 已有 >= 2 家 Tabelog 高分名店時觸發 Early Stopping，不浪費查驗 Tier 2。
+    3. 老饕綜合加權重排：Tabelog 高分與百名店享有絕對排序優先權 (🥇/🥈/🥉)，無 Tabelog 者安全降權。
+    """
+    fsm = FoodRecommendationFSM(
+        places_client=MagicMock(),
+        tabelog_scraper=MagicMock(),
+        entity_resolver=MagicMock(),
+        llm_client=MagicMock(),
+    )
+
+    # 1. 驗證 Google 潛力預篩
+    mock_places = [
+        {"name": "Low Rating", "google_rating": 3.2, "userRatingCount": 20, "distance_meters": 300},
+        {"name": "Popular Near", "google_rating": 4.5, "userRatingCount": 600, "distance_meters": 200},
+        {"name": "Good Medium", "google_rating": 4.2, "userRatingCount": 200, "distance_meters": 400},
+        {"name": "Good Far", "google_rating": 4.3, "userRatingCount": 200, "distance_meters": 2000},
+        {"name": "Hidden Gem", "google_rating": 4.1, "userRatingCount": 80, "distance_meters": 350},
+        {"name": "Decent Place", "google_rating": 4.0, "userRatingCount": 150, "distance_meters": 500},
+        {"name": "Backup Store", "google_rating": 3.9, "userRatingCount": 120, "distance_meters": 450},
+    ]
+    prefiltered = fsm._prefilter_potential_foodie_places(mock_places, max_seeds=6)
+    assert len(prefiltered) == 6
+    # 驗證最高潛力的 Popular Near 排在第一
+    assert prefiltered[0]["name"] == "Popular Near"
+    # 驗證低評分的 Low Rating 被排除在種子之外或排在最後
+    assert "Low Rating" not in [p["name"] for p in prefiltered[:4]]
+
+    # 2. 驗證老饕綜合加權重排 (Foodie Ranking Engine)
+    stores_to_rank = [
+        {"name": "Google High No Tabelog", "rating": 4.6, "tabelog_rating": None, "distance_meters": 100},
+        {"name": "Tabelog Ordinary", "tabelog_rating": 3.20, "rating": 3.8, "distance_meters": 300},
+        {"name": "Tabelog Hyakumeiten", "tabelog_rating": 3.68, "awards": ["百名店"], "distance_meters": 500},
+        {"name": "Tabelog High", "tabelog_rating": 3.52, "distance_meters": 250},
+    ]
+    top_3 = fsm.rank_and_select_top_stores(stores_to_rank, top_k=3)
+    assert len(top_3) == 3
+    # 第一名應為百名店 3.68
+    assert top_3[0]["name"] == "Tabelog Hyakumeiten"
+    assert top_3[0]["rank_badge"] == "🥇"
+    # 第二名應為 Tabelog 3.52
+    assert top_3[1]["name"] == "Tabelog High"
+    assert top_3[1]["rank_badge"] == "🥈"
+    # 第三名應為 Tabelog 3.20
+    assert top_3[2]["name"] == "Tabelog Ordinary"
+    assert top_3[2]["rank_badge"] == "🥉"
+    # 驗證無 Tabelog 店家被降權，未擠入 Top 3
+    assert all(s["name"] != "Google High No Tabelog" for s in top_3)
+
+    # 3. 驗證自適應 Early Stopping (Tier 1 滿足條件則不呼叫 Tier 2)
+    tier1_stores = [
+        {"name": "Shop 1", "google_place_id": "p1"},
+        {"name": "Shop 2", "google_place_id": "p2"},
+        {"name": "Shop 3", "google_place_id": "p3"},
+        {"name": "Shop 4", "google_place_id": "p4"},
+    ]
+    tier2_stores = [
+        {"name": "Shop 5", "google_place_id": "p5"},
+        {"name": "Shop 6", "google_place_id": "p6"},
+    ]
+    all_6_seeds = tier1_stores + tier2_stores
+
+    enriched_mock_results = {
+        "p1": {"name_ja": "Shop 1", "tabelog_rating": 3.55, "rating_source": "Tabelog", "distance_meters": 200},
+        "p2": {"name_ja": "Shop 2", "tabelog_rating": 3.48, "rating_source": "Tabelog", "distance_meters": 300},
+        "p3": {"name_ja": "Shop 3", "tabelog_rating": 3.20, "rating_source": "Tabelog", "distance_meters": 400},
+        "p4": {"name_ja": "Shop 4", "tabelog_rating": None, "rating_source": "Google", "distance_meters": 500},
+        "p5": {"name_ja": "Shop 5", "tabelog_rating": 3.60, "rating_source": "Tabelog", "distance_meters": 600},
+        "p6": {"name_ja": "Shop 6", "tabelog_rating": 3.50, "rating_source": "Tabelog", "distance_meters": 700},
+    }
+
+    called_pids: list[str] = []
+
+    async def mock_enrich(place, area_hint=None):
+        pid = place.get("google_place_id")
+        called_pids.append(pid)
+        return enriched_mock_results[pid]
+
+    fsm._enrich_single_place = AsyncMock(side_effect=mock_enrich)
+
+    # 執行 State 3：因為 Tier 1 已有 Shop 1 (3.55) 與 Shop 2 (3.48) 兩家高分店，應直接觸發 Early Stopping！
+    final_top3 = await fsm.execute_state_3_parallel_tabelog(all_6_seeds, area_hint="橫濱")
+
+    # 驗證只查驗了 Tier 1 的 4 家，Tier 2 的 p5 與 p6 完全未被呼叫！
+    assert len(called_pids) == 4
+    assert "p5" not in called_pids
+    assert "p6" not in called_pids
+    assert len(final_top3) == 3
+    assert final_top3[0]["name_ja"] == "Shop 1"
+    assert final_top3[0]["rank_badge"] == "🥇"

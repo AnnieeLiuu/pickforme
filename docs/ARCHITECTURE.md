@@ -273,6 +273,11 @@ flowchart TD
   - **商圈/地名搜尋錨定**：若 Google 店名未包含地名，Tabelog 搜尋自動附加使用者搜尋區域（如 `Mawashizushi KATSU 横浜`），確保在地分店 100% 擠入搜尋前席。
   - **拒絕脆弱大樓白名單 (Zero Hardcoded Whitelists)**：不維護易腐化的大樓名稱白名單，徹底避免同商場美食街張冠李戴之風險。
   - **Unicode-Safe 跨語言語意裁決**：針對包含英文字母/羅馬拼音之店名（全面支援 `–` EN DASH、特殊標點與重音符號，徹底拋棄脆弱的 `.isascii()` 判定），當字面相似度因跨語系落差過大時，自動平滑流向 Level 2 Micro-LLM，由 Prompt 指引其結合地址、品類與發音綜合裁決。
+- **Google 端老饕潛力預篩與自適應漸進查驗 (Smart Pre-filtering & Adaptive Early Stopping)**：
+  - **Google 記憶體端老饕潛力預篩 (State 2.5)**：Google Places 單次調用直取 20 筆周邊店家，在 Python 記憶體中依評分、評論數合理性對數平滑與距離懲罰計算 $Score_{pre}$，0ms 預篩出前 4 筆主選與 2 筆備選種子店家。
+  - **自適應漸進查驗與提早終止 (State 3.1 & 3.2)**：第一梯隊僅並行查驗 4 家；若高分名店（Tabelog $\ge 3.45$ 或百名店）$\ge 2$ 家，立即 Early Stop 提早終止收工，80% 場景零額外延遲；僅在品質不足時動態查驗 2 家備選店家進行救援。
+- **老饕綜合加權重排演算法 (Foodie Scoring & Ranking Engine)**：
+  - **$S_i$ 綜合老饕計分**：Tabelog 評分享有核心權重（若無 Tabelog 則以 Google 評分折算 $0.70$ 安全降權）；百名店/Award $+0.15$、高評論數 $+0.05$；距離依梯隊施加微幅扣分。精選 Top 3 高分店家並在標題注入 `🥇 精選推薦 1`、`🥈`、`🥉` 排名徽章。
 - **電話號碼檢索階梯備援機制 (Phone Grounding Fallback & Noise Unblocking)**：
   - 徹底防禦搜尋引擎雜訊阻斷：改由 `match_found` 匹配狀態驅動回退階梯，而非僅依賴 `not candidates`。當商圈檢索回傳之候選皆為無關雜訊、比對失敗時，依序自動回退純店名與電話檢索。
   - 當店家具備日本市話/手機號碼時，自動以 `site:tabelog.com <phone>` 執行精準檢索，候選自動注入電話號碼，0ms 秒級命中並由 Level 1 電話規則賦予 1.0 信心度通過，確保極端拼音店名（如 Yamatoshi -> 七代目 山利）下的 100% 召回率。
@@ -292,7 +297,7 @@ flowchart TD
 ### F. 工程維護品質與軟體最佳實踐 (Engineering & Maintainability Practices)
 - **品質防線與 CI 守門 (Code Quality Gates)**：
   - **靜態檢查與型別標註**：全面採用 `ruff` (代碼規範/格式化) 與 `mypy` (Python 3.11 嚴格型別校驗)，確保程式碼可讀性與型別安全。
-  - **自動化測試與覆蓋率**：建立 105 項覆蓋核心邏輯之單元、合約與黃金回歸測試 (`tests/test_real_world_regressions.py`)，整合 `pytest-cov` Cobertura XML 報告與 GitLab CI/CD Pipeline (`.gitlab-ci.yml`)，未通過品質關卡禁止合併主線。
+  - **自動化測試與覆蓋率**：建立 106 項覆蓋核心邏輯之單元、合約與黃金回歸測試 (`tests/test_real_world_regressions.py`)，整合 `pytest-cov` Cobertura XML 報告與 GitLab CI/CD Pipeline (`.gitlab-ci.yml`)，未通過品質關卡禁止合併主線。
 - **資安防護與存取控制 (Security & Access Control)**：
   - **Telegram Webhook Secret Token 驗證**：要求驗證 `X-Telegram-Bot-Api-Secret-Token` 標頭，防止惡意流量觸發 Cloud Run。
   - **白名單過濾**：以 `TELEGRAM_ALLOWED_USER_ID` 限制存取權限。

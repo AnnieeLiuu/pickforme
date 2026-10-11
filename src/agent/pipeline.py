@@ -194,6 +194,35 @@ class FoodRecommendationFSM:
         parsed["coords"] = resolved_coords
         return parsed
 
+    def _prefilter_potential_foodie_places(
+        self,
+        places: list[dict[str, Any]],
+        max_seeds: int = 6,
+    ) -> list[dict[str, Any]]:
+        """Google 端老饕潛力智慧預篩 (Smart Pre-filtering)
+
+        依評分、評論數合理性與距離，在 0ms 內預篩出最具備 Tabelog 高分潛力的種子店家
+        """
+        if not places:
+            return []
+
+        def calc_pre_score(p: dict[str, Any]) -> float:
+            g_rating = float(p.get("rating") or p.get("google_rating") or 3.5)
+            rev_count = int(p.get("userRatingCount") or p.get("review_count") or 10)
+            dist_m = float(p.get("distance_meters") or 500)
+
+            # Google 評分權重
+            rating_score = g_rating * 0.6
+            # 評論數對數平滑 (上限 0.9，防大眾網紅店刷量)
+            rev_score = min(math.log10(max(1, rev_count)) * 0.3, 0.9)
+            # 距離懲罰：800m 內無扣分，超過 800m 每 500m 扣 0.1
+            dist_penalty = max(0.0, (dist_m - 800) / 500 * 0.1) if dist_m > 800 else 0.0
+
+            return rating_score + rev_score - dist_penalty
+
+        sorted_places = sorted(places, key=calc_pre_score, reverse=True)
+        return sorted_places[:max_seeds]
+
     async def execute_state_2_places_ladder(
         self,
         lat: float,
@@ -201,9 +230,9 @@ class FoodRecommendationFSM:
         keyword: str,
         origin_name: Optional[str] = None,
         exclude_place_ids: Optional[set[str]] = None,
-        max_candidates: int = 4,
+        max_candidates: int = 6,
     ) -> list[dict[str, Any]]:
-        """State 2: Google Places 智慧階梯檢索 (800m ➔ 1200m ➔ 1800m ➔ 2500m 擴圈保底)"""
+        """State 2: Google Places 智慧階梯檢索 (800m ➔ 1200m ➔ 1800m ➔ 2500m 擴圈保底) + 潛力預篩"""
         t0 = time.time()
         candidates: list[dict[str, Any]] = []
         origin_prefix = f"從「{origin_name}」" if origin_name else "從「您目前位置」"
@@ -254,7 +283,8 @@ class FoodRecommendationFSM:
                 if len(candidates) >= 3:
                     break
 
-        final_candidates = candidates[:max_candidates]
+        # Google 端老饕潛力預篩：挑選最具 Tabelog 高分潛力的種子店家 (前 4 筆主選 + 2 筆備選)
+        final_candidates = self._prefilter_potential_foodie_places(candidates, max_seeds=max_candidates)
         latency = int((time.time() - t0) * 1000)
 
         await self.trace_logger.log_step(
@@ -557,15 +587,94 @@ class FoodRecommendationFSM:
             logger.warning(f"Semantic reranking skipped: {e}")
             return stores
 
+    def _calculate_foodie_score(self, store: dict[str, Any]) -> float:
+        """計算單一店家老饕綜合重排得分 (Foodie Score)"""
+        t_rating = store.get("tabelog_rating")
+        g_rating = float(store.get("rating") or store.get("google_rating") or 3.5)
+        dist_m = float(store.get("distance_meters") or 300)
+        awards = store.get("awards") or []
+        hyakumeiten = store.get("hyakumeiten") or []
+        rev_count = int(store.get("review_count") or 0)
+
+        # 1. 基礎評分 (Tabelog 優先，若無則降權折算上限 3.05)
+        if t_rating and float(t_rating) > 0:
+            base_score = float(t_rating)
+        else:
+            base_score = min(g_rating * 0.65, 3.05)  # Google 評分降權折算，確保 Tabelog 高分店絕對優先
+
+        # 2. 老饕榮譽加分
+        award_bonus = 0.0
+        if awards or hyakumeiten:
+            award_bonus += 0.15
+        if rev_count >= 500:
+            award_bonus += 0.05
+
+        # 3. 距離懲罰
+        dist_penalty = 0.0
+        if dist_m > 1500:
+            dist_penalty = 0.12
+        elif dist_m > 800:
+            dist_penalty = 0.05
+
+        return base_score + award_bonus - dist_penalty
+
+    def rank_and_select_top_stores(
+        self,
+        stores: list[dict[str, Any]],
+        top_k: int = 3,
+    ) -> list[dict[str, Any]]:
+        """依老饕綜合得分降序重排，並選取 Top K 高分店家，注入排名徽章"""
+        if not stores:
+            return []
+
+        ranked = sorted(stores, key=self._calculate_foodie_score, reverse=True)
+        top_stores = ranked[:top_k]
+
+        rank_badges = ["🥇", "🥈", "🥉"]
+        for idx, s in enumerate(top_stores):
+            s["rank_index"] = idx + 1
+            s["rank_badge"] = rank_badges[idx] if idx < len(rank_badges) else f"#{idx + 1}"
+
+        return top_stores
+
     async def execute_state_3_parallel_tabelog(
         self,
         places: list[dict[str, Any]],
         area_hint: Optional[str] = None,
     ) -> list[dict[str, Any]]:
-        """State 3: 3 店家平行 Tabelog 查驗 (asyncio.gather 並行加速)"""
+        """State 3: 自適應漸進查驗 (Adaptive Early Stopping) + Tabelog 老饕綜合重排"""
         t0 = time.time()
-        tasks = [self._enrich_single_place(p, area_hint=area_hint) for p in places]
-        enriched_results = await asyncio.gather(*tasks)
+        tier1_places = places[:4]
+        tier2_places = places[4:6]
+
+        # 1. Tier 1 平行查驗 (前 4 家高潛力種子)
+        tier1_tasks = [self._enrich_single_place(p, area_hint=area_hint) for p in tier1_places]
+        tier1_results = await asyncio.gather(*tier1_tasks)
+
+        # 2. 品質門檻檢驗：若已有 >= 2 家達到 Tabelog 高分名店標準 (tabelog_rating >= 3.45 或百名店)
+        high_score_count = sum(
+            1
+            for s in tier1_results
+            if (s.get("tabelog_rating") and float(s["tabelog_rating"]) >= 3.45)
+            or bool(s.get("awards"))
+            or bool(s.get("hyakumeiten"))
+        )
+
+        final_enriched = list(tier1_results)
+
+        # 3. 自適應決策：若品質不足且有 Tier 2 備選店家，啟動動態查驗；否則觸發 Early Stopping
+        if high_score_count < 2 and tier2_places:
+            logger.info(
+                f"Tier 1 high-score stores count is {high_score_count} (<2). Triggering Tier 2 adaptive rescue for {len(tier2_places)} stores."
+            )
+            tier2_tasks = [self._enrich_single_place(p, area_hint=area_hint) for p in tier2_places]
+            tier2_results = await asyncio.gather(*tier2_tasks)
+            final_enriched.extend(tier2_results)
+        else:
+            logger.info(f"Tier 1 high-score count={high_score_count}. Early stopping satisfied, skipping Tier 2.")
+
+        # 4. 老饕綜合加權重排，精選 Top 3
+        top_stores = self.rank_and_select_top_stores(final_enriched, top_k=3)
         latency = int((time.time() - t0) * 1000)
 
         stores_input_summary = [
@@ -590,18 +699,19 @@ class FoodRecommendationFSM:
                 "tabelog_url": s.get("tabelog_url"),
                 "sample_reviews": s.get("sample_reviews") or [],
                 "rating_source": s.get("rating_source", "Tabelog"),
+                "rank_badge": s.get("rank_badge"),
             }
-            for s in enriched_results
+            for s in top_stores
         ]
 
         await self.trace_logger.log_step(
             action_type="state_3_tabelog",
             tool_name="parallel_tabelog_enrichment",
             tool_input={"stores_count": len(places), "stores_searched": stores_input_summary},
-            tool_output={"enriched_count": len(enriched_results), "aligned_stores": stores_output_summary},
+            tool_output={"selected_count": len(top_stores), "aligned_stores": stores_output_summary},
             latency_ms=latency,
         )
-        return list(enriched_results)
+        return top_stores
 
     def _render_template_fallback_card(
         self,
@@ -626,7 +736,8 @@ class FoodRecommendationFSM:
 
             walk_desc = s.get("walking_desc")
 
-            lines.append(f"### {idx}. `{name}`")
+            rank_badge = s.get("rank_badge") or (["🥇", "🥈", "🥉"][idx - 1] if idx <= 3 else f"#{idx}")
+            lines.append(f"### {rank_badge} 精選推薦 {idx}：`{name}`")
             if walk_desc:
                 lines.append(f"🚶 **步行距離**：{walk_desc}")
             if rating_src == "Tabelog" and t_rating:
@@ -753,6 +864,7 @@ class FoodRecommendationFSM:
             f"目標地點：{location_name or '指定區域'}\n美食類別：{cuisine or '熱門美食'}\n\n候選餐廳詳細數據如下：\n"
         )
         for idx, s in enumerate(stores, 1):
+            rank_badge = s.get("rank_badge") or (["🥇", "🥈", "🥉"][idx - 1] if idx <= 3 else f"#{idx}")
             origin_label = location_name or "您目前位置"
             walk_str = s.get("walking_desc") or (
                 f"從「{origin_label}」步行約 {s.get('walk_time_minutes', 3)} 分鐘 ({s.get('distance_meters', 200)}m)"
@@ -763,7 +875,8 @@ class FoodRecommendationFSM:
                 s.get("supports_paypay"), s.get("credit_cards")
             )
             prompt_content += (
-                f"\n店家 {idx}：\n"
+                f"\n店家 {idx} (老饕排名：{rank_badge})：\n"
+                f"- 排名徽章: {rank_badge}\n"
                 f"- 店名(日文)：{s.get('name_ja') or s.get('name')}\n"
                 f"- 步行距離：{walk_str}\n"
                 f"- 評分來源：{s.get('rating_source')}\n"
