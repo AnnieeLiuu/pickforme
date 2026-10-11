@@ -1451,7 +1451,7 @@
             <td class="text-center"><span class="pill pill-green">PASS</span></td>
             <td class="text-center"><span class="pill pill-green">PASS</span></td>
             <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
-            <td class="text-right latency-text">1 ms</td>
+            <td class="text-right latency-text">0 ms</td>
         </tr>
         <tr id="case-eval_008" class="stepper-drawer" style="display: none;">
             <td colspan="8">
@@ -3362,6 +3362,338 @@
                 </thead>
                 <tbody>
                     
+            <tr class="live-row" onclick="toggleCaseDetails('live-9131d1de-72a0-459f-8346-5e5d19404258')">
+                <td><code>9131d1de</code></td>
+                <td><span class="cat-pill">Live Telegram</span></td>
+                <td class="query-col">新宿車站 壽喜燒</td>
+                <td class="text-center"><code>N/A</code></td>
+                <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+                <td class="text-right latency-text">10,875 ms</td>
+            </tr>
+            <tr id="case-live-9131d1de-72a0-459f-8346-5e5d19404258" class="stepper-drawer" style="display: none;">
+                <td colspan="6">
+                    <div class="stepper-container">
+                        <div class="drawer-header">
+                            <h4>⚡ 真實線上問答執行軌跡 (Run ID: 9131d1de-72a0-459f-8346-5e5d19404258 | 提問時間: 2026-10-11T10:01:38.120918+00:00)</h4>
+                        </div>
+                        <div class="steps-flow">
+                            
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 1</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_1_intent (intent_parser)</div>
+                <div class="step-sub-title">單步耗時: 377 ms</div>
+            </div>
+            <span class="step-badge">377ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">377 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;message&quot;: &quot;新宿車站 壽喜燒&quot;
+  },
+  &quot;output&quot;: {
+    &quot;intent&quot;: &quot;search&quot;,
+    &quot;cuisine&quot;: &quot;壽喜燒&quot;,
+    &quot;location&quot;: &quot;新宿車站&quot;,
+    &quot;modifier&quot;: null,
+    &quot;question&quot;: null,
+    &quot;target_index&quot;: null
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 2</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_2_places (search_nearby_ladder)</div>
+                <div class="step-sub-title">單步耗時: 677 ms</div>
+            </div>
+            <span class="step-badge">677ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">677 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;lat&quot;: 35.6896067,
+    &quot;lng&quot;: 139.7005713,
+    &quot;keyword&quot;: &quot;壽喜燒&quot;,
+    &quot;excluded_count&quot;: 0
+  },
+  &quot;output&quot;: {
+    &quot;count&quot;: 6
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 3</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_3_tabelog (parallel_tabelog_enrichment)</div>
+                <div class="step-sub-title">單步耗時: 4384 ms</div>
+            </div>
+            <span class="step-badge">4384ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">4384 ms</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (3 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 WAGYU SUKIYAKI極新宿</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.20 (66 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「Came here with my family of four as the reviews and pictures looks great. I was not...」</em></div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 WAGYU SUKIYAKI 極新宿</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.20 (66 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「【距 新宿車站 步行1分鐘】品嚐A5 和牛 沙朗自助涮鍋及松露蛋拌飯。 我們的店提供每人一鍋的A5 和牛 沙朗肉涮涮鍋，讓您親自體驗烹調的樂趣。新鮮的蔬菜和雞蛋等食材...」</em></div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 Momo Paradise 新宿東口店</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.10 (89 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「Walked into Mo-Mo Paradise Shinjuku Higashiguchi without a reservation and was prom...」</em></div>
+        </div>
+        </div>
+    </div>
+    
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;stores_count&quot;: 6,
+    &quot;stores_searched&quot;: [
+      {
+        &quot;name&quot;: &quot;Wagyu sukiyaki goku&quot;,
+        &quot;phone&quot;: &quot;03-6457-7234&quot;,
+        &quot;google_rating&quot;: 4.9
+      },
+      {
+        &quot;name&quot;: &quot;WAGYU SUKIYAKI 極〜GOKU〜 Shinjuku Kabukicho&quot;,
+        &quot;phone&quot;: &quot;03-6228-0588&quot;,
+        &quot;google_rating&quot;: 4.9
+      },
+      {
+        &quot;name&quot;: &quot;Momo Paradise Shinjuku Higashi-guchi&quot;,
+        &quot;phone&quot;: &quot;050-1807-6990&quot;,
+        &quot;google_rating&quot;: 4.9
+      },
+      {
+        &quot;name&quot;: &quot;A5 WAGYU SUKIYAKI 龍 〜RYU〜 新宿パレット店&quot;,
+        &quot;phone&quot;: &quot;080-6886-7331&quot;,
+        &quot;google_rating&quot;: 4.9
+      },
+      {
+        &quot;name&quot;: &quot;Mo-Mo-Paradise Shinjuku Meijidori&quot;,
+        &quot;phone&quot;: &quot;050-1807-1695&quot;,
+        &quot;google_rating&quot;: 4.9
+      },
+      {
+        &quot;name&quot;: &quot;MO-MO-PARADISE Shinjuku-Sanchome&quot;,
+        &quot;phone&quot;: &quot;050-1807-4365&quot;,
+        &quot;google_rating&quot;: 4.8
+      }
+    ]
+  },
+  &quot;output&quot;: {
+    &quot;aligned_stores&quot;: [
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;WAGYU SUKIYAKI極新宿&quot;,
+        &quot;rank_badge&quot;: &quot;🥇&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13316287/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 66,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;Came here with my family of four as the reviews and pictures looks great. I was not disappointed at all the pictures does not do justice to the actual food which tasted heavenly. We ordered a mix of premium and A5 1 pound portions and each cut was perfect for the soup. Water, miso soup, egg and rice are free flow and to top it off the chef makes this truffle egg with a generous shaving of truffle done before you. Overall the food is definitely worth coming for!&quot;,
+            &quot;author&quot;: &quot;Eric C&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;Came here with my family of four as the reviews and pictures looks great. I was not disappointed at all the pictures does not do justice to the actual food which tasted heavenly. We ordered a mix of premium and A5 1 pound portions and each cut was perfect for the soup. Water, miso soup, egg and rice are free flow and to top it off the chef makes this truffle egg with a generous shaving of truffle done before you. Overall the food is definitely worth coming for!&quot;
+          },
+          {
+            &quot;text&quot;: &quot;We had such a wonderful experience here!!! The food was absolutely delicious, so full! And satisfied! really high quality with a clean, satisfying taste. The service was amazing too! I didn’t catch his name, but the guy who assisted us was incredibly accommodating and genuinely kind not just polite 😊 He made sure to guide us step by step on how to enjoy everything, which we really appreciated.\n\nThe price felt just right, When ordering if not so hungry just get the 150g set its just right,\nthe space was clean and inviting, easy to find in google.\n\nWe left feeling so happy and satisfied. Definitely coming back!!! 💛&quot;,
+            &quot;author&quot;: &quot;Jennifer Dreyfus&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;We had such a wonderful experience here!!! The food was absolutely delicious, so full! And satisfied! really high quality with a clean, satisfying taste. The service was amazing too! I didn’t catch his name, but the guy who assisted us was incredibly accommodating and genuinely kind not just polite 😊 He made sure to guide us step by step on how to enjoy everything, which we really appreciated.\n\nThe price felt just right, When ordering if not so hungry just get the 150g set its just right,\nthe space was clean and inviting, easy to find in google.\n\nWe left feeling so happy and satisfied. Definitely coming back!!! 💛&quot;
+          },
+          {
+            &quot;text&quot;: &quot;Very delicious with friendly services.\nRice and miso soup could refill unlimited times.\nHighly recommended if you wanna taste sukiyaki in Shinjuku!&quot;,
+            &quot;author&quot;: &quot;Hon Sum Wong&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;Very delicious with friendly services.\nRice and miso soup could refill unlimited times.\nHighly recommended if you wanna taste sukiyaki in Shinjuku!&quot;
+          },
+          {
+            &quot;text&quot;: &quot;First time trying their wagyu premium set and it was THE BEST!!! We had Chinatsu who helped us with our meal. Very knowledgeable with the meat and showed us how to perfectly cook it :) overall experience was 100%! Will definitely go back!&quot;,
+            &quot;author&quot;: &quot;Abed Florentino&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;First time trying their wagyu premium set and it was THE BEST!!! We had Chinatsu who helped us with our meal. Very knowledgeable with the meat and showed us how to perfectly cook it :) overall experience was 100%! Will definitely go back!&quot;
+          },
+          {
+            &quot;text&quot;: &quot;Food is really delicious and service is very good.\nEverything is great!!&quot;,
+            &quot;author&quot;: &quot;Jin-woo Kim&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;Food is really delicious and service is very good.\nEverything is great!!&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.2,
+        &quot;supports_paypay&quot;: false
+      },
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;WAGYU SUKIYAKI 極新宿&quot;,
+        &quot;rank_badge&quot;: &quot;🥈&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13316287/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 66,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;【距 新宿車站 步行1分鐘】品嚐A5 和牛 沙朗自助涮鍋及松露蛋拌飯。 我們的店提供每人一鍋的A5 和牛 沙朗肉涮涮鍋，讓您親自體驗烹調的樂趣。新鮮的蔬菜和雞蛋等食材經過精心挑選 ...&quot;,
+            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;【距 新宿車站 步行1分鐘】品嚐A5 和牛 沙朗自助涮鍋及松露蛋拌飯。 我們的店提供每人一鍋的A5 和牛 沙朗肉涮涮鍋，讓您親自體驗烹調的樂趣。新鮮的蔬菜和雞蛋等食材經過精心挑選 ...&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.2,
+        &quot;supports_paypay&quot;: false
+      },
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;Momo Paradise 新宿東口店&quot;,
+        &quot;rank_badge&quot;: &quot;🥉&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13027260/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 89,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;Walked into Mo-Mo Paradise Shinjuku Higashiguchi without a reservation and was promptly seated. We ordered the Japanese beef and pork course with a combination of shabu-shabu and sukiyaki broth. The beef and pork slices were fresh, tender and delicious, complimented by a variety of condiments. The all you can eat buffet spread offered a variety of options and we especially enjoyed the authentic matcha experience, which included traditional Japanese sweets and a rich matcha affogato.\nA special mention to our server, Mika, who was friendly, attentive and made the dining experience even more enjoyable. Great food, excellent service, central location and a wonderful meal overall. Highly recommended.\nWIR: For sure 😊&quot;,
+            &quot;author&quot;: &quot;Edward&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;Walked into Mo-Mo Paradise Shinjuku Higashiguchi without a reservation and was promptly seated. We ordered the Japanese beef and pork course with a combination of shabu-shabu and sukiyaki broth. The beef and pork slices were fresh, tender and delicious, complimented by a variety of condiments. The all you can eat buffet spread offered a variety of options and we especially enjoyed the authentic matcha experience, which included traditional Japanese sweets and a rich matcha affogato.\nA special mention to our server, Mika, who was friendly, attentive and made the dining experience even more enjoyable. Great food, excellent service, central location and a wonderful meal overall. Highly recommended.\nWIR: For sure 😊&quot;
+          },
+          {
+            &quot;text&quot;: &quot;We had such a great time here! The food was fresh and delicious, and the all-you-can-eat sukiyaki was definitely worth it. A special shoutout to our server, Kotoha. She was so friendly, patient, and welcoming from the moment we arrived. She checked on us regularly, explained everything clearly, and made us feel really comfortable throughout the meal. Her kindness honestly made the whole experience even better. Thank you, Kotoha! We&#x27;d definitely come back.&quot;,
+            &quot;author&quot;: &quot;Lucile Liao&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;We had such a great time here! The food was fresh and delicious, and the all-you-can-eat sukiyaki was definitely worth it. A special shoutout to our server, Kotoha. She was so friendly, patient, and welcoming from the moment we arrived. She checked on us regularly, explained everything clearly, and made us feel really comfortable throughout the meal. Her kindness honestly made the whole experience even better. Thank you, Kotoha! We&#x27;d definitely come back.&quot;
+          },
+          {
+            &quot;text&quot;: &quot;Dinner on 9 August 2026, after making an online reservation a couple of weeks in advance. We arrived promptly at 5:30pm, and there were already several groups of walk-in customers waiting in line.\nWe were ushered into the restaurant almost immediately and seated. As this was our first visit, Misaki, one of the staff members who spoke excellent English, patiently explained the different courses available. We opted for the Japanese beef and pork sukiyaki &amp; shabu-shabu combo with the free-flow drinks bar, which also included access to the vegetable and ice cream bars.\nWe had a total of 17 plates of meat, and the quality was excellent. Misaki and her colleague were attentive throughout the entire dinner and made sure we had everything we needed.\nOverall, we really enjoyed both the food and the service. Special thanks to Misaki for making our first visit such a pleasant and enjoyable experience. Highly recommended!&quot;,
+            &quot;author&quot;: &quot;Andrew Seah&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;Dinner on 9 August 2026, after making an online reservation a couple of weeks in advance. We arrived promptly at 5:30pm, and there were already several groups of walk-in customers waiting in line.\nWe were ushered into the restaurant almost immediately and seated. As this was our first visit, Misaki, one of the staff members who spoke excellent English, patiently explained the different courses available. We opted for the Japanese beef and pork sukiyaki &amp; shabu-shabu combo with the free-flow drinks bar, which also included access to the vegetable and ice cream bars.\nWe had a total of 17 plates of meat, and the quality was excellent. Misaki and her colleague were attentive throughout the entire dinner and made sure we had everything we needed.\nOverall, we really enjoyed both the food and the service. Special thanks to Misaki for making our first visit such a pleasant and enjoyable experience. Highly recommended!&quot;
+          },
+          {
+            &quot;text&quot;: &quot;Awesome A5 Wagyu! 🥩 The meat was so juicy, tender and delicious.\n\nFrom the receptionist to the staff, everyone was really friendly and welcoming with a smile. Special thanks to Soukichi, who went the extra mile to help me make a sauce that went really well with the shabu-shabu. It made the whole meal even better.\n\nReally enjoyed my dinner here and definitely looking forward to coming back again. Highly recommended! ⭐️⭐️⭐️⭐️⭐️&quot;,
+            &quot;author&quot;: &quot;Max Thwin&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;Awesome A5 Wagyu! 🥩 The meat was so juicy, tender and delicious.\n\nFrom the receptionist to the staff, everyone was really friendly and welcoming with a smile. Special thanks to Soukichi, who went the extra mile to help me make a sauce that went really well with the shabu-shabu. It made the whole meal even better.\n\nReally enjoyed my dinner here and definitely looking forward to coming back again. Highly recommended! ⭐️⭐️⭐️⭐️⭐️&quot;
+          },
+          {
+            &quot;text&quot;: &quot;We had such a great shabu shabu experience here—honestly still thinking about it afterwards. The whole meal felt like an experience rather than just dinner, and it’s a really fun way to eat, especially if you enjoy interactive meals.\nWe chose the Japanese beef course. It’s definitely on the pricier side, but you’re paying for an all-you-can-eat experience with both pork and beef within a set time limit. After trying both in the first round, we ended up ordering only the beef for the rest of the time—and you can keep ordering as much as you want, which is a big plus.\nThe concept is a mix of table service and buffet-style. The meat is ordered fresh, while vegetables, noodles, and other sides are selected from a cart. Everything was very fresh, nicely presented, and constantly restocked, which made the whole setup feel clean and well organized.\nA highlight was definitely the staff—they were incredibly friendly, attentive, and helpful. They took the time to explain how everything works, showed us how to mix the sauces, and how to best enjoy the shabu shabu, which made the experience even better, especially if it’s your first time.\nThe only minor downside was that the meat sometimes took a little while to arrive after ordering, but it wasn’t a huge issue and didn’t take away from the overall experience.\nOverall, a really enjoyable and memorable meal. Great quality, great service, and a fun dining concept—I would definitely come back.&quot;,
+            &quot;author&quot;: &quot;Li Nh&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;We had such a great shabu shabu experience here—honestly still thinking about it afterwards. The whole meal felt like an experience rather than just dinner, and it’s a really fun way to eat, especially if you enjoy interactive meals.\nWe chose the Japanese beef course. It’s definitely on the pricier side, but you’re paying for an all-you-can-eat experience with both pork and beef within a set time limit. After trying both in the first round, we ended up ordering only the beef for the rest of the time—and you can keep ordering as much as you want, which is a big plus.\nThe concept is a mix of table service and buffet-style. The meat is ordered fresh, while vegetables, noodles, and other sides are selected from a cart. Everything was very fresh, nicely presented, and constantly restocked, which made the whole setup feel clean and well organized.\nA highlight was definitely the staff—they were incredibly friendly, attentive, and helpful. They took the time to explain how everything works, showed us how to mix the sauces, and how to best enjoy the shabu shabu, which made the experience even better, especially if it’s your first time.\nThe only minor downside was that the meat sometimes took a little while to arrive after ordering, but it wasn’t a huge issue and didn’t take away from the overall experience.\nOverall, a really enjoyable and memorable meal. Great quality, great service, and a fun dining concept—I would definitely come back.&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.1,
+        &quot;supports_paypay&quot;: false
+      }
+    ],
+    &quot;selected_count&quot;: 3
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 4</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_4_synthesis (card_synthesis)</div>
+                <div class="step-sub-title">單步耗時: 1463 ms</div>
+            </div>
+            <span class="step-badge">1463ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">1463 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;cuisine&quot;: &quot;壽喜燒&quot;,
+    &quot;location&quot;: &quot;新宿車站&quot;,
+    &quot;stores_count&quot;: 3
+  },
+  &quot;output&quot;: {
+    &quot;length&quot;: 817,
+    &quot;card_content&quot;: &quot;🍱 **WAGYU SUKIYAKI 極 新宿**\n`WAGYU SUKIYAKI極新宿`\n🚶 **步行距離**：從「新宿車站」步行約 3 分鐘 (234m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.2 (66 則評價) / Google 4.9\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n💰 **預算區間**：未公開 (建議預備 ￥3,000~￥5,000 以上)\n📍 **老饕推薦理由 (食べログ 口コミ)**：主打「每人一鍋」的 A5 和牛沙朗自助涮鍋，肉質鮮美且能親自體驗烹調樂趣，搭配招牌松露蛋拌飯是絕配，適合想享受高品質和牛又不想太拘束的旅客。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1304/A130401/13316287/)\n\n---\n\n🍱 **Momo Paradise 新宿東口店**\n`Momo Paradise 新宿東口店`\n🚶 **步行距離**：從「新宿車站」步行約 4 分鐘 (243m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.1 (89 則評價) / Google 4.9\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n💰 **預算區間**：未公開 (壽喜燒專門店通常為中高價位)\n📍 **老饕推薦理由 (食べログ 口コミ)**：位於新宿東口 Humanix Pavilion 3-4F，位置極佳且評價穩定，是體驗傳統日式壽喜燒氛圍的穩健選擇，適合喜歡安靜用餐環境的遊客。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1304/A130401/13027260/)\n\n💡 特派員提醒：這兩家店皆**僅收現金**，請務必提前換好日圓現鈔；若想體驗更精緻的懷石壽喜燒或確認是否有刷卡選項，可隨時告訴我！&quot;
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            
+
             <tr class="live-row" onclick="toggleCaseDetails('live-64d0486b-a55d-4cbb-8fbf-5bb4838931e7')">
                 <td><code>64d0486b</code></td>
                 <td><span class="cat-pill">Live Telegram</span></td>
@@ -7796,268 +8128,6 @@
   &quot;output&quot;: {
     &quot;length&quot;: 1273,
     &quot;card_content&quot;: &quot;🍱 **橫濱車站周邊精選咖啡與特色飲品推薦**\n\n為您精選了 3 家風格各異、評分極高的咖啡與飲品店，涵蓋經典咖啡、話題水煙咖啡與高評價精品咖啡，滿足不同需求：\n\n---\n\n🍱 **AnchorKnot**\n`AnchorKnot`\n🚶 **步行距離**：從「橫濱車站」步行約 6 分鐘 (411m)\n⭐️ **雙平台評分**：⭐️ Google 5.0 分 (155 則評價) ｜ Tabelog 暫無評分\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n💰 **預算區間**：約 ￥800~￥1,500 (參考價)\n📍 **老饕評價與推薦理由**：位於大町的隱世精品咖啡，Google 高分認證。以嚴選豆與精緻拉花聞名，環境安靜舒適，適合想安靜享受一杯好咖啡的遊客。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/kanagawa/A1401/A140104/14087687/)\n\n---\n\n🍱 **RB160**\n`RB160`\n🚶 **步行距離**：從「橫濱車站」步行約 4 分鐘 (291m)\n⭐️ **雙平台評分**：⭐️ Google 4.9 分 (79 則評價) ｜ Tabelog 暫無評分\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：約 ￥700~￥1,200 (參考價)\n📍 **老饕評價與推薦理由**：距離車站最近的超高評價咖啡廳，位於第二東商大樓 1F。以穩定的手沖品質與親切服務著稱，是趕時間或剛下火車時最方便的高品質選擇。\n🔗 **店家連結**：[Google Maps 搜尋](https://www.google.com/maps/search/RB160+Yokohama)\n\n---\n\n🍱 **BLANK Shisha Cafe&amp;Bar YOKOHAMA BASHAMICHI**\n`BLANK Shisha Cafe&amp;Bar YOKOHAMA BASHAMICHI`\n🚶 **步行距離**：從「橫濱車站」步行約 9 分鐘 (679m)\n⭐️ **雙平台評分**：⭐️ Google 5.0 分 (59 則評價) ｜ Tabelog 暫無評分\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：約 ￥1,500~￥3,000 (含水煙/飲品)\n📍 **老饕評價與推薦理由**：滿分評價的新開幕話題店！結合水煙 (Shisha) 與咖啡/酒吧，內部裝潢 Cozy 且充滿氛圍感。適合想體驗日本特色水煙文化、追求獨特拍照打卡體驗的年輕族群。\n🔗 **店家連結**：[Google Maps 搜尋](https://www.google.com/maps/search/BLANK+Shisha+Cafe+Yokohama)\n\n---\n\n💡 特派員提醒：這三家店均**不支援信用卡**，請務必提前兌換日圓現鈔；若想體驗獨特氛圍可選 BLANK，追求純咖啡品質則首選 AnchorKnot。&quot;
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-                        </div>
-                    </div>
-                </td>
-            </tr>
-            
-
-            <tr class="live-row" onclick="toggleCaseDetails('live-96466f89-f554-4827-a02d-7e71e3afde11')">
-                <td><code>96466f89</code></td>
-                <td><span class="cat-pill">Live Telegram</span></td>
-                <td class="query-col">想要在橫濱棒球場或橫濱車站附近的壽喜燒</td>
-                <td class="text-center"><code>N/A</code></td>
-                <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
-                <td class="text-right latency-text">8,467 ms</td>
-            </tr>
-            <tr id="case-live-96466f89-f554-4827-a02d-7e71e3afde11" class="stepper-drawer" style="display: none;">
-                <td colspan="6">
-                    <div class="stepper-container">
-                        <div class="drawer-header">
-                            <h4>⚡ 真實線上問答執行軌跡 (Run ID: 96466f89-f554-4827-a02d-7e71e3afde11 | 提問時間: 2026-10-10T09:39:22.214764+00:00)</h4>
-                        </div>
-                        <div class="steps-flow">
-                            
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 1</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_1_intent (intent_parser)</div>
-                <div class="step-sub-title">單步耗時: 393 ms</div>
-            </div>
-            <span class="step-badge">393ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">393 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;message&quot;: &quot;想要在橫濱棒球場或橫濱車站附近的壽喜燒&quot;
-  },
-  &quot;output&quot;: {
-    &quot;intent&quot;: &quot;search&quot;,
-    &quot;cuisine&quot;: &quot;壽喜燒&quot;,
-    &quot;location&quot;: &quot;橫濱棒球場或橫濱車站&quot;,
-    &quot;question&quot;: null,
-    &quot;target_index&quot;: null
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 2</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_2_places (search_nearby_ladder)</div>
-                <div class="step-sub-title">單步耗時: 344 ms</div>
-            </div>
-            <span class="step-badge">344ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">344 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;lat&quot;: 35.4432233,
-    &quot;lng&quot;: 139.6401002,
-    &quot;keyword&quot;: &quot;壽喜燒&quot;
-  },
-  &quot;output&quot;: {
-    &quot;count&quot;: 4
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 3</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_3_tabelog (parallel_tabelog_enrichment)</div>
-                <div class="step-sub-title">單步耗時: 2411 ms</div>
-            </div>
-            <span class="step-badge">2411ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2411 ms</span></div></div>
-            
-    <div class="aligned-stores-section">
-        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (3 間):</div>
-        <div class="aligned-stores-grid">
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 燒肉內臟Araiya澀谷</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.70 (952 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「Delicious sukiyaki set with melt in your mouth meat (we had the loin meat set). Upo...」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 Janomeya</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.50 (217 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「Taste is good, but operation is too slow.」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 Shabu Shabu Japanese cuisineKisojiBashamichi ten</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.20 (119 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「The sukiyaki is very very good. I went for the most expensive meat and it was worth...」</em></div>
-        </div>
-        </div>
-    </div>
-    
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;stores_count&quot;: 4
-  },
-  &quot;output&quot;: {
-    &quot;enriched_count&quot;: 4,
-    &quot;aligned_stores&quot;: [
-      {
-        &quot;name_ja&quot;: &quot;燒肉內臟Araiya澀谷&quot;,
-        &quot;name_en&quot;: &quot;Araiya&quot;,
-        &quot;address&quot;: &quot;Japan, 〒231-0002 Kanagawa, Yokohama, Naka Ward, Kaigandōri, 4-chōme−２３ 海岸通４丁目市街地住宅 １階&quot;,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1303/A130301/13237382/&quot;,
-        &quot;tabelog_rating&quot;: &quot;3.70&quot;,
-        &quot;review_count&quot;: 952,
-        &quot;price_lunch&quot;: null,
-        &quot;price_dinner&quot;: null,
-        &quot;supports_paypay&quot;: false,
-        &quot;credit_cards&quot;: [],
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;zh&quot;: &quot;Delicious sukiyaki set with melt in your mouth meat (we had the loin meat set). Upon entering, the front host was a little frosty knowing we were tourists ( seems they cater mostly to locals with business men and groups as main clientele). Once seated and after ordering the set, the server was friendly, prompt and properly timely with each dish, and helpful and explaining each dish that came out. She started the 1st set so that we could learn how to cook the sukiyaki then left the 2nd set for us to cook. Generally, sukiyaki and similar hotspot dishes with quality beef are not easy to find for foreigners and tend to be on the more expensive side. We didn&#x27;t mind the price, especially for the quality set we got. Not a hard place to find and easy reach from the main bay area hotels. Will certainly go again next time we&#x27;re in Yokohama which we enjoy visiting.&quot;,
-            &quot;ja&quot;: &quot;Delicious sukiyaki set with melt in your mouth meat (we had the loin meat set). Upon entering, the front host was a little frosty knowing we were tourists ( seems they cater mostly to locals with business men and groups as main clientele). Once seated and after ordering the set, the server was friendly, prompt and properly timely with each dish, and helpful and explaining each dish that came out. She started the 1st set so that we could learn how to cook the sukiyaki then left the 2nd set for us to cook. Generally, sukiyaki and similar hotspot dishes with quality beef are not easy to find for foreigners and tend to be on the more expensive side. We didn&#x27;t mind the price, especially for the quality set we got. Not a hard place to find and easy reach from the main bay area hotels. Will certainly go again next time we&#x27;re in Yokohama which we enjoy visiting.&quot;
-          },
-          {
-            &quot;zh&quot;: &quot;This is a gem of a traditional gyunabe restaurant in Yokohama. Not only is the beef of the highest quality, but the attentive and excellent service from the staff truly enhances the dining experience.\n\nIt&#x27;s situated close to Yokohama World Porters and is easily accessible from Bashamichi Station (Minatomirai Line), Exit 6.\n\nIf you want to enjoy fantastic gyunabe with top-notch service in Yokohama, this is the place to be!&quot;,
-            &quot;ja&quot;: &quot;This is a gem of a traditional gyunabe restaurant in Yokohama. Not only is the beef of the highest quality, but the attentive and excellent service from the staff truly enhances the dining experience.\n\nIt&#x27;s situated close to Yokohama World Porters and is easily accessible from Bashamichi Station (Minatomirai Line), Exit 6.\n\nIf you want to enjoy fantastic gyunabe with top-notch service in Yokohama, this is the place to be!&quot;
-          },
-          {
-            &quot;zh&quot;: &quot;Nestled in the heart of Yokohama, with 3 outlets in Yokohama, Arayia has been serving exquisite gyunabe since the late 19th century. This restaurant stands out as one of the earliest restaurants of this Yokohama-style beef dish, which delicately cooks the meat in a sweet soy sauce rather than searing it, alike to sukiyaki.\n\nOur nine-course meal was a journey through culinary artistry. Each dish was beautifully presented and bursting with flavor, showcasing the meticulous attention to detail. The main dish was particularly memorable, the beef is melting in the mouth, leaving a lasting impression that calls for a return visit.\n\nThe service struck the perfect balance—attentive without being overwhelming, allowing us to savor each course at our own pace.\n\nOverall, Arayia is a must-visit for anyone seeking an authentic Japanese dining experience. Its rich history and dedication to perfection make it a true culinary treasure.&quot;,
-            &quot;ja&quot;: &quot;Nestled in the heart of Yokohama, with 3 outlets in Yokohama, Arayia has been serving exquisite gyunabe since the late 19th century. This restaurant stands out as one of the earliest restaurants of this Yokohama-style beef dish, which delicately cooks the meat in a sweet soy sauce rather than searing it, alike to sukiyaki.\n\nOur nine-course meal was a journey through culinary artistry. Each dish was beautifully presented and bursting with flavor, showcasing the meticulous attention to detail. The main dish was particularly memorable, the beef is melting in the mouth, leaving a lasting impression that calls for a return visit.\n\nThe service struck the perfect balance—attentive without being overwhelming, allowing us to savor each course at our own pace.\n\nOverall, Arayia is a must-visit for anyone seeking an authentic Japanese dining experience. Its rich history and dedication to perfection make it a true culinary treasure.&quot;
-          }
-        ]
-      },
-      {
-        &quot;name_ja&quot;: &quot;Janomeya&quot;,
-        &quot;name_en&quot;: &quot;Janomeya&quot;,
-        &quot;address&quot;: &quot;Japan, 〒231-0045 Kanagawa, Yokohama, Naka Ward, Isezakichō, 5-chōme−１２６ シャンボール伊勢佐木&quot;,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140306/14001121/&quot;,
-        &quot;tabelog_rating&quot;: &quot;3.50&quot;,
-        &quot;review_count&quot;: 217,
-        &quot;price_lunch&quot;: null,
-        &quot;price_dinner&quot;: null,
-        &quot;supports_paypay&quot;: false,
-        &quot;credit_cards&quot;: [],
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;zh&quot;: &quot;Taste is good, but operation is too slow.&quot;,
-            &quot;ja&quot;: &quot;Taste is good, but operation is too slow.&quot;
-          },
-          {
-            &quot;zh&quot;: &quot;The meat was among the best I&#x27;ve tasted during my 8 years in Japan. The vegetables were fresh and delicious, and the broth was just the right mix of sweet and umami. The service was attentive and helpful. Will definitely go again.&quot;,
-            &quot;ja&quot;: &quot;The meat was among the best I&#x27;ve tasted during my 8 years in Japan. The vegetables were fresh and delicious, and the broth was just the right mix of sweet and umami. The service was attentive and helpful. Will definitely go again.&quot;
-          },
-          {
-            &quot;zh&quot;: &quot;Our first real meal in Japan! We wanted to go to another place nearby which is the oldest gyu nabe restaurant in Yokohama but they were fully booked even though our hotel called the day reservations opened supposedly. The beef set we got was really good. The meat was soft and delicious. The mushroom was the silkiest I’ve ever had.  Their nabe sauce is different and very good. I only wish they cooked for you though because I don’t think we balanced the sauce well.&quot;,
-            &quot;ja&quot;: &quot;Our first real meal in Japan! We wanted to go to another place nearby which is the oldest gyu nabe restaurant in Yokohama but they were fully booked even though our hotel called the day reservations opened supposedly. The beef set we got was really good. The meat was soft and delicious. The mushroom was the silkiest I’ve ever had.  Their nabe sauce is different and very good. I only wish they cooked for you though because I don’t think we balanced the sauce well.&quot;
-          }
-        ]
-      },
-      {
-        &quot;name_ja&quot;: &quot;Shabu Shabu Japanese cuisineKisojiBashamichi ten&quot;,
-        &quot;name_en&quot;: &quot;Kisoji Bashamichiten&quot;,
-        &quot;address&quot;: &quot;Japan, 〒231-0011 Kanagawa, Yokohama, Naka Ward, Ōtamachi, 4-chōme−５５ 横浜馬車道ビル B1&quot;,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140104/14001619/&quot;,
-        &quot;tabelog_rating&quot;: &quot;3.20&quot;,
-        &quot;review_count&quot;: 119,
-        &quot;price_lunch&quot;: null,
-        &quot;price_dinner&quot;: null,
-        &quot;supports_paypay&quot;: false,
-        &quot;credit_cards&quot;: [],
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;zh&quot;: &quot;The sukiyaki is very very good. I went for the most expensive meat and it was worth every Yen. The vegetables were also of great quality, and the cherry blossom ice cream and green tea for dessert was just as tasty as the main meal. As well as the quality food, the staff are absolutely delightful. Very friendly, polite and attentive. A perfect evening dinner!&quot;,
-            &quot;ja&quot;: &quot;The sukiyaki is very very good. I went for the most expensive meat and it was worth every Yen. The vegetables were also of great quality, and the cherry blossom ice cream and green tea for dessert was just as tasty as the main meal. As well as the quality food, the staff are absolutely delightful. Very friendly, polite and attentive. A perfect evening dinner!&quot;
-          },
-          {
-            &quot;zh&quot;: &quot;Extremely kind and attentive staff! Everyone was extremely kind and understanding with my limited Japanese. The sukiyaki was amazing and the price was reasonable too! Would come back again!&quot;,
-            &quot;ja&quot;: &quot;Extremely kind and attentive staff! Everyone was extremely kind and understanding with my limited Japanese. The sukiyaki was amazing and the price was reasonable too! Would come back again!&quot;
-          },
-          {
-            &quot;zh&quot;: &quot;Very good service! Ordered the family shabu shabu set 🤩 the environment and food are both very nice! Highly recommend!&quot;,
-            &quot;ja&quot;: &quot;Very good service! Ordered the family shabu shabu set 🤩 the environment and food are both very nice! Highly recommend!&quot;
-          }
-        ]
-      }
-    ]
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 4</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_4_synthesis (card_synthesis)</div>
-                <div class="step-sub-title">單步耗時: 1552 ms</div>
-            </div>
-            <span class="step-badge">1552ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">1552 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;stores_count&quot;: 4
-  },
-  &quot;output&quot;: {
-    &quot;length&quot;: 920
   }
 }</code></pre>
             </details>
