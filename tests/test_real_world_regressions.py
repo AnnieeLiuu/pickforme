@@ -260,3 +260,146 @@ def test_case7_japan_47_prefectures_regex_coverage(address: str, expected_extrac
     # 僅剝離結尾單一行政層級詞彙，防止誤傷「広島」、「京都」等地名主幹
     extracted = re.sub(r"[市區町村都道府縣県]$", "", m.group(1))
     assert extracted == expected_extracted_area
+
+
+# ==============================================================================
+# Case 8: 電話號碼檢索備援 (Phone Grounding Fallback)
+# ==============================================================================
+def test_case8_phone_fallback_recovers_mangled_romanized_store():
+    """Case 8: 驗證當 Google 店名為連綴畸形羅馬拼音 (Densetsunosutadonya) 且店名檢索為 0 筆時，
+
+    系統能自動降級為以電話號碼 045-317-2181 檢索 Tabelog，並由 Level 1 電話精準吻合 100% 召回。
+    """
+    mock_repo = MagicMock()
+    mock_repo.get_by_google_place_id = AsyncMock(return_value=None)
+    mock_repo.save_restaurant_with_tabelog = AsyncMock()
+
+    fsm = FoodRecommendationFSM(
+        places_client=MagicMock(),
+        tabelog_scraper=MagicMock(),
+        entity_resolver=EntityResolver(gemini_api_key=None),
+        restaurant_repo=mock_repo,
+        llm_client=MagicMock(),
+    )
+
+    searched_inputs: list[str] = []
+
+    async def mock_search_candidates(store_name: str, area_name: str = ""):
+        searched_inputs.append(store_name)
+        # 店名搜尋皆返回 0 筆
+        return []
+
+    async def mock_search_via_grounding(store_name: str, area_name: str = ""):
+        searched_inputs.append(store_name)
+        if "045-317-2181" in store_name:
+            return [
+                {
+                    "name_ja": "伝説のすた丼屋 横浜西口店",
+                    "tabelog_url": "https://tabelog.com/kanagawa/A1401/A140102/14040064/",
+                    "phone": "045-317-2181",
+                    "tabelog_rating": 3.06,
+                    "review_count": 89,
+                }
+            ]
+        return []
+
+    fsm.tabelog_scraper.search_tabelog_candidates = mock_search_candidates
+    fsm.tabelog_scraper.search_via_grounding = mock_search_via_grounding
+    fsm.tabelog_scraper.scrape_restaurant_details = AsyncMock(return_value={"tabelog_rating": 3.06, "review_count": 89})
+
+    store_place = {
+        "google_place_id": "place_sutadon_999",
+        "name": "Densetsunosutadonya Yokohamanishiguchiten",
+        "phone": "045-317-2181",
+        "address": "1-chōme-13-11 Okano, Nishi Ward, Yokohama, Kanagawa 220-0073, Japan",
+        "lat": 35.463,
+        "lng": 139.617,
+    }
+
+    enriched = asyncio.run(fsm._enrich_single_place(store_place, area_hint="橫濱車站"))
+
+    # 驗證觸發了電話搜尋備援，並成功賦予 Tabelog 評分
+    assert any("045-317-2181" in s for s in searched_inputs)
+    assert enriched.get("tabelog_rating") == 3.06
+    assert enriched.get("rating_source") == "Tabelog"
+
+
+# ==============================================================================
+# Case 9: 卡片排版驗證防誤殺 (Fuzzy Store Name in Code Blocks)
+# ==============================================================================
+def test_case9_validator_fuzzy_store_name_in_code_blocks():
+    """Case 9: 驗證當 LLM 自發性將英文拼音還原為日文漢字、或包含繁日漢字微調時，驗證器不會產生誤殺。"""
+    stores = [
+        {"name": "Densetsunosutadonya Yokohamanishiguchiten", "name_ja": "Densetsunosutadonya Yokohamanishiguchiten"},
+        {"name": "三﨑市場橫濱Joinus店", "name_ja": "三﨑市場橫濱Joinus店"},
+    ]
+
+    # LLM 產生的卡片：自動還原為日文漢字「伝説のすた丼屋 横浜西口店」與「三﨑市場 横浜ジョイナス店」
+    compliant_card = """
+### 🍱 精選推薦 1：伝説のすた丼屋 橫濱西口店
+`伝説のすた丼屋 横浜西口店`
+
+🚶 **步行距離**：從「橫濱車站」步行約 9 分鐘 (700m)
+⭐️ **雙平台評分**：⭐️ Tabelog 3.06 (89 則評價) / Google 3.7
+💳 **支付方式**：現金為主
+💰 **預算區間**：約 ￥800 ~ ￥1,200
+📍 **老饕評價與推薦理由**：
+大份量蒜味豬肉丼飯，肉質鮮嫩，附生雞蛋與味噌湯。
+🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/sample)
+
+---
+
+### 🍱 精選推薦 2：三﨑市場 橫濱Joinus店
+`三﨑市場 横浜ジョイナス店`
+
+🚶 **步行距離**：從「橫濱車站」步行約 2 分鐘 (92m)
+⭐️ **雙平台評分**：⭐️ Tabelog 3.30 (211 則評價) / Google 3.6
+💳 **支付方式**：現金為主
+💰 **預算區間**：約 ￥1,000 ~ ￥1,500
+📍 **老饕評價與推薦理由**：
+鮪魚丼飯性價比高，出餐極為迅速。
+🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/sample)
+"""
+    is_valid, reasons = validate_recommendation_card(compliant_card, stores=stores)
+    assert is_valid is True, f"應通過驗證，卻失敗了：{reasons}"
+
+
+# ==============================================================================
+# Case 10: 模板直出長篇流水帳評論截斷 (Template Review Truncation)
+# ==============================================================================
+def test_case10_template_fallback_truncates_long_raw_reviews():
+    """Case 10: 驗證即便觸發模板直出兜底，長達數百字之未總結原始 Google/Tabelog 評論也會被安全截斷至 130 字內。"""
+    fsm = FoodRecommendationFSM(
+        places_client=MagicMock(),
+        tabelog_scraper=MagicMock(),
+        entity_resolver=MagicMock(),
+        llm_client=MagicMock(),
+    )
+
+    super_long_review = (
+        "This is the legendary Sutadon restaurant, located about one block northwest of Okano intersection. "
+        "I visited on a Meat Day evening. I ordered the original Sutadon with extra meat. It comes with a raw egg "
+        "and miso soup. Meal tickets must be purchased in advance, and the restaurant has both counter and table seating. "
+        "The ticket machine does not support the free extra meat on Meat Day, and on the day itself, the extra meat "
+        "option is displayed as sold out. Given the good customer service and operation, I will not deduct points."
+    )
+
+    stores = [
+        {
+            "name": "Densetsunosutadonya",
+            "name_ja": "伝説のすた丼屋",
+            "rating_source": "Google",
+            "google_rating": 3.7,
+            "address": "橫濱市西區",
+            "sample_reviews": [{"source": "google", "text": super_long_review}],
+        }
+    ]
+
+    fallback_card = fsm._render_template_fallback_card(stores, cuisine="丼飯", is_format_fallback=True)
+
+    # 驗證無恐嚇性連線異常標籤
+    assert "AI 語意模型連線異常" not in fallback_card
+    # 驗證評論已被截斷，長度受控
+    assert "..." in fallback_card
+    assert len(super_long_review) > 400
+    assert super_long_review not in fallback_card

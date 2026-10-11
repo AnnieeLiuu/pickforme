@@ -339,6 +339,15 @@ class FoodRecommendationFSM:
             if not candidates and search_query != store_name:
                 candidates = await self.tabelog_scraper.search_tabelog_candidates(store_name=store_name)
 
+            # 若帶地區與純店名皆搜尋未果，且具備電話號碼，以電話號碼執行精準檢索保底 (site:tabelog.com <phone>)
+            phone_raw = (place.get("phone") or "").strip()
+            if not candidates and phone_raw and len(re.sub(r"\D", "", phone_raw)) >= 9:
+                phone_clean = re.sub(r"[^\d-]", "", phone_raw)
+                logger.info(
+                    f"Store name search yielded 0 results for '{store_name}'. Fallback to phone search: '{phone_clean}'"
+                )
+                candidates = await self.tabelog_scraper.search_via_grounding(store_name=phone_clean, area_name="")
+
             match_res = await self.entity_resolver.resolve_entity(
                 google_store=place,
                 tabelog_candidates=candidates,
@@ -569,12 +578,21 @@ class FoodRecommendationFSM:
         )
         return list(enriched_results)
 
-    def _render_template_fallback_card(self, stores: list[dict[str, Any]], cuisine: str) -> str:
-        """LLM 連線失敗時的純程式碼資料模板保底"""
-        lines = [
-            "⚠️ **AI 語意模型連線異常，已為您自動載入直出精準美食卡片：**\n",
-            f"精選「{cuisine or '熱門料理'}」指標餐廳如下：\n",
-        ]
+    def _render_template_fallback_card(
+        self,
+        stores: list[dict[str, Any]],
+        cuisine: str,
+        is_format_fallback: bool = False,
+    ) -> str:
+        """LLM 連線失敗或格式回退時的純程式碼資料模板保底"""
+        badge = (
+            f"🍱 **已為您精選「{cuisine or '熱門料理'}」指標推薦餐廳如下：**\n"
+            if is_format_fallback
+            else "⚠️ **AI 語意模型連線異常，已為您自動載入直出精準美食卡片：**\n"
+        )
+        lines = [badge]
+        if not is_format_fallback:
+            lines.append(f"精選「{cuisine or '熱門料理'}」指標餐廳如下：\n")
         for idx, s in enumerate(stores, 1):
             name = s.get("name_ja") or s.get("name") or "精選餐廳"
             rating_src = s.get("rating_source", "Google")
@@ -599,7 +617,7 @@ class FoodRecommendationFSM:
                 lines.append(f"📍 **地址**：{s.get('address')}")
             if s.get("tabelog_url"):
                 lines.append(f"🔗 [食べログ詳細頁面]({s.get('tabelog_url')})")
-            # 老饕短評 (註明來源)
+            # 老饕短評 (註明來源，精要截斷避免未總結之長篇英文洗版)
             rev_txt = s.get("foodie_review_highlight")
             rev_badge = "食べログ 口コミ"
             if not rev_txt:
@@ -614,7 +632,10 @@ class FoodRecommendationFSM:
                         rev_txt = f_rev
 
             if rev_txt:
-                lines.append(f"📍 **老饕推薦理由 ({rev_badge})**：{rev_txt}")
+                clean_rev = rev_txt.strip()
+                if len(clean_rev) > 130:
+                    clean_rev = clean_rev[:125] + "..."
+                lines.append(f"📍 **老饕推薦理由 ({rev_badge})**：{clean_rev}")
             lines.append("")
 
         return "\n".join(lines).strip()
@@ -769,7 +790,7 @@ class FoodRecommendationFSM:
                     f"[CardGuardrail] LLM generated non-compliant card layout ({', '.join(reasons)}). "
                     f"Falling back to deterministic template card."
                 )
-                fallback_card = self._render_template_fallback_card(stores, cuisine)
+                fallback_card = self._render_template_fallback_card(stores, cuisine, is_format_fallback=True)
                 latency = int((time.time() - t0) * 1000)
                 await self.trace_logger.log_step(
                     action_type="state_4_synthesis",

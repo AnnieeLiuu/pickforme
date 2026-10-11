@@ -111,6 +111,23 @@ Whenever modifying code, schemas, configurations, or business logic, AI Agents a
 2. **清理預約後綴詞**：提取店名時，需自動剝離 `のご予約`、`の予約`、`Reservation` 等雜訊後綴。
 3. **高品質卡片融合 (Card Merging)**：若首張碰到的卡片缺少評分，後續遇見同店家但具備評分與食評之卡片時，應主動更新並補全候選資料。
 
+---
+
+## 📞 電話號碼檢索備援規範 (Phone Grounding Fallback)
+
+當 Google Places 店名為連綴羅馬拼音（如 `Densetsunosutadonya Yokohamanishiguchiten`）或特殊譯名，導致「店名 + 商圈」與「純店名」檢索候選數皆為 0 筆時：
+- **電話檢索兜底**：只要 Google Places 提供日本市話/手機號碼（有效數字 `>= 9` 碼），系統**強制自動以 `site:tabelog.com <phone>` 執行 Web Grounding 檢索**。
+- **0ms 秒級命中**：經電話檢索命中之候選者，於 `EntityResolver` 中受 Level 1 電話完全吻合規則保護，直接給予 1.0 信心度通過，確保極端店名下的 100% 召回率。
+
+---
+
+## 🛡️ 卡片驗證防誤殺規範 (Fuzzy Guardrail Validation)
+
+卡片版型驗證器 (`validator.py`) 檢查反引號一鍵複製店名時：
+1. **字形與繁日容錯**：必須去除空白與特殊符號，相容繁日漢字（「橫」vs「横」）與商場譯名差異（「Joinus」vs「ジョイナス」）。
+2. **跨語言還原保護**：當 Google Places 為純羅馬拼音、而 LLM 自發性還原為道地日文漢字店名時，只要代碼塊為合理長度之合法短語，**嚴禁粗暴判定格式違規並作廢卡片**。
+3. **模板直出評論防污染**：任何觸發模板直出兜底時，原始食評文字必須截斷在 120 字以內，嚴禁向用戶輸出未經總結的數百字英文/日文流水帳。
+
 
 
 

@@ -35,15 +35,27 @@ def validate_recommendation_card(
     if not code_blocks:
         reasons.append("缺少一鍵複製店名反引號代碼塊 (`店名`)")
     elif stores:
-        # 若有傳入候選店家，確認至少有一家店名被反引號包覆
-        matched_any = False
-        for s in stores:
-            name_ja = s.get("name_ja") or s.get("name") or ""
-            if any(name_ja in cb or cb in name_ja for cb in code_blocks if cb.strip()):
-                matched_any = True
-                break
-        if not matched_any and len(code_blocks) < len(stores):
-            reasons.append("反引號中的內容未正確對應候選店家店名")
+        # 檢驗反引號內的店名是否具備合理長度且不包含程式代碼雜訊
+        valid_store_cbs = [cb.strip() for cb in code_blocks if 1 <= len(cb.strip()) <= 60]
+        if not valid_store_cbs:
+            reasons.append("反引號代碼塊內容長度異常")
+        else:
+            # 寬鬆容錯：支援去除空白、符號後的繁日/大小寫模糊關聯比對
+            matched_any = False
+            for s in stores:
+                raw_name = s.get("name_ja") or s.get("name") or ""
+                clean_name = re.sub(r"[\s\-_・，,（）()]+", "", raw_name).lower()
+                for cb in valid_store_cbs:
+                    clean_cb = re.sub(r"[\s\-_・，,（）()]+", "", cb).lower()
+                    if clean_name and (clean_name in clean_cb or clean_cb in clean_name):
+                        matched_any = True
+                        break
+                if matched_any:
+                    break
+            # 跨語言保護：若候選全為英數拼音而反引號為日文漢字，只要代碼塊為合法店名短語，不隨意誤殺
+            has_ascii_store = any(bool(re.search(r"^[a-zA-Z0-9\s\-]+$", s.get("name", ""))) for s in stores)
+            if not matched_any and not has_ascii_store and len(valid_store_cbs) < len(stores):
+                reasons.append("反引號中的內容未正確對應候選店家店名")
 
     # 3. 檢驗關鍵欄位標記
     # (a) 步行距離

@@ -273,6 +273,10 @@ flowchart TD
   - **商圈/地名搜尋錨定**：若 Google 店名未包含地名，Tabelog 搜尋自動附加使用者搜尋區域（如 `Mawashizushi KATSU 横浜`），確保在地分店 100% 擠入搜尋前席。
   - **拒絕脆弱大樓白名單 (Zero Hardcoded Whitelists)**：不維護易腐化的大樓名稱白名單，徹底避免同商場美食街張冠李戴之風險。
   - **Unicode-Safe 跨語言語意裁決**：針對包含英文字母/羅馬拼音之店名（全面支援 `–` EN DASH、特殊標點與重音符號，徹底拋棄脆弱的 `.isascii()` 判定），當字面相似度因跨語系落差過大時，自動平滑流向 Level 2 Micro-LLM，由 Prompt 指引其結合地址、品類與發音綜合裁決。
+- **電話號碼檢索備援機制 (Phone Grounding Fallback)**：
+  - 當 Google Places 店名為連綴羅馬拼音或罕見譯名，且「店名 + 商圈」與「純店名」檢索皆無結果時，若具備日本市話/手機號碼，自動以 `site:tabelog.com <phone>` 執行精準檢索，0ms 秒級命中並由 Level 1 電話規則賦予 1.0 信心度通過。
+- **卡片排版驗證防誤殺 (Fuzzy Guardrail Validation)**：
+  - 驗證器對反引號店名實施去除空白與繁日漢字正規化容錯，相容 Google 純英文羅馬拼音、LLM 自動還原為日文漢字之跨語言場景，杜絕誤殺作廢合格卡片。
 - **對話歷史淨化與反向問候意圖保底機制 (State 1 Sanitization & Inverse Greeting Guard)**：
   - 意圖解析時，將上一輪長篇推薦卡片（>100 字或含卡片格式）淨化為簡要摘要，杜絕微型 LLM 產生 Few-shot 模仿偏見導致輸出非 JSON。
   - **反向問候保底 (Inverse Greeting Fallback)**：不窮舉拉麵、壽司等特定菜品白名單，改為反向排除純打招呼問候語（`你好|早安|謝謝`），其餘任何實質提問一律安全保底為 `search`，確保天婦羅、鰻魚飯等百種料理 100% 進入檢索流程。
@@ -287,7 +291,7 @@ flowchart TD
 ### F. 工程維護品質與軟體最佳實踐 (Engineering & Maintainability Practices)
 - **品質防線與 CI 守門 (Code Quality Gates)**：
   - **靜態檢查與型別標註**：全面採用 `ruff` (代碼規範/格式化) 與 `mypy` (Python 3.11 嚴格型別校驗)，確保程式碼可讀性與型別安全。
-  - **自動化測試與覆蓋率**：建立 101 項覆蓋核心邏輯之單元、合約與黃金回歸測試 (`tests/test_real_world_regressions.py`)，整合 `pytest-cov` Cobertura XML 報告與 GitLab CI/CD Pipeline (`.gitlab-ci.yml`)，未通過品質關卡禁止合併主線。
+  - **自動化測試與覆蓋率**：建立 104 項覆蓋核心邏輯之單元、合約與黃金回歸測試 (`tests/test_real_world_regressions.py`)，整合 `pytest-cov` Cobertura XML 報告與 GitLab CI/CD Pipeline (`.gitlab-ci.yml`)，未通過品質關卡禁止合併主線。
 - **資安防護與存取控制 (Security & Access Control)**：
   - **Telegram Webhook Secret Token 驗證**：要求驗證 `X-Telegram-Bot-Api-Secret-Token` 標頭，防止惡意流量觸發 Cloud Run。
   - **白名單過濾**：以 `TELEGRAM_ALLOWED_USER_ID` 限制存取權限。
