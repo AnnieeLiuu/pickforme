@@ -985,3 +985,58 @@ async def test_case_16_payment_options_dual_source_fusion_prevent_false_negative
     card = fsm._render_template_fallback_card(araiya_store, "壽喜燒")
     assert "可使用 信用卡" in card
     assert "不支援信用卡/行動支付" not in card
+
+
+def test_shiten_coffee_payment_accepts_cash_only_false_regression():
+    """回歸測試：SHI-TEN coffee 支付方式判定修復
+
+    根本原因：
+    Google Places API (New) 回傳 paymentOptions: { "acceptsCashOnly": false }，
+    但未帶 acceptsCreditCards 欄位 (None)，且 Tabelog 爬蟲因 403 阻擋未能提取具體卡別清單時，
+    format_payment_methods() 原先僅檢查 accepts_credit_cards is True，
+    忽略 accepts_cash_only is False 之非現金專門店信號，導致直接跌落兜底邏輯誤判為「現金為主 (建議備足日圓現鈔)」。
+
+    修復邏輯：
+    1. 當 accepts_cash_only is False 且未被 Tabelog 明確否定為 0 卡時，判定為「可使用 信用卡 / 電子支付」。
+    2. 絕不在此情境下輸出「現金為主」。
+    """
+    from src.agent.pipeline import FoodRecommendationFSM, format_payment_methods
+
+    # 1. 單元層面：驗證 accepts_cash_only=False 雙源融合
+    pay_non_cash = format_payment_methods(
+        supports_paypay=None,
+        credit_cards=None,
+        accepts_credit_cards=None,
+        accepts_cash_only=False,  # Google Places 明確標註非僅收現金
+    )
+    assert pay_non_cash == "可使用 信用卡 / 電子支付"
+    assert "現金為主" not in pay_non_cash
+
+    # 2. 端到端卡片生成驗證：以 SHI-TEN coffee 為例
+    fsm = FoodRecommendationFSM(
+        places_client=MagicMock(),
+        tabelog_scraper=MagicMock(),
+        entity_resolver=MagicMock(),
+        llm_client=MagicMock(),
+    )
+    shiten_store = [
+        {
+            "name": "SHI-TEN coffee",
+            "name_ja": "SHI-TEN coffee",
+            "tabelog_url": "https://tabelog.com/tokyo/A1311/A131101/13234338/",
+            "tabelog_rating": 3.30,
+            "review_count": 75,
+            "google_rating": 4.6,
+            "walking_desc": "從「末廣町站」步行約 3 分鐘 (219m)",
+            "supports_paypay": None,
+            "credit_cards": None,
+            "accepts_credit_cards": None,
+            "accepts_cash_only": False,  # Google Places: acceptsCashOnly = false
+            "price_dinner": None,
+            "address": "東京都千代田区外神田5-4-12",
+        }
+    ]
+
+    card = fsm._render_template_fallback_card(shiten_store, "咖啡")
+    assert "可使用 信用卡 / 電子支付" in card
+    assert "現金為主" not in card

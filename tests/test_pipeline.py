@@ -335,6 +335,14 @@ def test_format_payment_methods():
     res5 = format_payment_methods(supports_paypay=None, credit_cards=None)
     assert "現金為主 (建議備足日圓現鈔)" == res5
 
+    # 6. Google Places 非僅收現金救援 (acceptsCashOnly: False)
+    res6 = format_payment_methods(supports_paypay=None, credit_cards=None, accepts_cash_only=False)
+    assert "可使用 信用卡 / 電子支付" == res6
+
+    # 7. NFC 感應支付
+    res7 = format_payment_methods(supports_paypay=None, credit_cards=None, accepts_nfc=True)
+    assert "可使用 感應支付" == res7
+
 
 def test_fallback_card_renders_payment_methods(mock_fsm):
     stores = [

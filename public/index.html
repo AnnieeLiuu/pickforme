@@ -3362,6 +3362,574 @@
                 </thead>
                 <tbody>
                     
+            <tr class="live-row" onclick="toggleCaseDetails('live-d16d0a5d-e19a-443f-a703-9fcdaa63c6e6')">
+                <td><code>d16d0a5d</code></td>
+                <td><span class="cat-pill">Live Telegram</span></td>
+                <td class="query-col">神樂版麵包店</td>
+                <td class="text-center"><code>N/A</code></td>
+                <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+                <td class="text-right latency-text">8,147 ms</td>
+            </tr>
+            <tr id="case-live-d16d0a5d-e19a-443f-a703-9fcdaa63c6e6" class="stepper-drawer" style="display: none;">
+                <td colspan="6">
+                    <div class="stepper-container">
+                        <div class="drawer-header">
+                            <h4>⚡ 真實線上問答執行軌跡 (Run ID: d16d0a5d-e19a-443f-a703-9fcdaa63c6e6 | 提問時間: 2026-10-12T16:14:42.890613+00:00)</h4>
+                        </div>
+                        <div class="steps-flow">
+                            
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 1</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_1_intent (intent_parser)</div>
+                <div class="step-sub-title">單步耗時: 352 ms</div>
+            </div>
+            <span class="step-badge">352ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">352 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;message&quot;: &quot;神樂版麵包店&quot;
+  },
+  &quot;output&quot;: {
+    &quot;intent&quot;: &quot;search&quot;,
+    &quot;cuisine&quot;: &quot;麵包店&quot;,
+    &quot;location&quot;: &quot;神樂坂&quot;,
+    &quot;modifier&quot;: null,
+    &quot;question&quot;: null,
+    &quot;target_index&quot;: null
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 2</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_2_places (search_nearby_ladder)</div>
+                <div class="step-sub-title">單步耗時: 340 ms</div>
+            </div>
+            <span class="step-badge">340ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">340 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;lat&quot;: 35.70145979999999,
+    &quot;lng&quot;: 139.7402946,
+    &quot;keyword&quot;: &quot;麵包店&quot;,
+    &quot;excluded_count&quot;: 0
+  },
+  &quot;output&quot;: {
+    &quot;count&quot;: 6
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 3</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_3_tabelog (parallel_tabelog_enrichment)</div>
+                <div class="step-sub-title">單步耗時: 2559 ms</div>
+            </div>
+            <span class="step-badge">2559ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2559 ms</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (3 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 しかたらむかな</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.90 (792 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「しかたらむかな. 牛込神楽坂駅/パン . パン 百名店 TOKYO 2026 選出店 · 地図. 総合得点 3.88. 口コミ 792人. 保存 41029人. -....」</em></div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 パン・デ・フィロゾフ</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.80 (1,685 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「パン・デ・フィロゾフ. (Pain des Philosophes). 神楽坂駅/パン. パン 百名店 TOKYO 2026 選 出店 · 地図. 総合得点 3.84...」</em></div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 Spicierスパイスチャイとインドカレーパン</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.60 (382 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「アクセス ; 東京都新宿区神楽坂3-2-33 102 · JR・地下鉄 飯田橋駅から徒歩5分地下鉄 神楽坂駅から徒歩8分. 飯田橋駅から433m ...」</em></div>
+        </div>
+        </div>
+    </div>
+    
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;stores_count&quot;: 6,
+    &quot;stores_searched&quot;: [
+      {
+        &quot;name&quot;: &quot;Spicier&quot;,
+        &quot;phone&quot;: &quot;&quot;,
+        &quot;google_rating&quot;: 4.5
+      },
+      {
+        &quot;name&quot;: &quot;Pain des Philosophes&quot;,
+        &quot;phone&quot;: &quot;03-6874-5808&quot;,
+        &quot;google_rating&quot;: 4.4
+      },
+      {
+        &quot;name&quot;: &quot;Shikata Ramukana&quot;,
+        &quot;phone&quot;: &quot;&quot;,
+        &quot;google_rating&quot;: 4.4
+      },
+      {
+        &quot;name&quot;: &quot;Biossa bakery &amp; gluten free&quot;,
+        &quot;phone&quot;: &quot;03-3830-0676&quot;,
+        &quot;google_rating&quot;: 4.5
+      },
+      {
+        &quot;name&quot;: &quot;MAISON KAYSER Kagurazaka Shop&quot;,
+        &quot;phone&quot;: &quot;03-6457-5678&quot;,
+        &quot;google_rating&quot;: 4.2
+      },
+      {
+        &quot;name&quot;: &quot;Chez Kazama&quot;,
+        &quot;phone&quot;: &quot;03-3263-2426&quot;,
+        &quot;google_rating&quot;: 4.4
+      }
+    ]
+  },
+  &quot;output&quot;: {
+    &quot;aligned_stores&quot;: [
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;しかたらむかな&quot;,
+        &quot;rank_badge&quot;: &quot;🥇&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1309/A130905/13287514/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 792,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;しかたらむかな. 牛込神楽坂駅/パン . パン 百名店 TOKYO 2026 選出店 · 地図. 総合得点 3.88. 口コミ 792人. 保存 41029人. -. ～￥999. 定休日 火曜日、水曜日.&quot;,
+            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;しかたらむかな. 牛込神楽坂駅/パン . パン 百名店 TOKYO 2026 選出店 · 地図. 総合得点 3.88. 口コミ 792人. 保存 41029人. -. ～￥999. 定休日 火曜日、水曜日.&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.9,
+        &quot;supports_paypay&quot;: null
+      },
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;パン・デ・フィロゾフ&quot;,
+        &quot;rank_badge&quot;: &quot;🥈&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1309/A130905/13213156/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 1685,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;パン・デ・フィロゾフ. (Pain des Philosophes). 神楽坂駅/パン. パン 百名店 TOKYO 2026 選 出店 · 地図. 総合得点 3.84. 口コミ 1685人. 保存 73951人. ～￥999.&quot;,
+            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;パン・デ・フィロゾフ. (Pain des Philosophes). 神楽坂駅/パン. パン 百名店 TOKYO 2026 選 出店 · 地図. 総合得点 3.84. 口コミ 1685人. 保存 73951人. ～￥999.&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.8,
+        &quot;supports_paypay&quot;: null
+      },
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;Spicierスパイスチャイとインドカレーパン&quot;,
+        &quot;rank_badge&quot;: &quot;🥉&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1309/A130905/13280101/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 382,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;アクセス ; 東京都新宿区神楽坂3-2-33 102 · JR・地下鉄 飯田橋駅から徒歩5分地下鉄 神楽坂駅から徒歩8分. 飯田橋駅から433m ...&quot;,
+            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;アクセス ; 東京都新宿区神楽坂3-2-33 102 · JR・地下鉄 飯田橋駅から徒歩5分地下鉄 神楽坂駅から徒歩8分. 飯田橋駅から433m ...&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.6,
+        &quot;supports_paypay&quot;: null
+      }
+    ],
+    &quot;selected_count&quot;: 3
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 4</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_4_synthesis (card_synthesis)</div>
+                <div class="step-sub-title">單步耗時: 1777 ms</div>
+            </div>
+            <span class="step-badge">1777ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">1777 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;cuisine&quot;: &quot;麵包店&quot;,
+    &quot;location&quot;: &quot;神樂坂&quot;,
+    &quot;stores_count&quot;: 3
+  },
+  &quot;output&quot;: {
+    &quot;length&quot;: 1102,
+    &quot;card_content&quot;: &quot;🍱 **神樂坂精選麵包店推薦**\n\n🥇 **しかたらむかな**\n`しかたらむかな`\n🚶 **步行距離**：從「神樂坂」步行約 2 分鐘 (159m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.90 (792則評價) / Google 4.4\n🏆 **認證標章**：🏆 Tabelog 百名店 (パン 百名店 TOKYO 2026)\n💳 **支付方式**：可使用信用卡\n💰 **預算區間**：單品 ～￥999\n📍 **老饕推薦理由 (食べログ 口コミ)**：作為「パン百名店」入選店，其麵包口感與風味獲得老饕高度認可，是神樂坂地區極具代表性的麵包名店。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1309/A130905/13287514/)\n\n🥈 **パン・デ・フィロゾフ**\n`パン・デ・フィロゾフ`\n🚶 **步行距離**：從「神樂坂」步行約 6 分鐘 (462m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.80 (1,685則評價) / Google 4.4\n🏆 **認證標章**：🏆 Tabelog 百名店 (パン 百名店 TOKYO 2026)\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：單品 ～￥999\n📍 **老饕推薦理由 (食べログ 口コミ)**：同樣是「パン百名店」入選店，擁有超過 1,600 則評價與高人氣收藏數，是神樂坂周邊深受老饕喜愛的經典麵包店。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1309/A130905/13213156/)\n\n🥉 **Spicierスパイスチャイとインドカレーパン**\n`Spicierスパイスチャイとインドカレーパン`\n🚶 **步行距離**：從「神樂坂」步行約 1 分鐘 (21m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.60 (382則評價) / Google 4.5\n💳 **支付方式**：可使用信用卡\n💰 **預算區間**：單品 ～￥999\n📍 **老饕推薦理由 (食べログ 口コミ)**：主打印度香料茶與印度咖喱麵包，提供獨特的異國風味體驗，適合想嘗試非傳統日式麵包的遊客。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1309/A130905/13280101/)\n\n💡 特派員提醒：前兩家均為「パン百名店」入選店，品質有保證；若偏好刷卡方便，建議優先選擇 🥇 或 🥉，🥈 則需備好現金。&quot;
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            
+
+            <tr class="live-row" onclick="toggleCaseDetails('live-e2dfd34e-f98b-4335-8027-f0f6af282a7c')">
+                <td><code>e2dfd34e</code></td>
+                <td><span class="cat-pill">Live Telegram</span></td>
+                <td class="query-col">神樂版 手沖咖啡</td>
+                <td class="text-center"><code>N/A</code></td>
+                <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+                <td class="text-right latency-text">18,479 ms</td>
+            </tr>
+            <tr id="case-live-e2dfd34e-f98b-4335-8027-f0f6af282a7c" class="stepper-drawer" style="display: none;">
+                <td colspan="6">
+                    <div class="stepper-container">
+                        <div class="drawer-header">
+                            <h4>⚡ 真實線上問答執行軌跡 (Run ID: e2dfd34e-f98b-4335-8027-f0f6af282a7c | 提問時間: 2026-10-12T14:28:54.365002+00:00)</h4>
+                        </div>
+                        <div class="steps-flow">
+                            
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 1</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_1_intent (intent_parser)</div>
+                <div class="step-sub-title">單步耗時: 1391 ms</div>
+            </div>
+            <span class="step-badge">1391ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">1391 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;message&quot;: &quot;神樂版 手沖咖啡&quot;
+  },
+  &quot;output&quot;: {
+    &quot;intent&quot;: &quot;search&quot;,
+    &quot;cuisine&quot;: &quot;手沖咖啡&quot;,
+    &quot;location&quot;: &quot;神樂版&quot;,
+    &quot;modifier&quot;: null,
+    &quot;question&quot;: null,
+    &quot;target_index&quot;: null
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 2</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_2_places (search_nearby_ladder)</div>
+                <div class="step-sub-title">單步耗時: 384 ms</div>
+            </div>
+            <span class="step-badge">384ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">384 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;lat&quot;: 35.70145979999999,
+    &quot;lng&quot;: 139.7402946,
+    &quot;keyword&quot;: &quot;手沖咖啡&quot;,
+    &quot;excluded_count&quot;: 0
+  },
+  &quot;output&quot;: {
+    &quot;count&quot;: 6
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 3</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_3_tabelog (parallel_tabelog_enrichment)</div>
+                <div class="step-sub-title">單步耗時: 9702 ms</div>
+            </div>
+            <span class="step-badge">9702ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">9702 ms</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (3 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 AKHA AMA COFFEE Kagurazaka</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.70 (957 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「「アカアマ」在泰國北部少數民族阿卡族的語言中意為「母親」。一位赤腳在村莊裡奔跑的青... ... 成人風格的 咖啡 拿鐵. 【店名】 AKHA AMA COFFEE ...」</em></div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 シテンコーヒー</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.30 (75 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「店舗基本情報 · 月・火・水・木・金. 08:00 - 17:00 · 土. 13:00 - 17:00 · 日. 定休日.」</em></div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 coffeestand早川亭</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.20 (49 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「アクセス ; 東京都中野区東中野1-15-7 フラット東中野 1F · JR東中野駅東口より徒歩6分. 東中野駅から411m ...」</em></div>
+        </div>
+        </div>
+    </div>
+    
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;stores_count&quot;: 6,
+    &quot;stores_searched&quot;: [
+      {
+        &quot;name&quot;: &quot;HAYAKAWA coffee&quot;,
+        &quot;phone&quot;: &quot;&quot;,
+        &quot;google_rating&quot;: 4.9
+      },
+      {
+        &quot;name&quot;: &quot;禅茶園 ZENCHAEN MATCHA&quot;,
+        &quot;phone&quot;: &quot;03-5932-3151&quot;,
+        &quot;google_rating&quot;: 4.9
+      },
+      {
+        &quot;name&quot;: &quot;Reze Cafe&quot;,
+        &quot;phone&quot;: &quot;&quot;,
+        &quot;google_rating&quot;: 4.9
+      },
+      {
+        &quot;name&quot;: &quot;Akha Ama Coffee Kagurazaka&quot;,
+        &quot;phone&quot;: &quot;03-6280-8755&quot;,
+        &quot;google_rating&quot;: 4.5
+      },
+      {
+        &quot;name&quot;: &quot;ELYSIA COFFEE AKASAKA&quot;,
+        &quot;phone&quot;: &quot;03-6281-9402&quot;,
+        &quot;google_rating&quot;: 5
+      },
+      {
+        &quot;name&quot;: &quot;SHI-TEN coffee&quot;,
+        &quot;phone&quot;: &quot;&quot;,
+        &quot;google_rating&quot;: 4.8
+      }
+    ]
+  },
+  &quot;output&quot;: {
+    &quot;aligned_stores&quot;: [
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;AKHA AMA COFFEE Kagurazaka&quot;,
+        &quot;rank_badge&quot;: &quot;🥇&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1309/A130905/13248105/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 957,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;「アカアマ」在泰國北部少數民族阿卡族的語言中意為「母親」。一位赤腳在村莊裡奔跑的青... ... 成人風格的 咖啡 拿鐵. 【店名】 AKHA AMA COFFEE 神楽坂 【地點】 東京/ 神楽坂 ...&quot;,
+            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;「アカアマ」在泰國北部少數民族阿卡族的語言中意為「母親」。一位赤腳在村莊裡奔跑的青... ... 成人風格的 咖啡 拿鐵. 【店名】 AKHA AMA COFFEE 神楽坂 【地點】 東京/ 神楽坂 ...&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.7,
+        &quot;supports_paypay&quot;: null
+      },
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;シテンコーヒー&quot;,
+        &quot;rank_badge&quot;: &quot;🥈&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1311/A131101/13234338/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 75,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;店舗基本情報 · 月・火・水・木・金. 08:00 - 17:00 · 土. 13:00 - 17:00 · 日. 定休日.&quot;,
+            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;店舗基本情報 · 月・火・水・木・金. 08:00 - 17:00 · 土. 13:00 - 17:00 · 日. 定休日.&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.3,
+        &quot;supports_paypay&quot;: null
+      },
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;coffeestand早川亭&quot;,
+        &quot;rank_badge&quot;: &quot;🥉&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1319/A131901/13183537/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 49,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;アクセス ; 東京都中野区東中野1-15-7 フラット東中野 1F · JR東中野駅東口より徒歩6分. 東中野駅から411m ...&quot;,
+            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;アクセス ; 東京都中野区東中野1-15-7 フラット東中野 1F · JR東中野駅東口より徒歩6分. 東中野駅から411m ...&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.2,
+        &quot;supports_paypay&quot;: null
+      }
+    ],
+    &quot;selected_count&quot;: 3
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 4</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_4_synthesis (card_synthesis)</div>
+                <div class="step-sub-title">單步耗時: 1826 ms</div>
+            </div>
+            <span class="step-badge">1826ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">1826 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;cuisine&quot;: &quot;手沖咖啡&quot;,
+    &quot;location&quot;: &quot;神樂版&quot;,
+    &quot;stores_count&quot;: 3
+  },
+  &quot;output&quot;: {
+    &quot;length&quot;: 1191,
+    &quot;card_content&quot;: &quot;🍱 **神樂坂周邊手沖咖啡精選推薦**\n\n根據您提供的候選清單，以下為符合條件的 3 家手沖咖啡館推薦：\n\n---\n\n🥇 **AKHA AMA COFFEE Kagurazaka**\n`AKHA AMA COFFEE Kagurazaka`\n🚶 **步行距離**：從「神樂坂」步行約 6 分鐘 (453m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.7 (957 則評價) / Google 4.5\n💳 **支付方式**：可使用信用卡\n💰 **預算區間**：未提供具體數據\n📍 **老饕推薦理由 (食べログ 口コミ)**：店名源自泰國北部少數民族阿卡族語言中的「母親」，充滿人文故事感。評價提及提供「成人風格的咖啡拿鐵」，適合喜歡獨特風味與氛圍的旅客。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1309/A130905/13248105/)\n\n---\n\n🥈 **シテンコーヒー (Shiten Coffee)**\n`シテンコーヒー`\n🚶 **步行距離**：從「神樂坂」步行約 38 分鐘 (2983m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.3 (75 則評價) / Google 4.8\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：未提供具體數據\n📍 **老饕推薦理由 (食べログ 口コミ)**：位於千代田區外神田，週一至週五營業時間為 08:00-17:00，週六 13:00-17:00，週日公休。Google 高評分顯示其在地口碑極佳，但距離神樂坂較遠，需考量交通時間。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1311/A131101/13234338/)\n\n---\n\n🥉 **coffeestand早川亭**\n`coffeestand早川亭`\n🚶 **步行距離**：從「神樂坂」步行約 12 分鐘 (957m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.2 (49 則評價) / Google 4.9\n💳 **支付方式**：可使用信用卡\n💰 **預算區間**：未提供具體數據\n📍 **老饕推薦理由 (食べログ 口コミ)**：Google 評分高達 4.9，顯示極高的顧客滿意度。雖然 Tabelog 評價數量較少，但位於飯田橋附近，步行可達，適合順路探索。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1319/A131901/13183537/)\n\n---\n\n💡 **特派員提醒**：目前神樂坂方圓 1 公里內僅有 AKHA AMA COFFEE 一家符合條件；若想探索更多選擇，建議擴大範圍至鄰近的飯田橋或外神田商圈。&quot;
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            
+
             <tr class="live-row" onclick="toggleCaseDetails('live-bad8bc5f-ea5c-4b2c-ae50-cc1f4a704e2c')">
                 <td><code>bad8bc5f</code></td>
                 <td><span class="cat-pill">Live Telegram</span></td>
@@ -7511,738 +8079,6 @@
   &quot;output&quot;: {
     &quot;length&quot;: 1386,
     &quot;card_content&quot;: &quot;🍱 **橫濱車站周邊丼飯精選推薦**\n\n🍱 **店名** (中日文對照)：\n`Densetsunosutadonya Yokohamanishiguchiten`\n(傳說中的すた丼 橫濱西口店)\n\n🚶 **步行距離**：從「橫濱車站」步行約 9 分鐘 (700m)\n⭐️ **雙平台評分**：⭐️ Google 3.7 分 (589 則評價) ｜ Tabelog 暫無評分\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：約 ￥1,000 ~ ￥1,500 (依肉量選擇)\n📍 **老饕推薦理由 (Google 在地評價)**：橫濱西口的傳奇「炸豬排丼」名店！必點「原味すた丼」，搭配生蛋與味噌湯，肉片酥脆多汁。特別注意：若逢「Meat Day」想加肉，需先買普通票再口頭告知店員，機器無法直接選加肉，服務態度親切熱情。\n🔗 **店家連結**：[Google Maps 位置](https://www.google.com/maps/search/?api=1&amp;query=Densetsunosutadonya+Yokohamanishiguchiten)\n\n---\n\n🍱 **店名** (中日文對照)：\n`Gohan Susumu 橫濱PORTA店`\n(飯 進 橫濱PORTA店)\n\n🚶 **步行距離**：從「橫濱車站」步行約 2 分鐘 (130m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.5 分 (411 則評價) / Google 4.2\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n💰 **預算區間**：約 ￥800 ~ ￥1,200\n📍 **老饕推薦理由 (食べログ 口コミ)**：位於 JR 橫濱站東口地下街 PORTA 內，交通極其便利。主打平價且飽足感高的丼飯，適合剛下火車或趕時間的旅客快速補充能量，Google 評分高達 4.2 顯示其穩定品質深受大眾喜愛。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/kanagawa/A1401/A140101/14085501/)\n\n---\n\n🍱 **店名** (中日文對照)：\n`三﨑市場橫濱Joinus店`\n(三崎市場 橫濱Joinus店)\n\n🚶 **步行距離**：從「橫濱車站」步行約 2 分鐘 (92m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.3 分 (211 則評價) / Google 3.6\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n💰 **預算區間**：約 ￥1,000 ~ ￥1,500\n📍 **老饕推薦理由 (食べログ 口コミ)**：位於橫濱站西口相鐵 Joinus 地下一層，主打新鮮海鮮丼飯。雖然評分中等，但對於想體驗「市場直送」新鮮度且不想走太遠的旅客來說，是極具便利性的高性價比選擇，營業時間長至晚間 9 點。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/kanagawa/A1401/A140101/14043665/)\n\n💡 特派員提醒：這三家皆以現金為主，請務必備好日圓現鈔；若追求極致炸豬排體驗，建議多花 9 分鐘步行至「傳說中的すた丼」，其餘兩家則勝在出站即達的便利性。&quot;
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-                        </div>
-                    </div>
-                </td>
-            </tr>
-            
-
-            <tr class="live-row" onclick="toggleCaseDetails('live-138dbff7-06e0-4075-b6ed-fb65daa1f8f6')">
-                <td><code>138dbff7</code></td>
-                <td><span class="cat-pill">Live Telegram</span></td>
-                <td class="query-col">橫濱車站附近的好吃丼飯</td>
-                <td class="text-center"><code>N/A</code></td>
-                <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
-                <td class="text-right latency-text">9,181 ms</td>
-            </tr>
-            <tr id="case-live-138dbff7-06e0-4075-b6ed-fb65daa1f8f6" class="stepper-drawer" style="display: none;">
-                <td colspan="6">
-                    <div class="stepper-container">
-                        <div class="drawer-header">
-                            <h4>⚡ 真實線上問答執行軌跡 (Run ID: 138dbff7-06e0-4075-b6ed-fb65daa1f8f6 | 提問時間: 2026-10-11T08:11:39.527432+00:00)</h4>
-                        </div>
-                        <div class="steps-flow">
-                            
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 1</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_1_intent (intent_parser)</div>
-                <div class="step-sub-title">單步耗時: 382 ms</div>
-            </div>
-            <span class="step-badge">382ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">382 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;message&quot;: &quot;橫濱車站附近的好吃丼飯&quot;
-  },
-  &quot;output&quot;: {
-    &quot;intent&quot;: &quot;search&quot;,
-    &quot;cuisine&quot;: &quot;丼飯&quot;,
-    &quot;location&quot;: &quot;橫濱車站&quot;,
-    &quot;modifier&quot;: null,
-    &quot;question&quot;: null,
-    &quot;target_index&quot;: null
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 2</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_2_places (search_nearby_ladder)</div>
-                <div class="step-sub-title">單步耗時: 337 ms</div>
-            </div>
-            <span class="step-badge">337ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">337 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;lat&quot;: 35.46598110000001,
-    &quot;lng&quot;: 139.622062,
-    &quot;keyword&quot;: &quot;丼飯&quot;,
-    &quot;excluded_count&quot;: 0
-  },
-  &quot;output&quot;: {
-    &quot;count&quot;: 4
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 3</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_3_tabelog (parallel_tabelog_enrichment)</div>
-                <div class="step-sub-title">單步耗時: 2614 ms</div>
-            </div>
-            <span class="step-badge">2614ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2614 ms</span></div></div>
-            
-    <div class="aligned-stores-section">
-        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (4 間):</div>
-        <div class="aligned-stores-grid">
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 Densetsunosutadonya Yokohamanishiguchiten</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Google 4.0 (589 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「More than worth for paying..」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 三﨑市場橫濱Joinus店</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.30 (211 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「Good donburi for a quick lunch」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 Gohan Susumu 橫濱PORTA店</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.50 (411 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「I stumbled upon this place and was wondering why there was a long queue even before...」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 吉野家橫濱JOINUS店</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.10 (81 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「Fresh DELICOUS made to order karage rice bowls fo less than a coffee at *bs I didn&#x27;...」</em></div>
-        </div>
-        </div>
-    </div>
-    
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;stores_count&quot;: 4,
-    &quot;stores_searched&quot;: [
-      {
-        &quot;name&quot;: &quot;Densetsunosutadonya Yokohamanishiguchiten&quot;,
-        &quot;phone&quot;: &quot;045-317-2181&quot;,
-        &quot;google_rating&quot;: 3.7
-      },
-      {
-        &quot;name&quot;: &quot;MISAKI-ICHIBA&quot;,
-        &quot;phone&quot;: &quot;045-620-3187&quot;,
-        &quot;google_rating&quot;: 3.6
-      },
-      {
-        &quot;name&quot;: &quot;Gohan Susumu Yokohama Porta&quot;,
-        &quot;phone&quot;: &quot;045-534-4288&quot;,
-        &quot;google_rating&quot;: 4.2
-      },
-      {
-        &quot;name&quot;: &quot;Yoshinoya Yokohama Joinus&quot;,
-        &quot;phone&quot;: &quot;045-577-3747&quot;,
-        &quot;google_rating&quot;: 3.2
-      }
-    ]
-  },
-  &quot;output&quot;: {
-    &quot;aligned_stores&quot;: [
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;Densetsunosutadonya Yokohamanishiguchiten&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: null,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 589,
-        &quot;rating_source&quot;: &quot;Google&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;More than worth for paying..&quot;,
-            &quot;author&quot;: &quot;Arun Prahash&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;More than worth for paying..&quot;
-          },
-          {
-            &quot;text&quot;: &quot;I used to love Sutadon, but I hadn&#x27;t been there in a while.\nWhen I went around 8 PM on a weekend, there was only one other customer inside.\nSeating was counter-only.\nThere were about four staff members.\nThe service was average, but nothing unpleasant happened.\nThe restaurant wasn&#x27;t greasy or anything like that, so it was pleasant.\nThe taste was, for me personally, the same nostalgic taste as before, so I enjoyed it very much.&quot;,
-            &quot;author&quot;: &quot;ぷるぷる&quot;,
-            &quot;rating&quot;: 4,
-            &quot;original_text&quot;: &quot;昔は大好きだったが、最近はご無沙汰であったすた丼。\n土日20時頃に行くと店内には客が一名のみ。\n席はカウンターオンリー。\nスタッフは4名ほどいた。\n接客は普通の対応だが、不快な思いをするようなことは一切なし。\n店内も油でギトギトみたいなことはないので不快感もなし。\n味は個人的には懐かしい味で昔から変わらずだったのでとても美味しく食せた。&quot;
-          },
-          {
-            &quot;text&quot;: &quot;This is the legendary Sutadon restaurant, located about one block northwest of Okano intersection.\nI visited on a Meat Day evening. I ordered the original Sutadon with extra meat. It comes with a raw egg and miso soup.\nMeal tickets must be purchased in advance, and the restaurant has both counter and table seating. The ticket machine does not support the free extra meat on Meat Day, and on the day itself, the extra meat option is displayed as sold out. To get the free extra meat, purchase regular meat and verbally inform the staff when you hand your ticket to them.\nThe customer service was good. The staff confirmed that I wanted extra meat. They also chased after customers who had left something behind outside to hand it to them.\nGiven the good customer service and operation, I will not deduct points for the ticket machine issue.&quot;,
-            &quot;author&quot;: &quot;zeolite kimberlite&quot;,
-            &quot;rating&quot;: 4,
-            &quot;original_text&quot;: &quot;伝説のすた丼屋です。岡野交差点から北西に1ブロックほどの所在です。\n肉の日の夕刻に伺いました。すた丼元祖盛り肉増量をお願いしました。生玉子とお味噌汁付きです。\n食券の事前購入制、店内はカウンター席とテーブル席です。肉の日の肉増量無料に未対応の券売機、当日は肉増量が売り切れ表示の運用です。肉増量無料はお肉普通を購入し、フロアさんに食券を渡すときに口頭で伝えます。\n接客は良い部類です。フロアさんから肉増量の確認がありました。また、フロアさんがお客様の忘れ物を持って外まで追いかけて渡すなどです。\n接客、運用の良さから、券売機の件は減点は見送ります。&quot;
-          },
-          {
-            &quot;text&quot;: &quot;[Legendary Sutadon]\nAbura soba on the way home from drinking?\n[Soup]\nNo, but the sauce was a little too thick and salty.\n[Noodles]\nThick and curly, I quite like it.\n[Toppings]\nChar siu, green onions, raw egg\n\nI had been wanting to try this place on my way home from a party, so I stopped by. I really wanted to try the Sutadon as advertised, but I couldn&#x27;t resist the noodles.\nI didn&#x27;t have high expectations, but the noodles were delicious. The sauce was a little too thick, so I neutralized it with vinegar and chili oil, and I was able to finish it all.\n\nThank you for the meal.&quot;,
-            &quot;author&quot;: &quot;Hase HASE&quot;,
-            &quot;rating&quot;: 3,
-            &quot;original_text&quot;: &quot;【伝説のすた丼】\n飲んだ帰りに油そば？\n【スープ】\nないですが、タレは濃すぎなくらい塩辛い\n【麺】\n太めちぢれで結構好き\n【具】\nチャーシュー、ネギ、生卵\n\n宴会の帰りにかなり気になっていたので寄りました。本当は看板通りすた丼食べたかったのですが、麺の気分に負けました。\nあまり期待していませんでしたが麺はとても美味しかったです。タレが濃すぎたためお酢とラー油で中和、美味しく完食できました。\n\nごちそうさまでした。&quot;
-          },
-          {
-            &quot;text&quot;: &quot;I come here when I occasionally crave junk food.\nI forgot to take a picture of the most important thing: the rice bowl...&quot;,
-            &quot;author&quot;: &quot;こうすけ&quot;,
-            &quot;rating&quot;: 3,
-            &quot;original_text&quot;: &quot;たまにジャンクなものが食べたくなるときにきます\n肝心な丼の写真を撮り忘れた、、、&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: null,
-        &quot;supports_paypay&quot;: null
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;三﨑市場橫濱Joinus店&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140101/14043665/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 211,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;Good donburi for a quick lunch&quot;,
-            &quot;author&quot;: &quot;Faris Yahaya&quot;,
-            &quot;rating&quot;: 4,
-            &quot;original_text&quot;: &quot;Good donburi for a quick lunch&quot;
-          },
-          {
-            &quot;text&quot;: &quot;The portion of the food is big and overall, the taste is good.&quot;,
-            &quot;author&quot;: &quot;Melissa Poh&quot;,
-            &quot;rating&quot;: 4,
-            &quot;original_text&quot;: &quot;The portion of the food is big and overall, the taste is good.&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Very tasty maguro dishes at a very reasonable price.&quot;,
-            &quot;author&quot;: &quot;Reyes2&quot;,
-            &quot;rating&quot;: 4,
-            &quot;original_text&quot;: &quot;Very tasty maguro dishes at a very reasonable price.&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Really really good food!!!!&quot;,
-            &quot;author&quot;: &quot;Victor Hoyos&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;Really really good food!!!!&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Very good prices on some great quality fish!\nEspecially the lunch and late lunch menus.\n\nThe staff also rearranged some tables to accommodate a wheelchair user, which was nice.&quot;,
-            &quot;author&quot;: &quot;Norbi Whitney&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;Very good prices on some great quality fish!\nEspecially the lunch and late lunch menus.\n\nThe staff also rearranged some tables to accommodate a wheelchair user, which was nice.&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.3,
-        &quot;supports_paypay&quot;: false
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;Gohan Susumu 橫濱PORTA店&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140101/14085501/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 411,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;I stumbled upon this place and was wondering why there was a long queue even before opening hours so I decided to give it a try. If you are looking for a healthier/lighter food option, this is the place to go. The food was delicious, particularly the shumai. The furikake/condiments at the table was seriously good with rice.\n\nFortunately I managed to be part of the first batch of customers to enter the store. I was shocked by how long the queue had gotten after I finished my meal.&quot;,
-            &quot;author&quot;: &quot;Robin&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;I stumbled upon this place and was wondering why there was a long queue even before opening hours so I decided to give it a try. If you are looking for a healthier/lighter food option, this is the place to go. The food was delicious, particularly the shumai. The furikake/condiments at the table was seriously good with rice.\n\nFortunately I managed to be part of the first batch of customers to enter the store. I was shocked by how long the queue had gotten after I finished my meal.&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Delightful food.  Food was amazing, tasted like home cooked meals and very well presented.  Free refill for the rice.  Thoroughly enjoyed our lunch here.&quot;,
-            &quot;author&quot;: &quot;Raymond Y&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;Delightful food.  Food was amazing, tasted like home cooked meals and very well presented.  Free refill for the rice.  Thoroughly enjoyed our lunch here.&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Simple and good meal located near Yokohama station. The soup was delicious and I really liked the mini beef patty. There was also an array of sauces and condiments to add extra flavours to your meal.\n\nOverall a quick and easy meal but be prepared to wait a little bit for seats!&quot;,
-            &quot;author&quot;: &quot;dolce bibobi&quot;,
-            &quot;rating&quot;: 4,
-            &quot;original_text&quot;: &quot;Simple and good meal located near Yokohama station. The soup was delicious and I really liked the mini beef patty. There was also an array of sauces and condiments to add extra flavours to your meal.\n\nOverall a quick and easy meal but be prepared to wait a little bit for seats!&quot;
-          },
-          {
-            &quot;text&quot;: &quot;I went for an early dinner around 4pm on a Monday so no wait time. As I was eating, the restaurant was filling up. menu isn’t huge but sometimes that is best. I got the limited seasonal dish which is suppose to be spicy red on the picture menu but came out very mild. soup is tasty and love all the side dishes. There is grated yuzu if you want to change up the soup taste. prompt and polite service. they will explain every dish on tray unless you’re non Japanese speaking.&quot;,
-            &quot;author&quot;: &quot;milky doll&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;I went for an early dinner around 4pm on a Monday so no wait time. As I was eating, the restaurant was filling up. menu isn’t huge but sometimes that is best. I got the limited seasonal dish which is suppose to be spicy red on the picture menu but came out very mild. soup is tasty and love all the side dishes. There is grated yuzu if you want to change up the soup taste. prompt and polite service. they will explain every dish on tray unless you’re non Japanese speaking.&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Would definitely come back here again! The food was delicious, healthy and filling. Each set was so complete, which included 2 pcs of mochi too. Love it, worth trying! ❤️ Do try the furikake and a few condiments on the table too 🤗&quot;,
-            &quot;author&quot;: &quot;ollivia&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;Would definitely come back here again! The food was delicious, healthy and filling. Each set was so complete, which included 2 pcs of mochi too. Love it, worth trying! ❤️ Do try the furikake and a few condiments on the table too 🤗&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.5,
-        &quot;supports_paypay&quot;: false
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;吉野家橫濱JOINUS店&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140101/14086996/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 81,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;Fresh DELICOUS made to order karage rice bowls fo less than a coffee at *bs\nI didn&#x27;t realize this was a chain when i ate here, it was 10:30 and my choice was this or mcDs RIGHT choice.\nWe order 3 dishes and one beer and the total was 16usd if you like fried chicken this is a must try&quot;,
-            &quot;author&quot;: &quot;Marion Frazier&quot;,
-            &quot;rating&quot;: 4,
-            &quot;original_text&quot;: &quot;Fresh DELICOUS made to order karage rice bowls fo less than a coffee at *bs\nI didn&#x27;t realize this was a chain when i ate here, it was 10:30 and my choice was this or mcDs RIGHT choice.\nWe order 3 dishes and one beer and the total was 16usd if you like fried chicken this is a must try&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Using self-order pad. Fast serving speed. High cp value compared with yoshinoya in HK. Have charger port near seat.&quot;,
-            &quot;author&quot;: &quot;橋本奈々未&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;Using self-order pad. Fast serving speed. High cp value compared with yoshinoya in HK. Have charger port near seat.&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Every weekend v use to travel yokohoma ... Same time we ll have nice dinner here and return back.....gd service.and filling food....karagey chicken awesome&quot;,
-            &quot;author&quot;: &quot;anithank ani&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;Every weekend v use to travel yokohoma ... Same time we ll have nice dinner here and return back.....gd service.and filling food....karagey chicken awesome&quot;
-          },
-          {
-            &quot;text&quot;: &quot;So hard to find yours restaurant at the Yokohama Station&quot;,
-            &quot;author&quot;: &quot;htetmyat kaung&quot;,
-            &quot;rating&quot;: 2,
-            &quot;original_text&quot;: &quot;So hard to find yours restaurant at the Yokohama Station&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Very fast&quot;,
-            &quot;author&quot;: &quot;Mario Alvin&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;Very fast&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.1,
-        &quot;supports_paypay&quot;: false
-      }
-    ],
-    &quot;enriched_count&quot;: 4
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 4</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_4_synthesis (card_synthesis_format_fallback)</div>
-                <div class="step-sub-title">單步耗時: 2715 ms</div>
-            </div>
-            <span class="step-badge">2715ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis_format_fallback</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2715 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;cuisine&quot;: &quot;丼飯&quot;,
-    &quot;stores_count&quot;: 4,
-    &quot;invalid_reasons&quot;: [
-      &quot;反引號中的內容未正確對應候選店家店名&quot;
-    ]
-  },
-  &quot;output&quot;: {
-    &quot;length&quot;: 2365,
-    &quot;card_content&quot;: &quot;⚠️ **AI 語意模型連線異常，已為您自動載入直出精準美食卡片：**\n\n精選「丼飯」指標餐廳如下：\n\n### 1. `Densetsunosutadonya Yokohamanishiguchiten`\n🚶 **步行距離**：從「橫濱車站」步行約 9 分鐘 (700m)\n⭐️ **評分資訊**：Google 3.7 分 (Tabelog 暫無評分，以 Google 評價為依據)\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n📍 **地址**：1-chōme-13-11 Okano, Nishi Ward, Yokohama, Kanagawa 220-0073, Japan\n📍 **老饕推薦理由 (食べログ 口コミ)**：This is the legendary Sutadon restaurant, located about one block northwest of Okano intersection.\nI visited on a Meat Day evening. I ordered the original Sutadon with extra meat. It comes with a raw egg and miso soup.\nMeal tickets must be purchased in advance, and the restaurant has both counter and table seating. The ticket machine does not support the free extra meat on Meat Day, and on the day itself, the extra meat option is displayed as sold out. To get the free extra meat, purchase regular meat and verbally inform the staff when you hand your ticket to them.\nThe customer service was good. The staff confirmed that I wanted extra meat. They also chased after customers who had left something behind outside to hand it to them.\nGiven the good customer service and operation, I will not deduct points for the ticket machine issue.\n\n### 2. `三﨑市場橫濱Joinus店`\n🚶 **步行距離**：從「橫濱車站」步行約 2 分鐘 (92m)\n⭐️ **Tabelog 評分**：3.30 分 (211 則評價)\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n📍 **地址**：1-chōme-5-1 Minamisaiwai, Nishi Ward, Yokohama, Kanagawa 220-0005, Japan\n🔗 [食べログ詳細頁面](https://tabelog.com/kanagawa/A1401/A140101/14043665/)\n📍 **老饕推薦理由 (食べログ 口コミ)**：詳細資訊 ; 無法預約 · 橫濱站西口相鐵Joinas地下一層 . 距离橫濱114 米 · 星期一，星期二，星期三，星期四，星期五，星期六，星期日. 11:00 - 21:00. L.O. 20:45. □店休日 ...\n\n### 3. `Gohan Susumu 橫濱PORTA店`\n🚶 **步行距離**：從「橫濱車站」步行約 2 分鐘 (130m)\n⭐️ **Tabelog 評分**：3.50 分 (411 則評價)\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n📍 **地址**：Japan, 〒220-0011 Kanagawa, Yokohama, Nishi Ward, Takashima, 2-chōme−16, 横浜東口地下街ポルタ B1\n🔗 [食べログ詳細頁面](https://tabelog.com/kanagawa/A1401/A140101/14085501/)\n📍 **老饕推薦理由 (食べログ 口コミ)**：JR橫濱站中央閘口、京急線橫濱站中央閘口步行1分鐘 。東急東橫線正面閘口、南閘口、相鐵線2樓閘口、橫濱市營地下鐵閘口步行5分鐘。\n\n### 4. `吉野家橫濱JOINUS店`\n🚶 **步行距離**：從「橫濱車站」步行約 3 分鐘 (226m)\n⭐️ **Tabelog 評分**：3.10 分 (81 則評價)\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n📍 **地址**：1-chōme-5-1 Minamisaiwai, Nishi Ward, Yokohama, Kanagawa 220-0005, Japan\n🔗 [食べログ詳細頁面](https://tabelog.com/kanagawa/A1401/A140101/14086996/)\n📍 **老饕推薦理由 (食べログ 口コミ)**：詳細資訊 ; 無法預約 · 橫濱站南西口徒步1分鐘 . 距离橫濱243 米 · 星期一，星期二，星期三，星期四，星期五，星期六，星期日. 04:00 - 01:00. 營業時間和節假日可能會發生變化 ...&quot;
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-                        </div>
-                    </div>
-                </td>
-            </tr>
-            
-
-            <tr class="live-row" onclick="toggleCaseDetails('live-cbb1fa66-9db9-450e-bb90-003aec7333ff')">
-                <td><code>cbb1fa66</code></td>
-                <td><span class="cat-pill">Live Telegram</span></td>
-                <td class="query-col">橫濱車站附近的好吃丼飯</td>
-                <td class="text-center"><code>N/A</code></td>
-                <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
-                <td class="text-right latency-text">12,156 ms</td>
-            </tr>
-            <tr id="case-live-cbb1fa66-9db9-450e-bb90-003aec7333ff" class="stepper-drawer" style="display: none;">
-                <td colspan="6">
-                    <div class="stepper-container">
-                        <div class="drawer-header">
-                            <h4>⚡ 真實線上問答執行軌跡 (Run ID: cbb1fa66-9db9-450e-bb90-003aec7333ff | 提問時間: 2026-10-11T08:07:25.043005+00:00)</h4>
-                        </div>
-                        <div class="steps-flow">
-                            
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 1</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_1_intent (intent_parser)</div>
-                <div class="step-sub-title">單步耗時: 3556 ms</div>
-            </div>
-            <span class="step-badge">3556ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">3556 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;message&quot;: &quot;橫濱車站附近的好吃丼飯&quot;
-  },
-  &quot;output&quot;: {
-    &quot;intent&quot;: &quot;search&quot;,
-    &quot;cuisine&quot;: &quot;丼飯&quot;,
-    &quot;location&quot;: &quot;橫濱車站&quot;,
-    &quot;modifier&quot;: null,
-    &quot;question&quot;: null,
-    &quot;target_index&quot;: null
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 2</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_2_places (search_nearby_ladder)</div>
-                <div class="step-sub-title">單步耗時: 539 ms</div>
-            </div>
-            <span class="step-badge">539ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">539 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;lat&quot;: 35.46598110000001,
-    &quot;lng&quot;: 139.622062,
-    &quot;keyword&quot;: &quot;丼飯&quot;,
-    &quot;excluded_count&quot;: 0
-  },
-  &quot;output&quot;: {
-    &quot;count&quot;: 4
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 3</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_3_tabelog (parallel_tabelog_enrichment)</div>
-                <div class="step-sub-title">單步耗時: 2980 ms</div>
-            </div>
-            <span class="step-badge">2980ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2980 ms</span></div></div>
-            
-    <div class="aligned-stores-section">
-        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (4 間):</div>
-        <div class="aligned-stores-grid">
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 Densetsunosutadonya Yokohamanishiguchiten</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Google 4.0 (589 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「More than worth for paying..」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 三﨑市場橫濱Joinus店</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.30 (211 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「詳細資訊 ; 無法預約 · 橫濱站西口相鐵Joinas地下一層 . 距离橫濱114 米 · 星期一，星期二，星期三，星期四，星期五，星期六，星期日. 11:00 - ...」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 Gohan Susumu 橫濱PORTA店</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.50 (411 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「JR橫濱站中央閘口、京急線橫濱站中央閘口步行1分鐘 。東急東橫線正面閘口、南閘口、相鐵線2樓閘口、橫濱市營地下鐵閘口步行5分鐘。」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 吉野家橫濱JOINUS店</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.10 (81 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「詳細資訊 ; 無法預約 · 橫濱站南西口徒步1分鐘 . 距离橫濱243 米 · 星期一，星期二，星期三，星期四，星期五，星期六，星期日. 04:00 - 01:00....」</em></div>
-        </div>
-        </div>
-    </div>
-    
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;stores_count&quot;: 4,
-    &quot;stores_searched&quot;: [
-      {
-        &quot;name&quot;: &quot;Densetsunosutadonya Yokohamanishiguchiten&quot;,
-        &quot;phone&quot;: &quot;045-317-2181&quot;,
-        &quot;google_rating&quot;: 3.7
-      },
-      {
-        &quot;name&quot;: &quot;MISAKI-ICHIBA&quot;,
-        &quot;phone&quot;: &quot;045-620-3187&quot;,
-        &quot;google_rating&quot;: 3.6
-      },
-      {
-        &quot;name&quot;: &quot;Gohan Susumu Yokohama Porta&quot;,
-        &quot;phone&quot;: &quot;045-534-4288&quot;,
-        &quot;google_rating&quot;: 4.2
-      },
-      {
-        &quot;name&quot;: &quot;Yoshinoya Yokohama Joinus&quot;,
-        &quot;phone&quot;: &quot;045-577-3747&quot;,
-        &quot;google_rating&quot;: 3.2
-      }
-    ]
-  },
-  &quot;output&quot;: {
-    &quot;aligned_stores&quot;: [
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;Densetsunosutadonya Yokohamanishiguchiten&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: null,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 589,
-        &quot;rating_source&quot;: &quot;Google&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;More than worth for paying..&quot;,
-            &quot;author&quot;: &quot;Arun Prahash&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;More than worth for paying..&quot;
-          },
-          {
-            &quot;text&quot;: &quot;I used to love Sutadon, but I hadn&#x27;t been there in a while.\nWhen I went around 8 PM on a weekend, there was only one other customer inside.\nSeating was counter-only.\nThere were about four staff members.\nThe service was average, but nothing unpleasant happened.\nThe restaurant wasn&#x27;t greasy or anything like that, so it was pleasant.\nThe taste was, for me personally, the same nostalgic taste as before, so I enjoyed it very much.&quot;,
-            &quot;author&quot;: &quot;ぷるぷる&quot;,
-            &quot;rating&quot;: 4,
-            &quot;original_text&quot;: &quot;昔は大好きだったが、最近はご無沙汰であったすた丼。\n土日20時頃に行くと店内には客が一名のみ。\n席はカウンターオンリー。\nスタッフは4名ほどいた。\n接客は普通の対応だが、不快な思いをするようなことは一切なし。\n店内も油でギトギトみたいなことはないので不快感もなし。\n味は個人的には懐かしい味で昔から変わらずだったのでとても美味しく食せた。&quot;
-          },
-          {
-            &quot;text&quot;: &quot;This is the legendary Sutadon restaurant, located about one block northwest of Okano intersection.\nI visited on a Meat Day evening. I ordered the original Sutadon with extra meat. It comes with a raw egg and miso soup.\nMeal tickets must be purchased in advance, and the restaurant has both counter and table seating. The ticket machine does not support the free extra meat on Meat Day, and on the day itself, the extra meat option is displayed as sold out. To get the free extra meat, purchase regular meat and verbally inform the staff when you hand your ticket to them.\nThe customer service was good. The staff confirmed that I wanted extra meat. They also chased after customers who had left something behind outside to hand it to them.\nGiven the good customer service and operation, I will not deduct points for the ticket machine issue.&quot;,
-            &quot;author&quot;: &quot;zeolite kimberlite&quot;,
-            &quot;rating&quot;: 4,
-            &quot;original_text&quot;: &quot;伝説のすた丼屋です。岡野交差点から北西に1ブロックほどの所在です。\n肉の日の夕刻に伺いました。すた丼元祖盛り肉増量をお願いしました。生玉子とお味噌汁付きです。\n食券の事前購入制、店内はカウンター席とテーブル席です。肉の日の肉増量無料に未対応の券売機、当日は肉増量が売り切れ表示の運用です。肉増量無料はお肉普通を購入し、フロアさんに食券を渡すときに口頭で伝えます。\n接客は良い部類です。フロアさんから肉増量の確認がありました。また、フロアさんがお客様の忘れ物を持って外まで追いかけて渡すなどです。\n接客、運用の良さから、券売機の件は減点は見送ります。&quot;
-          },
-          {
-            &quot;text&quot;: &quot;[Legendary Sutadon]\nAbura soba on the way home from drinking?\n[Soup]\nNo, but the sauce was a little too thick and salty.\n[Noodles]\nThick and curly, I quite like it.\n[Toppings]\nChar siu, green onions, raw egg\n\nI had been wanting to try this place on my way home from a party, so I stopped by. I really wanted to try the Sutadon as advertised, but I couldn&#x27;t resist the noodles.\nI didn&#x27;t have high expectations, but the noodles were delicious. The sauce was a little too thick, so I neutralized it with vinegar and chili oil, and I was able to finish it all.\n\nThank you for the meal.&quot;,
-            &quot;author&quot;: &quot;Hase HASE&quot;,
-            &quot;rating&quot;: 3,
-            &quot;original_text&quot;: &quot;【伝説のすた丼】\n飲んだ帰りに油そば？\n【スープ】\nないですが、タレは濃すぎなくらい塩辛い\n【麺】\n太めちぢれで結構好き\n【具】\nチャーシュー、ネギ、生卵\n\n宴会の帰りにかなり気になっていたので寄りました。本当は看板通りすた丼食べたかったのですが、麺の気分に負けました。\nあまり期待していませんでしたが麺はとても美味しかったです。タレが濃すぎたためお酢とラー油で中和、美味しく完食できました。\n\nごちそうさまでした。&quot;
-          },
-          {
-            &quot;text&quot;: &quot;I come here when I occasionally crave junk food.\nI forgot to take a picture of the most important thing: the rice bowl...&quot;,
-            &quot;author&quot;: &quot;こうすけ&quot;,
-            &quot;rating&quot;: 3,
-            &quot;original_text&quot;: &quot;たまにジャンクなものが食べたくなるときにきます\n肝心な丼の写真を撮り忘れた、、、&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: null,
-        &quot;supports_paypay&quot;: null
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;三﨑市場橫濱Joinus店&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140101/14043665/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 211,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;詳細資訊 ; 無法預約 · 橫濱站西口相鐵Joinas地下一層 . 距离橫濱114 米 · 星期一，星期二，星期三，星期四，星期五，星期六，星期日. 11:00 - 21:00. L.O. 20:45. □店休日 ...&quot;,
-            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
-            &quot;source&quot;: &quot;tabelog&quot;,
-            &quot;original_text&quot;: &quot;詳細資訊 ; 無法預約 · 橫濱站西口相鐵Joinas地下一層 . 距离橫濱114 米 · 星期一，星期二，星期三，星期四，星期五，星期六，星期日. 11:00 - 21:00. L.O. 20:45. □店休日 ...&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.3,
-        &quot;supports_paypay&quot;: false
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;Gohan Susumu 橫濱PORTA店&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140101/14085501/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 411,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;JR橫濱站中央閘口、京急線橫濱站中央閘口步行1分鐘 。東急東橫線正面閘口、南閘口、相鐵線2樓閘口、橫濱市營地下鐵閘口步行5分鐘。&quot;,
-            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
-            &quot;source&quot;: &quot;tabelog&quot;,
-            &quot;original_text&quot;: &quot;JR橫濱站中央閘口、京急線橫濱站中央閘口步行1分鐘 。東急東橫線正面閘口、南閘口、相鐵線2樓閘口、橫濱市營地下鐵閘口步行5分鐘。&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.5,
-        &quot;supports_paypay&quot;: false
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;吉野家橫濱JOINUS店&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140101/14086996/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 81,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;詳細資訊 ; 無法預約 · 橫濱站南西口徒步1分鐘 . 距离橫濱243 米 · 星期一，星期二，星期三，星期四，星期五，星期六，星期日. 04:00 - 01:00. 營業時間和節假日可能會發生變化 ...&quot;,
-            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
-            &quot;source&quot;: &quot;tabelog&quot;,
-            &quot;original_text&quot;: &quot;詳細資訊 ; 無法預約 · 橫濱站南西口徒步1分鐘 . 距离橫濱243 米 · 星期一，星期二，星期三，星期四，星期五，星期六，星期日. 04:00 - 01:00. 營業時間和節假日可能會發生變化 ...&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.1,
-        &quot;supports_paypay&quot;: false
-      }
-    ],
-    &quot;enriched_count&quot;: 4
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 4</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_4_synthesis (card_synthesis_format_fallback)</div>
-                <div class="step-sub-title">單步耗時: 1841 ms</div>
-            </div>
-            <span class="step-badge">1841ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis_format_fallback</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">1841 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;cuisine&quot;: &quot;丼飯&quot;,
-    &quot;stores_count&quot;: 4,
-    &quot;invalid_reasons&quot;: [
-      &quot;反引號中的內容未正確對應候選店家店名&quot;
-    ]
-  },
-  &quot;output&quot;: {
-    &quot;length&quot;: 1555,
-    &quot;card_content&quot;: &quot;⚠️ **AI 語意模型連線異常，已為您自動載入直出精準美食卡片：**\n\n精選「丼飯」指標餐廳如下：\n\n### 1. `Densetsunosutadonya Yokohamanishiguchiten`\n🚶 **步行距離**：從「橫濱車站」步行約 9 分鐘 (700m)\n⭐️ **評分資訊**：Google 3.7 分 (Tabelog 暫無評分，以 Google 評價為依據)\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n📍 **地址**：1-chōme-13-11 Okano, Nishi Ward, Yokohama, Kanagawa 220-0073, Japan\n📍 **老饕推薦理由 (Google 在地評價)**：More than worth for paying..\n\n### 2. `三﨑市場橫濱Joinus店`\n🚶 **步行距離**：從「橫濱車站」步行約 2 分鐘 (92m)\n⭐️ **Tabelog 評分**：3.30 分 (211 則評價)\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n📍 **地址**：1-chōme-5-1 Minamisaiwai, Nishi Ward, Yokohama, Kanagawa 220-0005, Japan\n🔗 [食べログ詳細頁面](https://tabelog.com/kanagawa/A1401/A140101/14043665/)\n📍 **老饕推薦理由 (食べログ 口コミ)**：詳細資訊 ; 無法預約 · 橫濱站西口相鐵Joinas地下一層 . 距离橫濱114 米 · 星期一，星期二，星期三，星期四，星期五，星期六，星期日. 11:00 - 21:00. L.O. 20:45. □店休日 ...\n\n### 3. `Gohan Susumu 橫濱PORTA店`\n🚶 **步行距離**：從「橫濱車站」步行約 2 分鐘 (130m)\n⭐️ **Tabelog 評分**：3.50 分 (411 則評價)\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n📍 **地址**：Japan, 〒220-0011 Kanagawa, Yokohama, Nishi Ward, Takashima, 2-chōme−16, 横浜東口地下街ポルタ B1\n🔗 [食べログ詳細頁面](https://tabelog.com/kanagawa/A1401/A140101/14085501/)\n📍 **老饕推薦理由 (食べログ 口コミ)**：JR橫濱站中央閘口、京急線橫濱站中央閘口步行1分鐘 。東急東橫線正面閘口、南閘口、相鐵線2樓閘口、橫濱市營地下鐵閘口步行5分鐘。\n\n### 4. `吉野家橫濱JOINUS店`\n🚶 **步行距離**：從「橫濱車站」步行約 3 分鐘 (226m)\n⭐️ **Tabelog 評分**：3.10 分 (81 則評價)\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n📍 **地址**：1-chōme-5-1 Minamisaiwai, Nishi Ward, Yokohama, Kanagawa 220-0005, Japan\n🔗 [食べログ詳細頁面](https://tabelog.com/kanagawa/A1401/A140101/14086996/)\n📍 **老饕推薦理由 (食べログ 口コミ)**：詳細資訊 ; 無法預約 · 橫濱站南西口徒步1分鐘 . 距离橫濱243 米 · 星期一，星期二，星期三，星期四，星期五，星期六，星期日. 04:00 - 01:00. 營業時間和節假日可能會發生變化 ...&quot;
   }
 }</code></pre>
             </details>
