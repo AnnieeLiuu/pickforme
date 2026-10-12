@@ -20,3 +20,19 @@ def test_format_place_item():
     item_2 = client._format_place_item(raw_data[1])
     assert item_2["phone"] == "+81 92-263-7585"
     assert item_2["user_ratings_total"] == 3400
+
+
+def test_format_place_item_payment_options():
+    client = GooglePlacesClient(api_key="mock_key")
+    raw_item = {
+        "id": "place_123",
+        "displayName": {"text": "Araiya"},
+        "paymentOptions": {
+            "acceptsCreditCards": True,
+            "acceptsCashOnly": False,
+        },
+    }
+    formatted = client._format_place_item(raw_item)
+    assert formatted["accepts_credit_cards"] is True
+    assert formatted["accepts_cash_only"] is False
+    assert formatted["payment_options"]["acceptsCreditCards"] is True

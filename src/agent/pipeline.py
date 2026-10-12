@@ -83,22 +83,37 @@ def get_recommendation_card_prompt() -> str:
 def format_payment_methods(
     supports_paypay: Optional[bool] = None,
     credit_cards: Optional[list[str]] = None,
+    accepts_credit_cards: Optional[bool] = None,
+    accepts_cash_only: Optional[bool] = None,
 ) -> str:
-    """將 PayPay 與信用卡資訊轉換為旅客友善的支付方式說明字串"""
+    """將 Google Places (New) 與 Tabelog 支付方式雙源融合轉換為旅客友善的說明字串 (消除假陰性武斷斷言)"""
     parts: list[str] = []
-    if credit_cards and len(credit_cards) > 0:
-        cards_str = "、".join(credit_cards[:3])
-        parts.append(f"信用卡 ({cards_str})")
 
+    # 1. 信用卡判定：若 Tabelog 有明確卡別優先展示卡別；若 Google 標記可刷卡亦採信
+    if credit_cards and len(credit_cards) > 0:
+        if credit_cards == ["可"]:
+            parts.append("信用卡")
+        else:
+            cards_str = "、".join(credit_cards[:3])
+            parts.append(f"信用卡 ({cards_str})")
+    elif accepts_credit_cards is True:
+        parts.append("信用卡")
+
+    # 2. PayPay 行動支付判定
     if supports_paypay is True:
         parts.append("PayPay")
 
     if parts:
         return "可使用 " + " / ".join(parts)
-    elif supports_paypay is False and (credit_cards is not None and len(credit_cards) == 0):
+
+    # 3. 現金判定：必須有明確信號指出「僅收現金」
+    if accepts_cash_only is True or (credit_cards is not None and len(credit_cards) == 0 and supports_paypay is False):
         return "現金為主 (不支援信用卡/行動支付，請備足現鈔)"
-    elif supports_paypay is False:
-        return "不支援 PayPay (建議備足日圓現鈔或實體信用卡)"
+
+    # 4. 未知/未明確標記：溫和提示
+    if supports_paypay is False:
+        return "現金為主 (不支援 PayPay，建議備足日圓現鈔)"
+
     return "現金為主 (建議備足日圓現鈔)"
 
 
@@ -403,8 +418,13 @@ class FoodRecommendationFSM:
                 rid = cached.get("id")
                 if rid and place.get("reviews"):
                     asyncio.create_task(self._index_store_reviews(rid, place["reviews"]))
-                pay_cards = cached.get("credit_cards") or []
-                pay_desc = format_payment_methods(cached.get("supports_paypay"), pay_cards)
+                pay_cards = cached.get("credit_cards")
+                pay_desc = format_payment_methods(
+                    supports_paypay=cached.get("supports_paypay"),
+                    credit_cards=pay_cards,
+                    accepts_credit_cards=place.get("accepts_credit_cards"),
+                    accepts_cash_only=place.get("accepts_cash_only"),
+                )
                 return {
                     **place,
                     "restaurant_id": str(rid) if rid else None,
@@ -507,9 +527,14 @@ class FoodRecommendationFSM:
                     or cand.get("rating")
                 )
                 rev_count = details.get("review_count") or cand.get("review_count")
-                cards_list = details.get("credit_cards") or cand.get("credit_cards") or []
+                cards_list = details.get("credit_cards") or cand.get("credit_cards")
                 paypay_val = details.get("supports_paypay")
-                pay_desc = format_payment_methods(paypay_val, cards_list)
+                pay_desc = format_payment_methods(
+                    supports_paypay=paypay_val,
+                    credit_cards=cards_list,
+                    accepts_credit_cards=place.get("accepts_credit_cards"),
+                    accepts_cash_only=place.get("accepts_cash_only"),
+                )
 
                 # 存入快取 (包含評分、評論數與百名店榮譽、支付資訊)
                 tabelog_save_data = {
@@ -857,8 +882,14 @@ class FoodRecommendationFSM:
 
             if s.get("price_dinner"):
                 lines.append(f"💰 **預算**：晚餐 {s.get('price_dinner')}")
-            if s.get("payment_methods_desc"):
-                lines.append(f"💳 **支付方式**：{s.get('payment_methods_desc')}")
+            pay_desc = s.get("payment_methods_desc") or format_payment_methods(
+                supports_paypay=s.get("supports_paypay"),
+                credit_cards=s.get("credit_cards"),
+                accepts_credit_cards=s.get("accepts_credit_cards"),
+                accepts_cash_only=s.get("accepts_cash_only"),
+            )
+            if pay_desc:
+                lines.append(f"💳 **支付方式**：{pay_desc}")
             if s.get("address"):
                 lines.append(f"📍 **地址**：{s.get('address')}")
             if s.get("tabelog_url"):
@@ -975,7 +1006,10 @@ class FoodRecommendationFSM:
                 else f"從「{origin_label}」步行約 3~5 分鐘"
             )
             pay_desc = s.get("payment_methods_desc") or format_payment_methods(
-                s.get("supports_paypay"), s.get("credit_cards")
+                supports_paypay=s.get("supports_paypay"),
+                credit_cards=s.get("credit_cards"),
+                accepts_credit_cards=s.get("accepts_credit_cards"),
+                accepts_cash_only=s.get("accepts_cash_only"),
             )
             prompt_content += (
                 f"\n店家 {idx} (老饕排名：{rank_badge})：\n"

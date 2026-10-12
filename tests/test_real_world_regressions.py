@@ -906,3 +906,82 @@ async def test_case_15_yokohama_sukiyaki_zero_hallucination_and_grounding():
     # 驗證包含少於 3 家時的誠實引導
     assert "特派員提醒" in result_card
     assert "1 家" in result_card
+
+
+@pytest.mark.asyncio
+async def test_case_16_payment_options_dual_source_fusion_prevent_false_negative():
+    """Case 16: 雙源支付方式融合與防假陰性誤判 (Google Places paymentOptions + Tabelog)
+
+    真實案例回歸：
+    使用者提問：「荒井屋明明就可以刷卡 為什麼訊息說不行呢？」
+    根本原因：Tabelog 內頁遭 403 阻擋降級至 Web Grounding，導致 Tabelog 支付方式為 None，
+    系統卻誤將 None 當作 [] (不支援信用卡)，進而鐵口直斷「現金為主 (不支援信用卡/行動支付)」。
+    但 Google Places 原生已明確標註 acceptsCreditCards: True！
+
+    守門防禦目標：
+    1. 雙源融合：Tabelog 缺失時，Google Places 的 accepts_credit_cards 成功補位，精準標記「可使用 信用卡」。
+    2. 防武斷否定：資料未知 (None) 時絕不武斷斷言「不支援信用卡」，僅溫和提示「建議備足現鈔」。
+    3. 卡片產出：荒井屋推薦卡片中支付方式為「可使用 信用卡」，徹底消除烏龍誤殺。
+    """
+    from src.agent.pipeline import format_payment_methods
+
+    # 1. 單元層面：驗證 format_payment_methods 雙源融合邏輯
+    # (a) Tabelog 缺 (None)，但 Google 標記可刷卡 -> 判定為可使用信用卡
+    pay_google_rescue = format_payment_methods(
+        supports_paypay=None,
+        credit_cards=None,
+        accepts_credit_cards=True,
+    )
+    assert pay_google_rescue == "可使用 信用卡"
+    assert "不支援信用卡" not in pay_google_rescue
+
+    # (b) Tabelog 標記具體卡別 -> 優先呈現詳細卡別
+    pay_tabelog_cards = format_payment_methods(
+        credit_cards=["VISA", "Master", "JCB"],
+        accepts_credit_cards=True,
+    )
+    assert pay_tabelog_cards == "可使用 信用卡 (VISA、Master、JCB)"
+
+    # (c) 雙邊皆未知 (None) -> 溫和提示，絕不宣稱不支援信用卡
+    pay_unknown = format_payment_methods(
+        supports_paypay=None,
+        credit_cards=None,
+        accepts_credit_cards=None,
+        accepts_cash_only=None,
+    )
+    assert pay_unknown == "現金為主 (建議備足日圓現鈔)"
+    assert "不支援信用卡" not in pay_unknown
+
+    # (d) 明確標記僅收現金 -> 始可輸出不支援信用卡
+    pay_cash_only = format_payment_methods(accepts_cash_only=True)
+    assert "不支援信用卡/行動支付" in pay_cash_only
+
+    # 2. 端到端卡片生成驗證：以荒井屋本店為例
+    fsm = FoodRecommendationFSM(
+        places_client=MagicMock(),
+        tabelog_scraper=MagicMock(),
+        entity_resolver=MagicMock(),
+        llm_client=MagicMock(),
+    )
+    araiya_store = [
+        {
+            "name": "Araiya",
+            "name_ja": "荒井屋 本店",
+            "tabelog_url": "https://tabelog.com/kanagawa/A1401/A140104/14003068/",
+            "tabelog_rating": 3.60,
+            "review_count": 664,
+            "google_rating": 4.3,
+            "walking_desc": "從「橫濱公園」步行約 14 分鐘 (1,069m)",
+            "supports_paypay": None,
+            "credit_cards": None,
+            "accepts_credit_cards": True,  # Google Places 救援
+            "accepts_cash_only": False,
+            "price_dinner": "￥3,000~￥5,000",
+            "address": "神奈川県横浜市中区旭町",
+        }
+    ]
+
+    # 透過模板生成直出卡片
+    card = fsm._render_template_fallback_card(araiya_store, "壽喜燒")
+    assert "可使用 信用卡" in card
+    assert "不支援信用卡/行動支付" not in card

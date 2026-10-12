@@ -42,6 +42,7 @@ class GooglePlacesClient:
                 "places.userRatingCount,"
                 "places.formattedAddress,"
                 "places.regularOpeningHours,"
+                "places.paymentOptions,"
                 "places.reviews"
             ),
             "X-Goog-LanguageCode": "ja",
@@ -97,6 +98,7 @@ class GooglePlacesClient:
                 "places.userRatingCount,"
                 "places.formattedAddress,"
                 "places.regularOpeningHours,"
+                "places.paymentOptions,"
                 "places.reviews"
             ),
             "X-Goog-LanguageCode": "ja",
@@ -216,6 +218,12 @@ class GooglePlacesClient:
                     }
                 )
 
+        # 支付選項 (Google Places API New 原生支付資訊)
+        payment_options = item.get("paymentOptions", {})
+        accepts_credit_cards = payment_options.get("acceptsCreditCards")
+        accepts_cash_only = payment_options.get("acceptsCashOnly")
+        accepts_nfc = payment_options.get("acceptsNfc")
+
         return {
             "google_place_id": item.get("id", ""),
             "name": name_text,
@@ -227,5 +235,9 @@ class GooglePlacesClient:
             "google_rating": item.get("rating"),
             "user_ratings_total": item.get("userRatingCount"),
             "open_now": open_now,
+            "payment_options": payment_options,
+            "accepts_credit_cards": accepts_credit_cards,
+            "accepts_cash_only": accepts_cash_only,
+            "accepts_nfc": accepts_nfc,
             "reviews": reviews_list,
         }

@@ -200,8 +200,8 @@ class TabelogScraper:
                     "phone": fallback_candidate.get("phone", ""),
                     "awards": fallback_candidate.get("awards", []),
                     "hyakumeiten": fallback_candidate.get("hyakumeiten", []),
-                    "supports_paypay": fallback_candidate.get("supports_paypay", False),
-                    "credit_cards": fallback_candidate.get("credit_cards", []),
+                    "supports_paypay": fallback_candidate.get("supports_paypay"),
+                    "credit_cards": fallback_candidate.get("credit_cards"),
                     "sample_reviews": fallback_candidate.get("sample_reviews", []),
                 }
             return {}
@@ -312,8 +312,8 @@ class TabelogScraper:
         ]
 
         # 支付方式解析 (カード & QRコード)
-        supports_paypay = False
-        credit_cards = []
+        supports_paypay: Optional[bool] = None
+        credit_cards: Optional[list[str]] = None
         for tr in soup.select(".rstinfo-table tr, #contents-rstdata tr"):
             th = tr.select_one("th")
             td = tr.select_one("td")
@@ -323,10 +323,13 @@ class TabelogScraper:
             td_text = td.get_text(strip=True)
 
             if "QRコード" in th_text or "決済" in th_text:
-                if "PayPay" in td_text:
-                    supports_paypay = True
+                supports_paypay = "PayPay" in td_text
             elif "カード" in th_text:
-                credit_cards = [card for card in ["VISA", "Master", "JCB", "AMEX", "Diners"] if card in td_text]
+                if "不可" in td_text or "利用不可" in td_text:
+                    credit_cards = []
+                else:
+                    cards = [card for card in ["VISA", "Master", "JCB", "AMEX", "Diners"] if card in td_text]
+                    credit_cards = cards if cards else (["可"] if "可" in td_text else [])
 
         # 口コミ評論摘錄 (解析詳細頁面首頁之熱門食評列表)
         sample_reviews = []
