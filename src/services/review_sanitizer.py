@@ -69,9 +69,9 @@ FOOD_TASTE_KEYWORDS = [
 ]
 
 
-def is_pure_metadata_noise(text: str) -> bool:
+def is_pure_metadata_noise(text: Any) -> bool:
     """判斷給定的短評片段是否主要由營業時間或交通指引等非口感雜訊構成"""
-    if not text or not text.strip():
+    if not isinstance(text, str) or not text.strip():
         return True
 
     clean = text.strip()
@@ -93,9 +93,9 @@ def is_pure_metadata_noise(text: str) -> bool:
     return False
 
 
-def sanitize_review_snippet(raw_text: str) -> Optional[str]:
+def sanitize_review_snippet(raw_text: Any) -> Optional[str]:
     """清洗食評摘要，剔除生硬營業時間與交通句子，保留口感核心精華"""
-    if not raw_text or not raw_text.strip():
+    if not isinstance(raw_text, str) or not raw_text.strip():
         return None
 
     text = raw_text.strip().replace("\xa0", " ").replace("\r\n", " ").replace("\n", " ")

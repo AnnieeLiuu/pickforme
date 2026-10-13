@@ -822,6 +822,40 @@ class FoodRecommendationFSM:
 
         # 4. 老饕綜合加權重排，精選 Top 3
         top_stores = self.rank_and_select_top_stores(final_enriched, top_k=3)
+
+        # 5. 為最終入選的 Top 店家平行豐富定向老饕食評 (Tabelog 口コミ定向擷取，自然全收至多 5 則)
+        async def _enrich_foodie_reviews(store: dict[str, Any]) -> None:
+            from src.services.review_sanitizer import is_pure_metadata_noise
+
+            existing_revs = store.get("sample_reviews") or []
+            has_authentic = any(
+                isinstance(r, dict) and not is_pure_metadata_noise(r.get("text", "")) for r in existing_revs
+            )
+            if not has_authentic and hasattr(self.tabelog_scraper, "fetch_tabelog_reviews"):
+                search_name = store.get("name_ja") or store.get("name") or ""
+                tabelog_fetcher = getattr(self.tabelog_scraper, "fetch_tabelog_reviews", None)
+                tabelog_revs: list[dict[str, Any]] = []
+                if callable(tabelog_fetcher):
+                    res = tabelog_fetcher(search_name, max_reviews=5)
+                    if asyncio.iscoroutine(res):
+                        raw_revs = await res
+                        if isinstance(raw_revs, list):
+                            tabelog_revs = raw_revs
+                    elif isinstance(res, list):
+                        tabelog_revs = res
+
+                if isinstance(tabelog_revs, list) and len(tabelog_revs) > 0:
+                    store["sample_reviews"] = tabelog_revs
+                    first_text = tabelog_revs[0].get("text") if isinstance(tabelog_revs[0], dict) else None
+                    if isinstance(first_text, str):
+                        store["foodie_review_highlight"] = first_text
+                    rid = store.get("restaurant_id")
+                    if rid:
+                        asyncio.create_task(self._index_store_reviews(rid, tabelog_revs))
+
+        if top_stores:
+            await asyncio.gather(*[_enrich_foodie_reviews(s) for s in top_stores])
+
         latency = int((time.time() - t0) * 1000)
 
         stores_input_summary = [

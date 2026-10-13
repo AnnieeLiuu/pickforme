@@ -118,31 +118,16 @@ class TabelogScraper:
             hyaku_matches = re.findall(r"([^\s\"\'\>]+ 百名店 \d{4})", text)
             hyakumeiten = list(dict.fromkeys(hyaku_matches))
 
-            # 口コミ評論摘錄 (由 Web Grounding 摘要卡片中提煉日文老饕食評)
-            sample_reviews: list[dict[str, Any]] = []
-            desc_tag = item.select_one(".sw-Card__description, .sw-Card__summary, p")
-            desc_text = desc_tag.get_text(" ", strip=True) if desc_tag else text
-            # 清理導航字眼與評分雜訊
-            clean_desc = re.sub(r"https?://\S+|評価[：:\s]+[0-9\.]+|[0-9,]+件のレビュー", "", desc_text).strip()
-            if len(clean_desc) > 20:
-                sample_reviews.append(
-                    {
-                        "source": "tabelog",
-                        "title": "食べログ 評判・口コミ",
-                        "text": clean_desc,
-                        "original_text": clean_desc,
-                    }
-                )
-
-            # 若此 URL 已記錄過，優先補全遺漏的評分與食評資料
+            # 若此 URL 已記錄過，優先補全遺漏的評分與百名店資料
             if clean_url in seen_urls:
                 for c in candidates:
                     if c["tabelog_url"] == clean_url:
                         if c.get("tabelog_rating") is None and rating is not None:
                             c["tabelog_rating"] = rating
                             c["review_count"] = review_count
-                        if not c.get("sample_reviews") and sample_reviews:
-                            c["sample_reviews"] = sample_reviews
+                        if not c.get("hyakumeiten") and hyakumeiten:
+                            c["hyakumeiten"] = hyakumeiten
+                            c["awards"] = hyakumeiten
                 continue
 
             candidates.append(
@@ -153,7 +138,7 @@ class TabelogScraper:
                     "review_count": review_count,
                     "hyakumeiten": hyakumeiten,
                     "awards": hyakumeiten,
-                    "sample_reviews": sample_reviews,
+                    "sample_reviews": [],
                     "phone": "",
                     "address": "",
                 }
@@ -165,6 +150,56 @@ class TabelogScraper:
         if candidates:
             logger.info(f"Web Grounding recovered {len(candidates)} Tabelog candidates for '{store_name}'")
         return candidates
+
+    async def fetch_tabelog_reviews(self, store_name: str, max_reviews: int = 5) -> list[dict[str, Any]]:
+        """定向提取特定店家之真實老饕口コミ (單一職責，單次 Yahoo 查詢自然全收)"""
+        clean_name = re.sub(r"[（\(\-\|\:\[].*$", "", store_name).strip()
+        if not clean_name:
+            return []
+        query = f'site:tabelog.com "{clean_name}" 口コミ'
+        encoded = urllib.parse.quote_plus(query)
+        search_url = f"https://search.yahoo.co.jp/search?p={encoded}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+            "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
+        }
+        reviews: list[dict[str, Any]] = []
+        try:
+            async with httpx.AsyncClient(timeout=4.0) as client:
+                resp = await client.get(search_url, headers=headers)
+                if resp.status_code != 200:
+                    return []
+                soup = BeautifulSoup(resp.text, "html.parser")
+                from src.services.review_sanitizer import is_pure_metadata_noise
+
+                for card in soup.select("section, .sw-Card"):
+                    title_elem = card.select_one("h3")
+                    title_txt = title_elem.get_text(strip=True) if title_elem else "食べログ 口コミ"
+                    desc_tag = card.select_one(".sw-Card__description, .sw-Card__summary, p")
+                    if not desc_tag:
+                        continue
+                    clean_text = re.sub(
+                        r"https?://\S+|評価[：:\s]+[0-9\.]+|[0-9,]+件のレビュー",
+                        "",
+                        desc_tag.get_text(" ", strip=True),
+                    ).strip()
+                    # 排除「xxx さんの口コミです」空洞索引句
+                    if re.search(r"^[^\n]{0,30}さんの口コミです", clean_text) and len(clean_text) < 60:
+                        continue
+                    if len(clean_text) > 25 and not is_pure_metadata_noise(clean_text):
+                        reviews.append(
+                            {
+                                "source": "tabelog",
+                                "title": title_txt[:40],
+                                "text": clean_text,
+                                "original_text": clean_text,
+                            }
+                        )
+                        if len(reviews) >= max_reviews:
+                            break
+        except Exception as e:
+            logger.warning(f"Error fetching tabelog reviews for '{store_name}': {e}")
+        return reviews
 
     async def search_tabelog_candidates(self, store_name: str, area_name: str = "") -> list[dict[str, Any]]:
         """搜尋 Tabelog 候選店家頁面 (Fail-Fast 降級至 Web Grounding)"""
