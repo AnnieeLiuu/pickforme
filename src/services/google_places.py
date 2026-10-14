@@ -51,6 +51,7 @@ class GooglePlacesClient:
         body: dict[str, Any] = {
             "textQuery": query,
             "maxResultCount": min(max_results, 20),
+            "languageCode": "ja",
         }
 
         if lat is not None and lng is not None:
@@ -112,6 +113,7 @@ class GooglePlacesClient:
                 }
             },
             "maxResultCount": 20,
+            "languageCode": "ja",
         }
 
         # 若指定了美食/料理關鍵字，優先使用 TextSearch 確保精準命中專門店 (杜絕百貨公司或無關地標)
@@ -215,6 +217,7 @@ class GooglePlacesClient:
                         "original_text": r_orig,
                         "rating": r.get("rating"),
                         "author": (r.get("authorAttribution") or {}).get("displayName", ""),
+                        "source": "google",
                     }
                 )
 

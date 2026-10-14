@@ -2,6 +2,10 @@
 
 > **專案定位**：專為日本旅遊設計的智慧美食代理人（AI Agent）。解決外出時「距離近、評分高、有開門、評論符合偏好」的搜尋痛點。對外作為 DS 轉 AI 工程師的作品集，展示自研 Tool-calling Agent 迴圈、Neon + GCS 冷熱資料庫分層、Telegram 互動介面、電話優先實體匹配與四層自動化 Eval 評估框架。
 
+> [!IMPORTANT]
+> **系統全局導航與根因排查手冊 (System Blueprint & Debugging SOP)**：
+> 凡涉及排查現場推薦異常、實體對齊決策或食評覆蓋時，請唯一參考 **[`docs/SOP_ROOT_CAUSE_DEBUGGING.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/SOP_ROOT_CAUSE_DEBUGGING.md)**，內含 **「高精度多維全景河流圖 (Global Blueprint River)」**、**「6 維個案深入盤點矩陣」** 與 **「5 步根因排查 SOP」**。
+
 ---
 
 ## 📐 1. 系統整體架構 (System Architecture)

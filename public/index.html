@@ -3362,6 +3362,1038 @@
                 </thead>
                 <tbody>
                     
+            <tr class="live-row" onclick="toggleCaseDetails('live-15660873-0ea1-44ee-8dfd-e63e203f18e3')">
+                <td><code>15660873</code></td>
+                <td><span class="cat-pill">Live Telegram</span></td>
+                <td class="query-col">新宿三丁目車站附近的咖啡店</td>
+                <td class="text-center"><code>N/A</code></td>
+                <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+                <td class="text-right latency-text">14,959 ms</td>
+            </tr>
+            <tr id="case-live-15660873-0ea1-44ee-8dfd-e63e203f18e3" class="stepper-drawer" style="display: none;">
+                <td colspan="6">
+                    <div class="stepper-container">
+                        <div class="drawer-header">
+                            <h4>⚡ 真實線上問答執行軌跡 (Run ID: 15660873-0ea1-44ee-8dfd-e63e203f18e3 | 提問時間: 2026-10-13T14:42:04.494972+00:00)</h4>
+                        </div>
+                        <div class="steps-flow">
+                            
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 1</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_1_intent (intent_parser)</div>
+                <div class="step-sub-title">單步耗時: 524 ms</div>
+            </div>
+            <span class="step-badge">524ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">524 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;message&quot;: &quot;新宿三丁目車站附近的咖啡店&quot;
+  },
+  &quot;output&quot;: {
+    &quot;intent&quot;: &quot;search&quot;,
+    &quot;cuisine&quot;: &quot;咖啡店&quot;,
+    &quot;location&quot;: &quot;新宿三丁目車站&quot;,
+    &quot;modifier&quot;: null,
+    &quot;question&quot;: null,
+    &quot;target_index&quot;: null
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 2</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_2_places (search_nearby_ladder)</div>
+                <div class="step-sub-title">單步耗時: 421 ms</div>
+            </div>
+            <span class="step-badge">421ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">421 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;lat&quot;: 35.6908823,
+    &quot;lng&quot;: 139.7048821,
+    &quot;keyword&quot;: &quot;咖啡店&quot;,
+    &quot;excluded_count&quot;: 0
+  },
+  &quot;output&quot;: {
+    &quot;count&quot;: 6
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 3</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_3_tabelog (parallel_tabelog_enrichment)</div>
+                <div class="step-sub-title">單步耗時: 8187 ms</div>
+            </div>
+            <span class="step-badge">8187ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">8187 ms</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (3 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 Analog新宿</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.50 (599 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「Good selection of deserts and smoking is allowed」</em></div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 富久栄珈琲 新宿店</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.20 (28 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「Perfect coffee and kind staff. No tables, though. Take away only - it is in the hal...」</em></div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 BAR&amp;CAFE Sonora+s</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.10 (16 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「We were three Americans, one of whom spoke pretty good Japanese, who were made to f...」</em></div>
+        </div>
+        </div>
+    </div>
+    
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;stores_count&quot;: 6,
+    &quot;stores_searched&quot;: [
+      {
+        &quot;name&quot;: &quot;BAR&amp;CAFE Sonora+s／ソノラス&quot;,
+        &quot;phone&quot;: &quot;03-6380-1313&quot;,
+        &quot;google_rating&quot;: 5
+      },
+      {
+        &quot;name&quot;: &quot;Café Stanley&quot;,
+        &quot;phone&quot;: &quot;&quot;,
+        &quot;google_rating&quot;: 5
+      },
+      {
+        &quot;name&quot;: &quot;Analog Cafe&quot;,
+        &quot;phone&quot;: &quot;&quot;,
+        &quot;google_rating&quot;: 5
+      },
+      {
+        &quot;name&quot;: &quot;Cafe Miuette&quot;,
+        &quot;phone&quot;: &quot;&quot;,
+        &quot;google_rating&quot;: 4.9
+      },
+      {
+        &quot;name&quot;: &quot;富久栄珈琲 FUKUEI Coffee and Chocolate 新宿 東京店（Tokyo・コーヒー・Matcha）&quot;,
+        &quot;phone&quot;: &quot;03-6380-4653&quot;,
+        &quot;google_rating&quot;: 4.9
+      },
+      {
+        &quot;name&quot;: &quot;murmure cafe et table（ミュルミュール）&quot;,
+        &quot;phone&quot;: &quot;03-6273-2876&quot;,
+        &quot;google_rating&quot;: 4.9
+      }
+    ]
+  },
+  &quot;output&quot;: {
+    &quot;aligned_stores&quot;: [
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;Analog新宿&quot;,
+        &quot;rank_badge&quot;: &quot;🥇&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13148918/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 599,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;Good selection of deserts and smoking is allowed&quot;,
+            &quot;author&quot;: &quot;Olga Vasilieva&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;Good selection of deserts and smoking is allowed&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.5,
+        &quot;supports_paypay&quot;: null
+      },
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;富久栄珈琲 新宿店&quot;,
+        &quot;rank_badge&quot;: &quot;🥈&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13304424/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 28,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;Perfect coffee and kind staff.\nNo tables, though. Take away only - it is in the hall of the shopping mall. Sweets are amazing! Brownie is incredible: supple, buttery taste with strong punch of cocoa. The best thing: no margarine and other inflammatory junk, clean ingredients (as per their label)&quot;,
+            &quot;author&quot;: &quot;Lela&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;Perfect coffee and kind staff.\nNo tables, though. Take away only - it is in the hall of the shopping mall. Sweets are amazing! Brownie is incredible: supple, buttery taste with strong punch of cocoa. The best thing: no margarine and other inflammatory junk, clean ingredients (as per their label)&quot;
+          },
+          {
+            &quot;text&quot;: &quot;For a place calllled coffee and chocolate, it&#x27;s diabolical to not have mocha.\nI&#x27;m also very annoyed that a coffee place only opens at 11AM\nI settled for hot chocolate (700¥) with an espresso shot (250¥). It drinks smoothly like a latte but tastes luxurious like a good milk chocolate, a little on the sweeter side. The espresso shot is strong and you can taste the coffee notes from the shot. while delicious, it&#x27;s ridiculously expensive. I probably wouldn&#x27;t go out of my way to get it.\nI also got the chocolate sandwich biscuit (530¥ - you get a 100¥ discount when purchased with a drink).&quot;,
+            &quot;author&quot;: &quot;celine yee&quot;,
+            &quot;rating&quot;: 4,
+            &quot;original_text&quot;: &quot;For a place calllled coffee and chocolate, it&#x27;s diabolical to not have mocha.\nI&#x27;m also very annoyed that a coffee place only opens at 11AM\nI settled for hot chocolate (700¥) with an espresso shot (250¥). It drinks smoothly like a latte but tastes luxurious like a good milk chocolate, a little on the sweeter side. The espresso shot is strong and you can taste the coffee notes from the shot. while delicious, it&#x27;s ridiculously expensive. I probably wouldn&#x27;t go out of my way to get it.\nI also got the chocolate sandwich biscuit (530¥ - you get a 100¥ discount when purchased with a drink).&quot;
+          },
+          {
+            &quot;text&quot;: &quot;Free tasting allows you to have a good try of various coffee blends before purchasing. The staff are nice and helpful.&quot;,
+            &quot;author&quot;: &quot;LOKa De&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;Free tasting allows you to have a good try of various coffee blends before purchasing. The staff are nice and helpful.&quot;
+          },
+          {
+            &quot;text&quot;: &quot;We had a delicious coffee and a small chocolate and orange tart that was absolutely amazing 😍 They have many varieties of coffee that you can try before choosing the one you want. It&#x27;s a highly recommended place to try something different, even though it&#x27;s only takeaway.&quot;,
+            &quot;author&quot;: &quot;R. M.&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;We had a delicious coffee and a small chocolate and orange tart that was absolutely amazing 😍 They have many varieties of coffee that you can try before choosing the one you want. It&#x27;s a highly recommended place to try something different, even though it&#x27;s only takeaway.&quot;
+          },
+          {
+            &quot;text&quot;: &quot;I was skeptical about the almost 5 stars, but wow: the coffee beans here are great. It is so worth the visit.\n\nThey allow you to sample almost all the beans they sell. Both blend and geisha/first class beans have great flavor. You can buy drinks of your preferred beans and/or buy beans, both whole or crushed\n\nI bought a sake infused coffee bean bag, and had their geisha bean hot coffee made to order.&quot;,
+            &quot;author&quot;: &quot;JP G&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;I was skeptical about the almost 5 stars, but wow: the coffee beans here are great. It is so worth the visit.\n\nThey allow you to sample almost all the beans they sell. Both blend and geisha/first class beans have great flavor. You can buy drinks of your preferred beans and/or buy beans, both whole or crushed\n\nI bought a sake infused coffee bean bag, and had their geisha bean hot coffee made to order.&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.2,
+        &quot;supports_paypay&quot;: null
+      },
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;BAR&amp;CAFE Sonora+s&quot;,
+        &quot;rank_badge&quot;: &quot;🥉&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13318905/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 16,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;We were three Americans, one of whom spoke pretty good Japanese, who were made to feel so welcome in the cozy bar. Im the chatty one in the group, so much of our exchange was through Google translate,  but I feel like we had a really nice conversation. Got some awesome recommendations for our upcoming day trip to Kyoto! The cocktails were so good and artfully made! Arigato gozaimasu for being so patient with me! and shoutout to Cha-chan!&quot;,
+            &quot;author&quot;: &quot;lauren denne&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;We were three Americans, one of whom spoke pretty good Japanese, who were made to feel so welcome in the cozy bar. Im the chatty one in the group, so much of our exchange was through Google translate,  but I feel like we had a really nice conversation. Got some awesome recommendations for our upcoming day trip to Kyoto! The cocktails were so good and artfully made! Arigato gozaimasu for being so patient with me! and shoutout to Cha-chan!&quot;
+          },
+          {
+            &quot;text&quot;: &quot;I can really recommend Sonara to anyone looking for delicious cocktails and lovely bartenders. We came during a quiet time and got custom-made cocktails, which were genuinely some of the best I have had!&quot;,
+            &quot;author&quot;: &quot;Mira Robertson&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;I can really recommend Sonara to anyone looking for delicious cocktails and lovely bartenders. We came during a quiet time and got custom-made cocktails, which were genuinely some of the best I have had!&quot;
+          },
+          {
+            &quot;text&quot;: &quot;Hidden beneath a lively street, I was drawn in by a staircase leading down to the basement—and discovered a newly opened bar.\n\nThe space is clean, calm, and perfect for enjoying a quiet drink. In the afternoon, they also serve coffee; my latte came with an adorable piece of latte art made by the barista. It felt like the perfect place to slow down for a moment in busy Tokyo.\n\nAt night, the bar offers beautifully balanced cocktails that are simply delicious. One standout from their special menu was a pineapple–jasmine cocktail with cinnamon. The aroma of cinnamon greets you first, followed by the bright acidity and rich tropical flavors of the pineapple. It was truly impressive—definitely a cocktail program worth visiting for. 🍸✨&quot;,
+            &quot;author&quot;: &quot;KARIN AZUMA&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;Hidden beneath a lively street, I was drawn in by a staircase leading down to the basement—and discovered a newly opened bar.\n\nThe space is clean, calm, and perfect for enjoying a quiet drink. In the afternoon, they also serve coffee; my latte came with an adorable piece of latte art made by the barista. It felt like the perfect place to slow down for a moment in busy Tokyo.\n\nAt night, the bar offers beautifully balanced cocktails that are simply delicious. One standout from their special menu was a pineapple–jasmine cocktail with cinnamon. The aroma of cinnamon greets you first, followed by the bright acidity and rich tropical flavors of the pineapple. It was truly impressive—definitely a cocktail program worth visiting for. 🍸✨&quot;
+          },
+          {
+            &quot;text&quot;: &quot;They were so friendly and interesting to talk to. It was a great off the beaten path bar experience. Very simple and interesting drinks that all tasted good. Will want to visit next time I am here in Shinjuku. Fuji was very nice and interesting to talk to. I would recommend anyone to come here.&quot;,
+            &quot;author&quot;: &quot;Samaria Howard&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;They were so friendly and interesting to talk to. It was a great off the beaten path bar experience. Very simple and interesting drinks that all tasted good. Will want to visit next time I am here in Shinjuku. Fuji was very nice and interesting to talk to. I would recommend anyone to come here.&quot;
+          },
+          {
+            &quot;text&quot;: &quot;Amazing staff and service, extremely kind and sociable, gave us many recommendations for other restaurants. and cocktails were unbelievable especially the more expensive ones, thank you Fuji and syunnpei !&quot;,
+            &quot;author&quot;: &quot;N A&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;Amazing staff and service, extremely kind and sociable, gave us many recommendations for other restaurants. and cocktails were unbelievable especially the more expensive ones, thank you Fuji and syunnpei !&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.1,
+        &quot;supports_paypay&quot;: null
+      }
+    ],
+    &quot;selected_count&quot;: 3
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 4</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_4_synthesis (card_synthesis)</div>
+                <div class="step-sub-title">單步耗時: 1871 ms</div>
+            </div>
+            <span class="step-badge">1871ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">1871 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;cuisine&quot;: &quot;咖啡店&quot;,
+    &quot;location&quot;: &quot;新宿三丁目車站&quot;,
+    &quot;stores_count&quot;: 3
+  },
+  &quot;output&quot;: {
+    &quot;length&quot;: 1048,
+    &quot;card_content&quot;: &quot;🍱 **Analog新宿**\n`Analog新宿`\n🚶 **步行距離**：從「新宿三丁目車站」步行約 2 分鐘 (142m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.5 (599 則評價) / Google 5.0\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：未提供\n📍 **老饕推薦理由 (食べログ 口コミ)**：甜點選擇豐富，且店內允許吸菸，適合喜歡特定氛圍的咖啡愛好者。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1304/A130401/13148918/)\n\n🍱 **富久栄珈琲 新宿店**\n`富久栄珈琲 新宿店`\n🚶 **步行距離**：從「新宿三丁目車站」步行約 1 分鐘 (76m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.2 (28 則評價) / Google 4.9\n💳 **支付方式**：可使用 信用卡 / 感應支付\n💰 **預算區間**：未提供\n📍 **推薦理由 (Google 在地評價)**：咖啡完美且服務親切，甜點驚人（特別是布朗尼，口感柔軟、黃油香氣濃郁且可可味強勁），使用乾淨食材無人造奶油。注意：僅限外帶，無座位。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1304/A130401/13304424/)\n\n🍱 **BAR&amp;CAFE Sonora+s**\n`BAR&amp;CAFE Sonora+s`\n🚶 **步行距離**：從「新宿三丁目車站」步行約 4 分鐘 (282m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.1 (16 則評價) / Google 5.0\n💳 **支付方式**：可使用 信用卡\n💰 **預算區間**：未提供\n📍 **老饕推薦理由 (食べログ 口コミ)**：隱藏在熱鬧街道下的地下室空間，乾淨寧靜。下午提供精緻拉花咖啡，夜晚則有平衡感極佳的雞尾酒（如鳳梨茉莉花肉桂特調），是忙碌東京中放鬆的絕佳去處。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1304/A130401/13318905/)\n\n💡 特派員提醒：這三家店風格差異極大，若追求經典甜點與咖啡請選「富久栄珈琲」（僅外帶），若想安靜坐下來享受氛圍與拉花咖啡則推薦「Sonora+s」；「Analog新宿」則適合喜歡吸菸環境與多樣甜點的旅客。&quot;
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            
+
+            <tr class="live-row" onclick="toggleCaseDetails('live-25f12315-8bd0-4073-b7ad-880c2307a8cf')">
+                <td><code>25f12315</code></td>
+                <td><span class="cat-pill">Live Telegram</span></td>
+                <td class="query-col">神保町車站附近的手沖咖啡店</td>
+                <td class="text-center"><code>N/A</code></td>
+                <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+                <td class="text-right latency-text">24,682 ms</td>
+            </tr>
+            <tr id="case-live-25f12315-8bd0-4073-b7ad-880c2307a8cf" class="stepper-drawer" style="display: none;">
+                <td colspan="6">
+                    <div class="stepper-container">
+                        <div class="drawer-header">
+                            <h4>⚡ 真實線上問答執行軌跡 (Run ID: 25f12315-8bd0-4073-b7ad-880c2307a8cf | 提問時間: 2026-10-13T14:41:01.006714+00:00)</h4>
+                        </div>
+                        <div class="steps-flow">
+                            
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 1</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_1_intent (intent_parser)</div>
+                <div class="step-sub-title">單步耗時: 626 ms</div>
+            </div>
+            <span class="step-badge">626ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">626 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;message&quot;: &quot;神保町車站附近的手沖咖啡店&quot;
+  },
+  &quot;output&quot;: {
+    &quot;intent&quot;: &quot;search&quot;,
+    &quot;cuisine&quot;: &quot;手沖咖啡&quot;,
+    &quot;location&quot;: &quot;神保町車站&quot;,
+    &quot;modifier&quot;: null,
+    &quot;question&quot;: null,
+    &quot;target_index&quot;: null
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 2</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_2_places (search_nearby_ladder)</div>
+                <div class="step-sub-title">單步耗時: 416 ms</div>
+            </div>
+            <span class="step-badge">416ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">416 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;lat&quot;: 35.696966,
+    &quot;lng&quot;: 139.7562635,
+    &quot;keyword&quot;: &quot;手沖咖啡&quot;,
+    &quot;excluded_count&quot;: 0
+  },
+  &quot;output&quot;: {
+    &quot;count&quot;: 6
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 3</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_3_tabelog (parallel_tabelog_enrichment)</div>
+                <div class="step-sub-title">單步耗時: 17051 ms</div>
+            </div>
+            <span class="step-badge">17051ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">17051 ms</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (3 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 Pharos Coffee</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.40 (87 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「A High-Resolution Lunch Break  My lunch hour here is less of a break and more of a ...」</em></div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 Cafe Ataraxia</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.30 (55 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「The best coffe I ever had! The menu is really detailed, and the ambience is perfect...」</em></div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 coffeestand早川亭</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.20 (49 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「This place deserves all the good reviews. It’s a great place to get some coffee and...」</em></div>
+        </div>
+        </div>
+    </div>
+    
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;stores_count&quot;: 6,
+    &quot;stores_searched&quot;: [
+      {
+        &quot;name&quot;: &quot;HAYAKAWA coffee&quot;,
+        &quot;phone&quot;: &quot;&quot;,
+        &quot;google_rating&quot;: 4.9
+      },
+      {
+        &quot;name&quot;: &quot;Reze Cafe&quot;,
+        &quot;phone&quot;: &quot;&quot;,
+        &quot;google_rating&quot;: 4.9
+      },
+      {
+        &quot;name&quot;: &quot;Rendeaf Coffee&quot;,
+        &quot;phone&quot;: &quot;&quot;,
+        &quot;google_rating&quot;: 4.9
+      },
+      {
+        &quot;name&quot;: &quot;cafe ataraxia&quot;,
+        &quot;phone&quot;: &quot;03-6268-9187&quot;,
+        &quot;google_rating&quot;: 4.7
+      },
+      {
+        &quot;name&quot;: &quot;Pharos Coffee Jimbocho&quot;,
+        &quot;phone&quot;: &quot;&quot;,
+        &quot;google_rating&quot;: 4.5
+      },
+      {
+        &quot;name&quot;: &quot;SHI-TEN coffee&quot;,
+        &quot;phone&quot;: &quot;&quot;,
+        &quot;google_rating&quot;: 4.8
+      }
+    ]
+  },
+  &quot;output&quot;: {
+    &quot;aligned_stores&quot;: [
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;Pharos Coffee&quot;,
+        &quot;rank_badge&quot;: &quot;🥇&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1310/A131003/13281433/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 87,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;A High-Resolution Lunch Break\n\nMy lunch hour here is less of a break and more of a \&quot;sensory reboot.\&quot;\nIn a world of noisy notification pings and monochrome tasks, Pharos Coffee acts as a filter. Their light roast isn&#x27;t just a drink; it&#x27;s liquid mindfulness. As the floral and stone-fruit notes bloom in the cup, the mental fog of the morning simply evaporates.\nSurrounded by curated art, sipping on a brew that tastes like bottled sunlight, I feel my internal focus snapping back into high resolution. I walk back to the office not just caffeinated, but recalibrated. A truly sophisticated escape for those who value clarity as much as flavor.&quot;,
+            &quot;author&quot;: &quot;PaPi&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;A High-Resolution Lunch Break\n\nMy lunch hour here is less of a break and more of a \&quot;sensory reboot.\&quot;\nIn a world of noisy notification pings and monochrome tasks, Pharos Coffee acts as a filter. Their light roast isn&#x27;t just a drink; it&#x27;s liquid mindfulness. As the floral and stone-fruit notes bloom in the cup, the mental fog of the morning simply evaporates.\nSurrounded by curated art, sipping on a brew that tastes like bottled sunlight, I feel my internal focus snapping back into high resolution. I walk back to the office not just caffeinated, but recalibrated. A truly sophisticated escape for those who value clarity as much as flavor.&quot;
+          },
+          {
+            &quot;text&quot;: &quot;Visited Pharos after a long day of walking and errand running.\n\nArrived a little before 4PM.\n\nThey have a beautiful layout with indoor and outdoor seating. There is a small gallery adjacent to the cafe.\n\nDecently large selection of beans.\n\nI asked for which beans were better iced. The barista promptly gave her recommendations.\n\nI chose the Panama geisha. When it arrived, I immediately smelled its floral nature. The flavors were a mix of fruity and floral.\n\nIt was so good, that I ordered a second cup but from Ethiopia. What stood out with the second cup was how relaxing it was.\n\nI enjoyed my short afternoon coffee at Pharos.\n\nWill definetely be back when in the area.&quot;,
+            &quot;author&quot;: &quot;Neil Jimenez&quot;,
+            &quot;rating&quot;: 4,
+            &quot;original_text&quot;: &quot;Visited Pharos after a long day of walking and errand running.\n\nArrived a little before 4PM.\n\nThey have a beautiful layout with indoor and outdoor seating. There is a small gallery adjacent to the cafe.\n\nDecently large selection of beans.\n\nI asked for which beans were better iced. The barista promptly gave her recommendations.\n\nI chose the Panama geisha. When it arrived, I immediately smelled its floral nature. The flavors were a mix of fruity and floral.\n\nIt was so good, that I ordered a second cup but from Ethiopia. What stood out with the second cup was how relaxing it was.\n\nI enjoyed my short afternoon coffee at Pharos.\n\nWill definetely be back when in the area.&quot;
+          },
+          {
+            &quot;text&quot;: &quot;The vibes of the place was on point, with good WiFi to work with. More than that, the quality of the coffee is of high caliber. You can definitely tell the beans were specialty and well roasted for filter coffee.\n\nMy only disappointment was that the latte were not made with espresso shots, but just milk with filter coffee, which tasted abit bland and masked the taste of the beans, that was a waste to me.&quot;,
+            &quot;author&quot;: &quot;Caleb Leong&quot;,
+            &quot;rating&quot;: 4,
+            &quot;original_text&quot;: &quot;The vibes of the place was on point, with good WiFi to work with. More than that, the quality of the coffee is of high caliber. You can definitely tell the beans were specialty and well roasted for filter coffee.\n\nMy only disappointment was that the latte were not made with espresso shots, but just milk with filter coffee, which tasted abit bland and masked the taste of the beans, that was a waste to me.&quot;
+          },
+          {
+            &quot;text&quot;: &quot;Almost certainly one of the best speciality coffee shops in Tokyo. Extremely reasonably priced and reasonably portioned.\n\nThe only negative is that the seating/chairs are fairly uncomfortable, probably to encourage customers not to linger. Obviously not an issue if taking to go.&quot;,
+            &quot;author&quot;: &quot;John Moses&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;Almost certainly one of the best speciality coffee shops in Tokyo. Extremely reasonably priced and reasonably portioned.\n\nThe only negative is that the seating/chairs are fairly uncomfortable, probably to encourage customers not to linger. Obviously not an issue if taking to go.&quot;
+          },
+          {
+            &quot;text&quot;: &quot;A thoughtfully curated selection of filter coffees in a calm, minimalist space. No espresso; just a focused filter pour-over menu. A very knowledgeable barista explaining the flavour profiles before you drink. It’s a refreshing contrast to the crowds at Glitch Coffee just around the corner.&quot;,
+            &quot;author&quot;: &quot;Mark Lupul&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;A thoughtfully curated selection of filter coffees in a calm, minimalist space. No espresso; just a focused filter pour-over menu. A very knowledgeable barista explaining the flavour profiles before you drink. It’s a refreshing contrast to the crowds at Glitch Coffee just around the corner.&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.4,
+        &quot;supports_paypay&quot;: null
+      },
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;Cafe Ataraxia&quot;,
+        &quot;rank_badge&quot;: &quot;🥈&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1310/A131003/13270644/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 55,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;The best coffe I ever had! The menu is really detailed, and the ambience is perfect as well. The egg muffin was also yum! What a great find. I will definitely come here again with my friends. Thank you for the great service.&quot;,
+            &quot;author&quot;: &quot;Joyeeta Kar&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;The best coffe I ever had! The menu is really detailed, and the ambience is perfect as well. The egg muffin was also yum! What a great find. I will definitely come here again with my friends. Thank you for the great service.&quot;
+          },
+          {
+            &quot;text&quot;: &quot;The atmosphere in this cafe was impeccable. Smooth classical music played from the gramophone, while we sipped the best coffee we had in Tokyo. The red bean paste sweet was great and so was the hygiene of the place. The owners went above and beyond in order to serve us and refill our beverages, while also changing the records playing regularly. They also cared to speak a little Greek to us after i noted that we are from Greece. I wholeheartedly reccomend this wonderful cafe that will forever stay with us after we return home!! Please, go there and experience this for yourself!&quot;,
+            &quot;author&quot;: &quot;John Psar&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;The atmosphere in this cafe was impeccable. Smooth classical music played from the gramophone, while we sipped the best coffee we had in Tokyo. The red bean paste sweet was great and so was the hygiene of the place. The owners went above and beyond in order to serve us and refill our beverages, while also changing the records playing regularly. They also cared to speak a little Greek to us after i noted that we are from Greece. I wholeheartedly reccomend this wonderful cafe that will forever stay with us after we return home!! Please, go there and experience this for yourself!&quot;
+          },
+          {
+            &quot;text&quot;: &quot;Every part, every detail is memorable. I&#x27;ve visited many places regarding old recordings, classical cafes, but here stays the BEST. You would totally agree when you first enter this cafe, and when you hear music.\nOf course, coffee is also very nice. Full of aroma, well balanced. You would definitely want to visit here again, like I do.&quot;,
+            &quot;author&quot;: &quot;최낙웅&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;Every part, every detail is memorable. I&#x27;ve visited many places regarding old recordings, classical cafes, but here stays the BEST. You would totally agree when you first enter this cafe, and when you hear music.\nOf course, coffee is also very nice. Full of aroma, well balanced. You would definitely want to visit here again, like I do.&quot;
+          },
+          {
+            &quot;text&quot;: &quot;I first came here two years ago and never stopped thinking about this cafe. The owner is extremely kind, welcoming, and knowledgeable. I minored in music and to be surrounded by such a marvelous collection of records and instruments is a great privilege. Having coffee and sweets here while listening to timeless music is truly one of the most unique and wonderful experiences I’ve ever had, and not just in Tokyo. It’s magical. I will always come back here.&quot;,
+            &quot;author&quot;: &quot;Roxanne P&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;I first came here two years ago and never stopped thinking about this cafe. The owner is extremely kind, welcoming, and knowledgeable. I minored in music and to be surrounded by such a marvelous collection of records and instruments is a great privilege. Having coffee and sweets here while listening to timeless music is truly one of the most unique and wonderful experiences I’ve ever had, and not just in Tokyo. It’s magical. I will always come back here.&quot;
+          },
+          {
+            &quot;text&quot;: &quot;Perfect stopover for coffee and sweets after a day exploring jimbocho’s brilliant bookstores. The cafe is at B1 level, take an elevator down. You can read through your finds and enjoy the classical music picked by the owner!&quot;,
+            &quot;author&quot;: &quot;Nadeeya Salleh&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;Perfect stopover for coffee and sweets after a day exploring jimbocho’s brilliant bookstores. The cafe is at B1 level, take an elevator down. You can read through your finds and enjoy the classical music picked by the owner!&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.3,
+        &quot;supports_paypay&quot;: null
+      },
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;coffeestand早川亭&quot;,
+        &quot;rank_badge&quot;: &quot;🥉&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1319/A131901/13183537/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 49,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;This place deserves all the good reviews. It’s a great place to get some coffee and the guy running it was super nice and accommodating. There are a few counter seats and the space is relatively small. I ordered the hot caramel latte and it was really good. He makes his own caramel which I thought was cool. I want to go back and have a pour over as I was he’s him make several for other customers and he did so with the utmost care. Definitely coming back and want to try the basque cheesecake.&quot;,
+            &quot;author&quot;: &quot;Alright Food Reviews&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;This place deserves all the good reviews. It’s a great place to get some coffee and the guy running it was super nice and accommodating. There are a few counter seats and the space is relatively small. I ordered the hot caramel latte and it was really good. He makes his own caramel which I thought was cool. I want to go back and have a pour over as I was he’s him make several for other customers and he did so with the utmost care. Definitely coming back and want to try the basque cheesecake.&quot;
+          },
+          {
+            &quot;text&quot;: &quot;An incredible place to come to for exquisite service and coffee presentation, aromas, and taste. The shopkeeper/coffee craftsman is a true artist and perfectionist, and that is visible with the precision of every coffee order. You come here to forget about everything else going on in the world and enjoy the best coffee/latte/espresso you will have in your life!  Our favorites were the Affogato, Caffe Marocchino, and the cheesecake. This cafe is a true local gem!&quot;,
+            &quot;author&quot;: &quot;Artem Marsh&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;An incredible place to come to for exquisite service and coffee presentation, aromas, and taste. The shopkeeper/coffee craftsman is a true artist and perfectionist, and that is visible with the precision of every coffee order. You come here to forget about everything else going on in the world and enjoy the best coffee/latte/espresso you will have in your life!  Our favorites were the Affogato, Caffe Marocchino, and the cheesecake. This cafe is a true local gem!&quot;
+          },
+          {
+            &quot;text&quot;: &quot;We absolutely loved the coffee. Carefully prepared (art, perfection, precision, aroma) delicious coffee. Even allow to smell different coffees they use. Tiny delicious cakes (this is a perfect coffee cake size,  one that does not give diabetic :) ) that perfectly go with coffee. The staff person was extremely welcoming.\n\nWish we can go here again someday.&quot;,
+            &quot;author&quot;: &quot;Chathuri Wicky&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;We absolutely loved the coffee. Carefully prepared (art, perfection, precision, aroma) delicious coffee. Even allow to smell different coffees they use. Tiny delicious cakes (this is a perfect coffee cake size,  one that does not give diabetic :) ) that perfectly go with coffee. The staff person was extremely welcoming.\n\nWish we can go here again someday.&quot;
+          },
+          {
+            &quot;text&quot;: &quot;If you’re near Hayakawa Coffee, it’s well worth a stop. The team there really know their craft—consistently excellent coffee, carefully prepared, and served with genuine warmth. It’s the kind of place where you can slow down for a moment and enjoy a perfectly balanced cup. Friendly, unpretentious, and quietly top-notch—highly recommended. I loved the Banana Coffee Shake too!&quot;,
+            &quot;author&quot;: &quot;Tim B&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;If you’re near Hayakawa Coffee, it’s well worth a stop. The team there really know their craft—consistently excellent coffee, carefully prepared, and served with genuine warmth. It’s the kind of place where you can slow down for a moment and enjoy a perfectly balanced cup. Friendly, unpretentious, and quietly top-notch—highly recommended. I loved the Banana Coffee Shake too!&quot;
+          },
+          {
+            &quot;text&quot;: &quot;An absolutely wonderful artisan coffee shop in the Iidabashi area.\n\nThe shop is run by its owner Hayakawa-san. The menu offers a wide range of coffee options as well as highly selected treats and desserts. English menu is also available.\n\nThe drip coffee includes an exceptional selection of coffee beans sourced from around the world. I ordered a homemade caramel latte and my brother ordered an Americano. For the caramel latte, Hayakawa-san used coffee beans sourced from Indonesia, and for the americano, he used coffee beans sourced from Rwanda. Both coffee beans are so fragrant and aromatic. It was the perfect way to start the morning. We also got the cheesecake and the banana cake. Both are delicious, but the cheesecake was so good that we had to get a second one.\n\nHayakawa-san was also the most wonderful host. Despite the language barrier between us, Hayakawa-san made the effort to chat with us via Google Translate. When he learned that we are interested in Yakitori and Yakiniku restaurants, he wrote down a list of nearby places that he recommends! That was so helpful and considerate.\n\nThank you Hayakawa-san! And if you are in the area, you definitely cannot miss this hidden gem.&quot;,
+            &quot;author&quot;: &quot;Kevin Wang&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;An absolutely wonderful artisan coffee shop in the Iidabashi area.\n\nThe shop is run by its owner Hayakawa-san. The menu offers a wide range of coffee options as well as highly selected treats and desserts. English menu is also available.\n\nThe drip coffee includes an exceptional selection of coffee beans sourced from around the world. I ordered a homemade caramel latte and my brother ordered an Americano. For the caramel latte, Hayakawa-san used coffee beans sourced from Indonesia, and for the americano, he used coffee beans sourced from Rwanda. Both coffee beans are so fragrant and aromatic. It was the perfect way to start the morning. We also got the cheesecake and the banana cake. Both are delicious, but the cheesecake was so good that we had to get a second one.\n\nHayakawa-san was also the most wonderful host. Despite the language barrier between us, Hayakawa-san made the effort to chat with us via Google Translate. When he learned that we are interested in Yakitori and Yakiniku restaurants, he wrote down a list of nearby places that he recommends! That was so helpful and considerate.\n\nThank you Hayakawa-san! And if you are in the area, you definitely cannot miss this hidden gem.&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.2,
+        &quot;supports_paypay&quot;: false
+      }
+    ],
+    &quot;selected_count&quot;: 3
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 4</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_4_synthesis (card_synthesis)</div>
+                <div class="step-sub-title">單步耗時: 2082 ms</div>
+            </div>
+            <span class="step-badge">2082ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2082 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;cuisine&quot;: &quot;手沖咖啡&quot;,
+    &quot;location&quot;: &quot;神保町車站&quot;,
+    &quot;stores_count&quot;: 3
+  },
+  &quot;output&quot;: {
+    &quot;length&quot;: 1072,
+    &quot;card_content&quot;: &quot;🍱 **Pharos Coffee**\n`Pharos Coffee`\n🚶 **步行距離**：從「神保町車站」步行約 6 分鐘 (445m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.4 (87 則評價) / Google 4.5\n💳 **支付方式**：可使用 信用卡 / 感應支付\n💰 **預算區間**：未提供\n📍 **老饕推薦理由 (Google 在地評價)**：被譽為「感官重啟」的避風港，淺焙咖啡帶有花香與石果風味，如同「裝瓶的陽光」，能讓人從忙碌中恢復清晰與專注，是極具精緻感的午間休息選擇。\n🔗 **店家連結**：https://tabelog.com/tokyo/A1310/A131003/13281433/\n\n🍱 **Cafe Ataraxia**\n`Cafe Ataraxia`\n🚶 **步行距離**：從「神保町車站」步行約 1 分鐘 (66m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.3 (55 則評價) / Google 4.7\n💳 **支付方式**：可使用 信用卡\n💰 **預算區間**：未提供\n📍 **老饕推薦理由 (食べログ 口コミ)**：氛圍極致優雅，搭配黑膠古典樂享用東京最佳咖啡之一，紅豆甜點出色且衛生良好，店主服務貼心熱情，甚至會與客人進行語言互動，是充滿人情味的隱世寶藏。\n🔗 **店家連結**：https://tabelog.com/tokyo/A1310/A131003/13270644/\n\n🍱 **coffeestand早川亭**\n`coffeestand早川亭`\n🚶 **步行距離**：從「神保町車站」步行約 8 分鐘 (572m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.2 (49 則評價) / Google 4.9\n💳 **支付方式**：可使用 信用卡 / 感應支付\n💰 **預算區間**：未提供\n📍 **老饕推薦理由 (食べログ 口コミ)**：Google 評分高達 4.9 分，顯示在地遊客對其咖啡品質極度認可，雖 Tabelog 評價較少，但高 Google 評分通常代表穩定的日常高品質表現。\n🔗 **店家連結**：https://tabelog.com/tokyo/A1319/A131901/13183537/\n\n💡 特派員提醒：這三家店都位於神保町核心區，步行距離極短，建議優先選擇距離最近且氛圍獨特的 Cafe Ataraxia 或評價極高的 Pharos Coffee；若想探索更多選擇，建議擴大範圍至鄰近的「神田」或「秋葉原」商圈。&quot;
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            
+
+            <tr class="live-row" onclick="toggleCaseDetails('live-b0621e0f-21bd-4825-a6fe-8b02a09e4697')">
+                <td><code>b0621e0f</code></td>
+                <td><span class="cat-pill">Live Telegram</span></td>
+                <td class="query-col">神樂版咖啡店</td>
+                <td class="text-center"><code>N/A</code></td>
+                <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+                <td class="text-right latency-text">16,468 ms</td>
+            </tr>
+            <tr id="case-live-b0621e0f-21bd-4825-a6fe-8b02a09e4697" class="stepper-drawer" style="display: none;">
+                <td colspan="6">
+                    <div class="stepper-container">
+                        <div class="drawer-header">
+                            <h4>⚡ 真實線上問答執行軌跡 (Run ID: b0621e0f-21bd-4825-a6fe-8b02a09e4697 | 提問時間: 2026-10-13T14:26:14.031876+00:00)</h4>
+                        </div>
+                        <div class="steps-flow">
+                            
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 1</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_1_intent (intent_parser)</div>
+                <div class="step-sub-title">單步耗時: 371 ms</div>
+            </div>
+            <span class="step-badge">371ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">371 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;message&quot;: &quot;神樂版咖啡店&quot;
+  },
+  &quot;output&quot;: {
+    &quot;intent&quot;: &quot;search&quot;,
+    &quot;cuisine&quot;: &quot;咖啡店&quot;,
+    &quot;location&quot;: &quot;神樂坂&quot;,
+    &quot;modifier&quot;: null,
+    &quot;question&quot;: null,
+    &quot;target_index&quot;: null
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 2</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_2_places (search_nearby_ladder)</div>
+                <div class="step-sub-title">單步耗時: 517 ms</div>
+            </div>
+            <span class="step-badge">517ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">517 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;lat&quot;: 35.70145979999999,
+    &quot;lng&quot;: 139.7402946,
+    &quot;keyword&quot;: &quot;咖啡店&quot;,
+    &quot;excluded_count&quot;: 0
+  },
+  &quot;output&quot;: {
+    &quot;count&quot;: 6
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 3</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_3_tabelog (parallel_tabelog_enrichment)</div>
+                <div class="step-sub-title">單步耗時: 9642 ms</div>
+            </div>
+            <span class="step-badge">9642ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">9642 ms</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (3 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 DonishCoffee Company神楽坂コーヒースタンド</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.30 (72 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「Definitely recommend. A cup of coffee that will make your day.」</em></div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 CafeSunflower</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.10 (6 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「This shop is only open on weekends and Monday nights (other days, they have a diffe...」</em></div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 PECO</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.10 (23 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「Very nice place in a quite backstreet of Kagurazaka!! ケイシャflavor was also rlly good!!」</em></div>
+        </div>
+        </div>
+    </div>
+    
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;stores_count&quot;: 6,
+    &quot;stores_searched&quot;: [
+      {
+        &quot;name&quot;: &quot;【神楽坂店】Cafe＆Bar TerraCotta&quot;,
+        &quot;phone&quot;: &quot;050-1785-8758&quot;,
+        &quot;google_rating&quot;: 5
+      },
+      {
+        &quot;name&quot;: &quot;sunflower coffee&quot;,
+        &quot;phone&quot;: &quot;&quot;,
+        &quot;google_rating&quot;: 4.9
+      },
+      {
+        &quot;name&quot;: &quot;神楽坂シーシャPECO -coffee&amp;shisha-&quot;,
+        &quot;phone&quot;: &quot;03-6280-7977&quot;,
+        &quot;google_rating&quot;: 4.8
+      },
+      {
+        &quot;name&quot;: &quot;りぼんぱるふぇ&quot;,
+        &quot;phone&quot;: &quot;03-6280-7190&quot;,
+        &quot;google_rating&quot;: 4.8
+      },
+      {
+        &quot;name&quot;: &quot;Donish 神楽坂通り&quot;,
+        &quot;phone&quot;: &quot;&quot;,
+        &quot;google_rating&quot;: 4.8
+      },
+      {
+        &quot;name&quot;: &quot;Donish 神楽坂コーヒースタンド&quot;,
+        &quot;phone&quot;: &quot;&quot;,
+        &quot;google_rating&quot;: 4.7
+      }
+    ]
+  },
+  &quot;output&quot;: {
+    &quot;aligned_stores&quot;: [
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;DonishCoffee Company神楽坂コーヒースタンド&quot;,
+        &quot;rank_badge&quot;: &quot;🥇&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1309/A130905/13291037/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 72,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;Definitely recommend. A cup of coffee that will make your day.&quot;,
+            &quot;author&quot;: &quot;Youssef Ziati&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;Definitely recommend. A cup of coffee that will make your day.&quot;
+          },
+          {
+            &quot;text&quot;: &quot;This is apparently the second location of a cafe that&#x27;s only open on weekends and holidays. During my visit, it was still in its pre-opening phase, so only black coffee was available, but they plan to add lattes and other drinks in the future.\n\nYou can choose from a variety of coffee beans to suit your preference, and the coffee is carefully brewed using the hand-drip method.\n\nThe shop is a bit compact, but there are benches available, so you can sit and enjoy your coffee at your leisure. This is a place I highly recommend for coffee lovers.&quot;,
+            &quot;author&quot;: &quot;Alex&quot;,
+            &quot;rating&quot;: 4,
+            &quot;original_text&quot;: &quot;土日祝日のみオープンしているカフェの2号店だそうです。訪問時はまだプレオープン期間だったため、ブラックコーヒーのみの提供でしたが、今後はラテなどのメニューも登場する予定とのことです。\n\nコーヒー豆はいろいろな種類から好みに合わせて選ぶことができ、ハンドドリップで丁寧に淹れてもらえます。\n\n店内のスペースは少しコンパクトですが、ベンチも用意されているので、ゆっくり座ってコーヒーを楽しむことができます。コーヒー好きの方にはぜひ立ち寄ってみてほしいお店です。&quot;
+          },
+          {
+            &quot;text&quot;: &quot;You can enjoy authentic drip coffee in a calm and relaxing atmosphere.\n\nThe owner plays music from real records, which perfectly complements the ambiance and is a wonderful touch.&quot;,
+            &quot;author&quot;: &quot;iii ksh&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;落ち着いた店内で本格的なドリップコーヒーがいただけます。\nオーナーさんのこだわりで本物のレコードから音楽をかけていらっしゃり、雰囲気にあっていてとても良いです。&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.3,
+        &quot;supports_paypay&quot;: null
+      },
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;CafeSunflower&quot;,
+        &quot;rank_badge&quot;: &quot;🥈&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1329/A132901/13325729/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 6,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;This shop is only open on weekends and Monday nights (other days, they have a different shop).\n\nThe French press coffee was delicious. They also have alcoholic drinks.\n\nThe staff were polite and easy to talk to.&quot;,
+            &quot;author&quot;: &quot;H M&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;土日と、月曜夜だけ営業されているお店です。（それ以外は別のお店）\n\nフレンチプレスで淹れたコーヒー美味しかったです。お酒もあります。\n\n店員のお兄さんが丁寧で話しやすいです。&quot;
+          },
+          {
+            &quot;text&quot;: &quot;The owner, who loves coffee, will carefully serve you a cup. They also seem to serve food and alcohol.&quot;,
+            &quot;author&quot;: &quot;Ayaka OHMURA&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;コーヒーのことが大好きなマスターが、丁寧にコーヒーをお出ししてくださいます。フードもお酒も置いているようです。&quot;
+          },
+          {
+            &quot;text&quot;: &quot;The coffee was very good at first, but the second portion, served in a French press, was already bitter when poured. It would be better if it were served fully filtered. The cream puff tasted good but was very light (little mass) – I&#x27;ve had better. The atmosphere in the small café is more like a pub. There&#x27;s only seating at a small counter. There are many decorations that are visually appealing. Unfortunately, I heard different music coming from three different sources, which detracted from the relaxation. Overall, I think it would be unfair to give it five stars, as there are cafés that don&#x27;t have any of these problems. It&#x27;s worth a visit for a unique atmosphere. However, for someone who wants to relax comfortably and enjoy very good coffee, there are better cafés.&quot;,
+            &quot;author&quot;: &quot;A B&quot;,
+            &quot;rating&quot;: 4,
+            &quot;original_text&quot;: &quot;Der Kaffee war am Anfang sehr gut, aber der zweite Teil, der in der French press serviert wurde, war beim Ausgießen bereits bitter. Es wäre besser, wenn er komplett gefiltert serviert würde. Der Windbeutel war geschmacklich gut aber sehr leicht (geringe Masse) - ich habe bessere gegessen. Die Atmosphäre im kleinen Café ist eher wie eine Kneipe. Es gibt nur Sitzplätze an einem kleinen Tresen. Es gibt viele Dekorationen, die für das Auge interessant sind. Leider habe ich unterschiedliche Musik aus drei Quellen gehört, was die Entspannung behindert hat. Insgesamt denke ich, dass es unfair wäre hier fünf Sterne zu geben, da es Cafés gibt, die alle diese Probleme nicht haben. Für eine spezielle Atmosphäre ist es einen Besuch wert. Jemand der entspannt und bequem sitzend sehr guten Kaffee trinken möchte, gibt es bessere Cafés.&quot;
+          },
+          {
+            &quot;text&quot;: &quot;I found a lovely cafe near the Super Hotel, just a 5-minute walk from Kamata Station ☕️ It has a hidden gem feel, a relaxing space where you don&#x27;t have to worry about being seen ♪ The staff were friendly and chatted with me a lot ♪\nIt seems like there are many regulars, and the atmosphere was great, allowing me to relax.\nThey seem to be particular about their coffee, with many varieties available ⭐︎ They also have alcoholic beverages made with coffee, so you can enjoy a drink during the day, making for a fulfilling day off (^^)&quot;,
+            &quot;author&quot;: &quot;S T&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;蒲田駅から徒歩5分でスーパホテルの近くに素敵なカフェを見つけました☕️隠れ屋的な感じで人目も気にせず、リラックスできる空間です♪定員さんも愛想が良くて色々お話しもしてくれました♪\n常連さんもたくさんいるみたいで良い雰囲気で、ゆっくりできました。\nコーヒーにもこだわりがあるようでたくさん種類がありました⭐︎コーヒーを使ったお酒もあり昼飲みもでき、充実したお休みでした(^^)&quot;
+          },
+          {
+            &quot;text&quot;: &quot;I first encountered this cafe at a coffee tasting on a Sunday in August, shortly after I moved! It&#x27;s a hidden gem of a cafe, like a \&quot;second home,\&quot; where you can hear about the owner&#x27;s knowledge of cafes learned abroad, and even get advice on your problems.&quot;,
+            &quot;author&quot;: &quot;伊藤鉄真&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;引っ越しして少し経った8月のとある日曜のコーヒー試飲で初めて出会いました！オーナーの海外で学んだカフェの知識を聞くことができることに加えてお悩み相談もできる「第2の家」のような隠れ家カフェです&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.1,
+        &quot;supports_paypay&quot;: null
+      },
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;PECO&quot;,
+        &quot;rank_badge&quot;: &quot;🥉&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1309/A130905/13274484/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 23,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;Very nice place in a quite backstreet of Kagurazaka!! ケイシャflavor was also rlly good!!&quot;,
+            &quot;author&quot;: &quot;Ji Seung LEE&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;Very nice place in a quite backstreet of Kagurazaka!! ケイシャflavor was also rlly good!!&quot;
+          },
+          {
+            &quot;text&quot;: &quot;Firstly, the customer service was excellent. The staff were bilingual and really accommodating and knew shisha so well. The shisha was delicious and they give us great recommendations. The only downside was the price, which was a bit on the high side, especially for whisky. The lighting was also a little bit too bright for a shisha bar. Other than that, it was great and I am sure I&#x27;ll go again. I just need to save some money first.&quot;,
+            &quot;author&quot;: &quot;Joe Bardon&quot;,
+            &quot;rating&quot;: 4,
+            &quot;original_text&quot;: &quot;Firstly, the customer service was excellent. The staff were bilingual and really accommodating and knew shisha so well. The shisha was delicious and they give us great recommendations. The only downside was the price, which was a bit on the high side, especially for whisky. The lighting was also a little bit too bright for a shisha bar. Other than that, it was great and I am sure I&#x27;ll go again. I just need to save some money first.&quot;
+          },
+          {
+            &quot;text&quot;: &quot;Great chilling place.\nDefinitely recommend on a hot summer day to relax&quot;,
+            &quot;author&quot;: &quot;Kenta Suzuki&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;Great chilling place.\nDefinitely recommend on a hot summer day to relax&quot;
+          },
+          {
+            &quot;text&quot;: &quot;Went here because it’s near to my place. A nice place to relax&quot;,
+            &quot;author&quot;: &quot;Saintella Goh&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;Went here because it’s near to my place. A nice place to relax&quot;
+          },
+          {
+            &quot;text&quot;: &quot;PECO is absolutely amazing!\n\nMore often than not, when a shop tries to do many things at one time, it provides a mediocre experience on all fronts. PECO is one if the rare ones that is able to pull it off in spades. Needless to say, the shisha is top notch; with fantastic flavor combinations and great smoke quality.  Taking it a step further, the shop offers a whiskey selection that gives most whiskey bars a run for its money. And to top it all off, PECO does it all while also being a hip+trendy cafe that makes it perfect for your chill hangout.\n\nLastly, shoutout to Maria (staff) for the A+ service. Will definitely be back soon!&quot;,
+            &quot;author&quot;: &quot;Mark Wu&quot;,
+            &quot;rating&quot;: 5,
+            &quot;original_text&quot;: &quot;PECO is absolutely amazing!\n\nMore often than not, when a shop tries to do many things at one time, it provides a mediocre experience on all fronts. PECO is one if the rare ones that is able to pull it off in spades. Needless to say, the shisha is top notch; with fantastic flavor combinations and great smoke quality.  Taking it a step further, the shop offers a whiskey selection that gives most whiskey bars a run for its money. And to top it all off, PECO does it all while also being a hip+trendy cafe that makes it perfect for your chill hangout.\n\nLastly, shoutout to Maria (staff) for the A+ service. Will definitely be back soon!&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.1,
+        &quot;supports_paypay&quot;: null
+      }
+    ],
+    &quot;selected_count&quot;: 3
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 4</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_4_synthesis (card_synthesis)</div>
+                <div class="step-sub-title">單步耗時: 1704 ms</div>
+            </div>
+            <span class="step-badge">1704ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">1704 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;cuisine&quot;: &quot;咖啡店&quot;,
+    &quot;location&quot;: &quot;神樂坂&quot;,
+    &quot;stores_count&quot;: 3
+  },
+  &quot;output&quot;: {
+    &quot;length&quot;: 1020,
+    &quot;card_content&quot;: &quot;🍱 **神樂坂精選咖啡推薦**\n\n🥇 **DonishCoffee Company神楽坂コーヒースタンド**\n`DonishCoffee Company神楽坂コーヒースタンド`\n🚶 **步行距離**：從「神樂坂」步行約 4 分鐘 (285m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.3 (72則評價) / Google 4.8\n💳 **支付方式**：可使用 信用卡 / 電子支付\n💰 **預算區間**：未提供\n📍 **老饕推薦理由 (Google 在地評價)**：網友盛讚這是一杯能讓你整天心情愉悅的咖啡，強烈推薦體驗其優質風味。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1309/A130905/13291037/)\n\n🥈 **CafeSunflower**\n`CafeSunflower`\n🚶 **步行距離**：從「神樂坂」步行約 1 分鐘 (60m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.1 (6則評價) / Google 4.9\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：未提供\n📍 **老饕推薦理由 (食べログ 口コミ)**：老闆對咖啡充滿熱愛，會精心沖煮每一杯；店內也提供餐點與酒精飲料，適合慢慢享用。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1329/A132901/13325729/)\n\n🥉 **PECO**\n`PECO`\n🚶 **步行距離**：從「神樂坂」步行約 2 分鐘 (159m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.1 (23則評價) / Google 4.8\n💳 **支付方式**：可使用 信用卡\n💰 **預算區間**：未提供\n📍 **老饕推薦理由 (Google 在地評價)**：位於神樂坂安靜後巷的絕佳地點，網友特別推薦其「ケイシャ (Keisha)」風味咖啡非常好喝。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1309/A130905/13274484/)\n\n💡 特派員提醒：這三間店都位於神樂坂核心區，步行極近；若偏好刷卡方便，首選 Donish 或 PECO，若想體驗老闆親手沖煮的熱情則推薦 CafeSunflower（需備現金）。&quot;
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            
+
             <tr class="live-row" onclick="toggleCaseDetails('live-d16d0a5d-e19a-443f-a703-9fcdaa63c6e6')">
                 <td><code>d16d0a5d</code></td>
                 <td><span class="cat-pill">Live Telegram</span></td>
@@ -6999,1086 +8031,6 @@
   &quot;output&quot;: {
     &quot;length&quot;: 1178,
     &quot;card_content&quot;: &quot;🍱 **新宿車站周邊壽喜燒精選推薦**\n\n🍱 **1. 大衆壽喜燒北斗 新宿中央東口店**\n`大衆すき焼き 北斗 新宿中央東口店`\n🚶 **步行距離**：從「新宿車站」步行約 3 分鐘 (224m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.20 (133 則評價) / Google 4.9\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：午餐/晚餐 約 ￥1,200 ~ ￥2,500 (依肉品等級而定)\n📍 **老饕推薦理由 (食べログ 口コミ)**：極致性價比首選！老饕盛讚其「和牛涮涮鍋定食」僅需 1,210 日圓，肉質鮮美且份量實在，是體驗正宗壽喜燒風味最親民的選擇。\n🔗 **店家連結**：[Tabelog](https://tabelog.com/tokyo/A1304/A130401/13302759/)\n\n🍱 **2. WAGYU SUKIYAKI 極 新宿**\n`WAGYU SUKIYAKI 極 新宿`\n🚶 **步行距離**：從「新宿車站」步行約 3 分鐘 (234m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.2 (66 則評價) / Google 4.9\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：午餐/晚餐 約 ￥3,000 ~ ￥5,000 (自助式)\n📍 **老饕推薦理由 (食べログ 口コミ)**：主打「每人一鍋」的 A5 和牛沙朗自助涮鍋，搭配松露蛋拌飯，讓遊客能親自體驗烹調樂趣，肉質等級高且食材新鮮，適合想要大快朵頜的旅客。\n🔗 **店家連結**：[Tabelog](https://tabelog.com/tokyo/A1304/A130401/13316287/)\n\n🍱 **3. Momo Paradise 新宿東口店**\n`Momo Paradise 新宿東口店`\n🚶 **步行距離**：從「新宿車站」步行約 4 分鐘 (243m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.1 (89 則評價) / Google 4.9\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：午餐/晚餐 約 ￥2,000 ~ ￥4,000\n📍 **老饕推薦理由 (食べログ 口コミ)**：位於新宿東口商圈核心，交通便利（近新宿三丁目），是當地人與遊客皆認可的熱門壽喜燒專門店，適合在逛街後快速享用一頓精緻的日式涮涮鍋。\n🔗 **店家連結**：[Tabelog](https://tabelog.com/tokyo/A1304/A130401/13027260/)\n\n💡 特派員提醒：這三家皆以現金支付為主，請務必提前備好日圓現鈔；若想追求極致 CP 值建議選「北斗」，想體驗 A5 和牛自助則選「極」。&quot;
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-                        </div>
-                    </div>
-                </td>
-            </tr>
-            
-
-            <tr class="live-row" onclick="toggleCaseDetails('live-c60749d5-426c-4574-9b53-f807afa004d6')">
-                <td><code>c60749d5</code></td>
-                <td><span class="cat-pill">Live Telegram</span></td>
-                <td class="query-col">新宿車站 漢堡排</td>
-                <td class="text-center"><code>N/A</code></td>
-                <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
-                <td class="text-right latency-text">17,587 ms</td>
-            </tr>
-            <tr id="case-live-c60749d5-426c-4574-9b53-f807afa004d6" class="stepper-drawer" style="display: none;">
-                <td colspan="6">
-                    <div class="stepper-container">
-                        <div class="drawer-header">
-                            <h4>⚡ 真實線上問答執行軌跡 (Run ID: c60749d5-426c-4574-9b53-f807afa004d6 | 提問時間: 2026-10-11T09:19:02.154527+00:00)</h4>
-                        </div>
-                        <div class="steps-flow">
-                            
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 1</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_1_intent (intent_parser)</div>
-                <div class="step-sub-title">單步耗時: 3534 ms</div>
-            </div>
-            <span class="step-badge">3534ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">3534 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;message&quot;: &quot;新宿車站 漢堡排&quot;
-  },
-  &quot;output&quot;: {
-    &quot;intent&quot;: &quot;search&quot;,
-    &quot;cuisine&quot;: &quot;漢堡排&quot;,
-    &quot;location&quot;: &quot;新宿車站&quot;,
-    &quot;modifier&quot;: null,
-    &quot;question&quot;: null,
-    &quot;target_index&quot;: null
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 2</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_2_places (search_nearby_ladder)</div>
-                <div class="step-sub-title">單步耗時: 420 ms</div>
-            </div>
-            <span class="step-badge">420ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">420 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;lat&quot;: 35.6896067,
-    &quot;lng&quot;: 139.7005713,
-    &quot;keyword&quot;: &quot;漢堡排&quot;,
-    &quot;excluded_count&quot;: 0
-  },
-  &quot;output&quot;: {
-    &quot;count&quot;: 4
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 3</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_3_tabelog (parallel_tabelog_enrichment)</div>
-                <div class="step-sub-title">單步耗時: 7811 ms</div>
-            </div>
-            <span class="step-badge">7811ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">7811 ms</span></div></div>
-            
-    <div class="aligned-stores-section">
-        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (4 間):</div>
-        <div class="aligned-stores-grid">
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 ハンバーグ嘉</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.50 (804 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「焼肉歴24年の店主が営む直営店 。 毎朝店内で挽きたての鮮度抜群のお肉をお客様の目の前で炭火で焼き上げます。 五ツ星お米マイスターが選ぶこだわりのお米を、 「精米した...」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 NikutoTamago Shinjuku Branch</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.50 (317 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「Really awesome hole in the wall speciality omurice! It seemed super touristy, but I...」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 BEEF KITCHEN STAND Nishishinjukuten</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.20 (328 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「Open until midnight every day! A stylish and budget-friendly meat bar . Snacks star...」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 Halal Wagyu ramen Shinjuku</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Google 4.0 (4 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「在 新宿 想吃點奢華的 拉麵 ，於是來到了朋友推薦的店。這家店完全不使用豬肉和酒精，僅提供100%哈拉爾認證的最高級國產 和牛拉麵 。 多語言的工作人員熱情的招待讓我...」</em></div>
-        </div>
-        </div>
-    </div>
-    
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;stores_count&quot;: 4,
-    &quot;stores_searched&quot;: [
-      {
-        &quot;name&quot;: &quot;Hamburg YOSHI&quot;,
-        &quot;phone&quot;: &quot;03-6805-1949&quot;,
-        &quot;google_rating&quot;: 4.3
-      },
-      {
-        &quot;name&quot;: &quot;NikutoTamago Shinjuku Branch&quot;,
-        &quot;phone&quot;: &quot;&quot;,
-        &quot;google_rating&quot;: 4.8
-      },
-      {
-        &quot;name&quot;: &quot;Beef Kitchen Stand Nishi-Shinjuku&quot;,
-        &quot;phone&quot;: &quot;03-6302-0279&quot;,
-        &quot;google_rating&quot;: 4.5
-      },
-      {
-        &quot;name&quot;: &quot;Wagyu Steak Hamburger &amp; Ramen (Halal Vegan Gluten Free) Shinjuku Restaurant 新宿 和牛 拉面 餐厅&quot;,
-        &quot;phone&quot;: &quot;090-6217-9042&quot;,
-        &quot;google_rating&quot;: 4.8
-      }
-    ]
-  },
-  &quot;output&quot;: {
-    &quot;aligned_stores&quot;: [
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;ハンバーグ嘉&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1306/A130601/13264452/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 804,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;焼肉歴24年の店主が営む直営店 。 毎朝店内で挽きたての鮮度抜群のお肉をお客様の目の前で炭火で焼き上げます。 五ツ星お米マイスターが選ぶこだわりのお米を、 「精米した ...&quot;,
-            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
-            &quot;source&quot;: &quot;tabelog&quot;,
-            &quot;original_text&quot;: &quot;焼肉歴24年の店主が営む直営店 。 毎朝店内で挽きたての鮮度抜群のお肉をお客様の目の前で炭火で焼き上げます。 五ツ星お米マイスターが選ぶこだわりのお米を、 「精米した ...&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.5,
-        &quot;supports_paypay&quot;: false
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;NikutoTamago Shinjuku Branch&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13279721/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 317,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;Really awesome hole in the wall speciality omurice! It seemed super touristy, but It turned out to just be a result of the quality of the food.\n\nWe did have to wait 30 minutes or so, and while waiting in line, you have to stand in front of a warm exhaust vent. This is perhaps...a pro OR a minus depending on the weather? The exhaust also does smell quite nice...like omurice haha.\n\nI got the chicken tartar omurice with an extra sausage-it was an extremely filling and hearty meal. I LOVED the tartar sauce, it was perhaps the best tartar I&#x27;ve had. The chicken was nice and crispy, but perhaps just a tiny bit under seasoned. The sausage was great as well. The omelette and gravy were just okay to me-somewhat bland.\n\nThe consume soup was very hearty/charming. It&#x27;s was such a nice introduction to begin the meal-I especially appreciated the small bits of bacon in the soup. The coleslaw, which is unlimited at the table, was also really good-much better than default American coleslaw (think better than raising canes).\n\nI was undeniably very full and happy at the end of this meal. Could you really ask for much more?&quot;,
-            &quot;author&quot;: &quot;Josh lawson&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;Really awesome hole in the wall speciality omurice! It seemed super touristy, but It turned out to just be a result of the quality of the food.\n\nWe did have to wait 30 minutes or so, and while waiting in line, you have to stand in front of a warm exhaust vent. This is perhaps...a pro OR a minus depending on the weather? The exhaust also does smell quite nice...like omurice haha.\n\nI got the chicken tartar omurice with an extra sausage-it was an extremely filling and hearty meal. I LOVED the tartar sauce, it was perhaps the best tartar I&#x27;ve had. The chicken was nice and crispy, but perhaps just a tiny bit under seasoned. The sausage was great as well. The omelette and gravy were just okay to me-somewhat bland.\n\nThe consume soup was very hearty/charming. It&#x27;s was such a nice introduction to begin the meal-I especially appreciated the small bits of bacon in the soup. The coleslaw, which is unlimited at the table, was also really good-much better than default American coleslaw (think better than raising canes).\n\nI was undeniably very full and happy at the end of this meal. Could you really ask for much more?&quot;
-          },
-          {
-            &quot;text&quot;: &quot;It was great! I had the cheese hamburger on the hot plate and it was really good, the omurice alongside the steak sauce was delectable! The only problem I would have is the size of the place, there are not a lot of seats available, only 11, 6 of these being specifically for sharing a table with someone else. Even with that, I still think it was very worth it and would recommend this small “gem.”&quot;,
-            &quot;author&quot;: &quot;Davi Thaumaturgo&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;It was great! I had the cheese hamburger on the hot plate and it was really good, the omurice alongside the steak sauce was delectable! The only problem I would have is the size of the place, there are not a lot of seats available, only 11, 6 of these being specifically for sharing a table with someone else. Even with that, I still think it was very worth it and would recommend this small “gem.”&quot;
-          },
-          {
-            &quot;text&quot;: &quot;If you have never tried omurice before, i would recommend this experience.\nSuper friendly staff and you can easily order using the QR code, and heavily customise your order. I had omurice with a hamburger, fried chicken and 2 extra eggs on top.\nThe fried eggs on top were perfectly cooked and the egg layer on top of the rice was really fluffy.\nI would definitely recommend this place.&quot;,
-            &quot;author&quot;: &quot;Arpit Narang&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;If you have never tried omurice before, i would recommend this experience.\nSuper friendly staff and you can easily order using the QR code, and heavily customise your order. I had omurice with a hamburger, fried chicken and 2 extra eggs on top.\nThe fried eggs on top were perfectly cooked and the egg layer on top of the rice was really fluffy.\nI would definitely recommend this place.&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Got their Cheeseburger Steak Omurice Plate 🥰 It was the perfect portion size and super satisfying!\n\nThe wait was a little long since the restaurant is very small with limited seating, but it was absolutely worth it. The omurice was fluffy, flavorful, and the cheeseburger steak paired perfectly with it. If you’re in the area, I’d definitely recommend stopping by—just be prepared to wait a bit during busy times!&quot;,
-            &quot;author&quot;: &quot;LYNNAEATS&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;Got their Cheeseburger Steak Omurice Plate 🥰 It was the perfect portion size and super satisfying!\n\nThe wait was a little long since the restaurant is very small with limited seating, but it was absolutely worth it. The omurice was fluffy, flavorful, and the cheeseburger steak paired perfectly with it. If you’re in the area, I’d definitely recommend stopping by—just be prepared to wait a bit during busy times!&quot;
-          },
-          {
-            &quot;text&quot;: &quot;American POV\n\nIf you&#x27;re reading this, make sure to eat here! One of us ordered the hot plate and the other ordered the regular dish. Both were phenomenal but keep in mind the hot plate will cook the eggs after serving so order the regular dish if you like the original egg consistency. Recommend adding karage to the dish or as its own appetizer!\n\n~5 min wait on a Wednesday at 3:00pm. It&#x27;s a tight space but efficient with space. Ordering and payment are both automated. No cash.&quot;,
-            &quot;author&quot;: &quot;Adam&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;American POV\n\nIf you&#x27;re reading this, make sure to eat here! One of us ordered the hot plate and the other ordered the regular dish. Both were phenomenal but keep in mind the hot plate will cook the eggs after serving so order the regular dish if you like the original egg consistency. Recommend adding karage to the dish or as its own appetizer!\n\n~5 min wait on a Wednesday at 3:00pm. It&#x27;s a tight space but efficient with space. Ordering and payment are both automated. No cash.&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.5,
-        &quot;supports_paypay&quot;: false
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;BEEF KITCHEN STAND Nishishinjukuten&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13204003/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 328,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;Open until midnight every day! A stylish and budget-friendly meat bar . Snacks starting at JPY 109! ... Try our signature beef steak, along with ajillo and fluffy ...&quot;,
-            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
-            &quot;source&quot;: &quot;tabelog&quot;,
-            &quot;original_text&quot;: &quot;Open until midnight every day! A stylish and budget-friendly meat bar . Snacks starting at JPY 109! ... Try our signature beef steak, along with ajillo and fluffy ...&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.2,
-        &quot;supports_paypay&quot;: false
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;Halal Wagyu ramen Shinjuku&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13306870/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 4,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;在 新宿 想吃點奢華的 拉麵 ，於是來到了朋友推薦的店。這家店完全不使用豬肉和酒精，僅提供100%哈拉爾認證的最高級國產 和牛拉麵 。 多語言的工作人員熱情的招待讓我感動不已♪ ...&quot;,
-            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
-            &quot;source&quot;: &quot;tabelog&quot;,
-            &quot;original_text&quot;: &quot;在 新宿 想吃點奢華的 拉麵 ，於是來到了朋友推薦的店。這家店完全不使用豬肉和酒精，僅提供100%哈拉爾認證的最高級國產 和牛拉麵 。 多語言的工作人員熱情的招待讓我感動不已♪ ...&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: null,
-        &quot;supports_paypay&quot;: false
-      }
-    ],
-    &quot;enriched_count&quot;: 4
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 4</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_4_synthesis (card_synthesis)</div>
-                <div class="step-sub-title">單步耗時: 2135 ms</div>
-            </div>
-            <span class="step-badge">2135ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2135 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;cuisine&quot;: &quot;漢堡排&quot;,
-    &quot;location&quot;: &quot;新宿車站&quot;,
-    &quot;stores_count&quot;: 4
-  },
-  &quot;output&quot;: {
-    &quot;length&quot;: 1291,
-    &quot;card_content&quot;: &quot;🍱 **NikutoTamago Shinjuku Branch**\n`NikutoTamago Shinjuku Branch`\n🚶 **步行距離**：從「新宿車站」步行約 3 分鐘 (214m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.5 (317 則評價) / Google 4.3\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：午餐 ￥1,000~￥1,999 / 晚餐 ￥1,500~￥2,500\n📍 **老饕推薦理由 (食べログ 口コミ)**：這是一家僅有 11 個座位的隱藏版小寶藏！招牌「鐵板起司漢堡排」搭配牛排醬的蛋包飯被評為「令人陶醉」，肉質鮮嫩且份量實在，雖然座位極少需耐心等候，但絕對值得體驗這份精緻與美味。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1304/A130401/13279721/)\n\n---\n\n🍱 **ハンバーグ嘉**\n`ハンバーグ嘉`\n🚶 **步行距離**：從「新宿車站」步行約 33 分鐘 (2625m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.5 (804 則評價) / Google 4.3\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：午餐 ￥1,500~￥2,500 / 晚餐 ￥2,000~￥3,500\n📍 **老饕推薦理由 (食べログ 口コミ)**：由擁有 24 年燒肉經驗的店主經營，堅持「每日現磨、炭火現烤」，肉質鮮度極佳。搭配五星級米師精選的米飯，能吃到最純粹的漢堡排肉香與炭火風味，適合願意花時間移動、追求極致肉質的饕客。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1306/A130601/13264452/)\n\n---\n\n🍱 **BEEF KITCHEN STAND Nishishinjukuten**\n`BEEF KITCHEN STAND Nishishinjukuten`\n🚶 **步行距離**：從「新宿車站」步行約 9 分鐘 (716m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.2 (328 則評價) / Google 4.5\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：午餐 ￥1,000~￥1,500 / 晚餐 ￥1,500~￥2,500\n📍 **老饕推薦理由 (食べログ 口コミ)**：風格時尚且平價的牛肉小酒館，營業至午夜，適合晚餐後想吃點輕食或宵夜。招牌牛肉排搭配蒜香醬與鬆軟麵包，小食起價僅 109 日圓，是輕鬆享受牛肉美味的高性價比選擇。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1304/A130401/13204003/)\n\n💡 特派員提醒：這三家皆為現金支付，請務必備好日圓現鈔；若追求極致便利與高評價，首選步行 3 分鐘的 NikutoTamago，但需做好排隊準備。&quot;
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-                        </div>
-                    </div>
-                </td>
-            </tr>
-            
-
-            <tr class="live-row" onclick="toggleCaseDetails('live-59b79437-3996-46f0-a18f-e1d8231c41e9')">
-                <td><code>59b79437</code></td>
-                <td><span class="cat-pill">Live Telegram</span></td>
-                <td class="query-col">橫濱車站附近的好吃丼飯</td>
-                <td class="text-center"><code>N/A</code></td>
-                <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
-                <td class="text-right latency-text">9,794 ms</td>
-            </tr>
-            <tr id="case-live-59b79437-3996-46f0-a18f-e1d8231c41e9" class="stepper-drawer" style="display: none;">
-                <td colspan="6">
-                    <div class="stepper-container">
-                        <div class="drawer-header">
-                            <h4>⚡ 真實線上問答執行軌跡 (Run ID: 59b79437-3996-46f0-a18f-e1d8231c41e9 | 提問時間: 2026-10-11T08:24:13.486320+00:00)</h4>
-                        </div>
-                        <div class="steps-flow">
-                            
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 1</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_1_intent (intent_parser)</div>
-                <div class="step-sub-title">單步耗時: 421 ms</div>
-            </div>
-            <span class="step-badge">421ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">421 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;message&quot;: &quot;橫濱車站附近的好吃丼飯&quot;
-  },
-  &quot;output&quot;: {
-    &quot;intent&quot;: &quot;search&quot;,
-    &quot;cuisine&quot;: &quot;丼飯&quot;,
-    &quot;location&quot;: &quot;橫濱車站&quot;,
-    &quot;modifier&quot;: null,
-    &quot;question&quot;: null,
-    &quot;target_index&quot;: null
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 2</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_2_places (search_nearby_ladder)</div>
-                <div class="step-sub-title">單步耗時: 473 ms</div>
-            </div>
-            <span class="step-badge">473ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">473 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;lat&quot;: 35.46598110000001,
-    &quot;lng&quot;: 139.622062,
-    &quot;keyword&quot;: &quot;丼飯&quot;,
-    &quot;excluded_count&quot;: 0
-  },
-  &quot;output&quot;: {
-    &quot;count&quot;: 4
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 3</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_3_tabelog (parallel_tabelog_enrichment)</div>
-                <div class="step-sub-title">單步耗時: 2966 ms</div>
-            </div>
-            <span class="step-badge">2966ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2966 ms</span></div></div>
-            
-    <div class="aligned-stores-section">
-        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (4 間):</div>
-        <div class="aligned-stores-grid">
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 Gyukatsu Motomura Yokohamajoinasu ten</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.20 (290 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「[ Yokohama ] &quot; Gyukatsu Restaurant on B1 of Sōtetsu Joinus ✨&quot; &quot;Enjoy freshly fried ...」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 Gohan Susumu 橫濱PORTA店</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.50 (411 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「I stumbled upon this place and was wondering why there was a long queue even before...」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 Yamatoshi</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Google 4.0 (308 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「Fantastic spot for everything shirasu. Had the summer special where the shirasu was...」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 Komeraku大家一起､茶泡飯良日｡橫濱紅磚倉庫店</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Google 4.0 (25 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「此次，我們的全新餐廳『こめらく』在 橫濱 的觀光景點「 橫濱 赤磚倉庫」開業了。 『こめらくみんなで､お茶漬け日和｡ 橫濱 赤磚倉庫店』位於赤磚倉庫2號館的一樓剛剛開...」</em></div>
-        </div>
-        </div>
-    </div>
-    
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;stores_count&quot;: 4,
-    &quot;stores_searched&quot;: [
-      {
-        &quot;name&quot;: &quot;Gyukatsu Motomura Yokohama Joinus Branch&quot;,
-        &quot;phone&quot;: &quot;050-1721-9646&quot;,
-        &quot;google_rating&quot;: 4.7
-      },
-      {
-        &quot;name&quot;: &quot;Gohan Susumu Yokohama Porta&quot;,
-        &quot;phone&quot;: &quot;045-534-4288&quot;,
-        &quot;google_rating&quot;: 4.2
-      },
-      {
-        &quot;name&quot;: &quot;Yamatoshi&quot;,
-        &quot;phone&quot;: &quot;045-534-5234&quot;,
-        &quot;google_rating&quot;: 4.1
-      },
-      {
-        &quot;name&quot;: &quot;Komeraku Yokohama Station&quot;,
-        &quot;phone&quot;: &quot;045-594-7188&quot;,
-        &quot;google_rating&quot;: 4.1
-      }
-    ]
-  },
-  &quot;output&quot;: {
-    &quot;aligned_stores&quot;: [
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;Gyukatsu Motomura Yokohamajoinasu ten&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140101/14077543/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 290,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;[ Yokohama ] \&quot; Gyukatsu Restaurant on B1 of Sōtetsu Joinus ✨\&quot; \&quot;Enjoy freshly fried gyukatsu cooked to your liking on a hot stone in just 60 seconds‼️&quot;,
-            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
-            &quot;source&quot;: &quot;tabelog&quot;,
-            &quot;original_text&quot;: &quot;[ Yokohama ] \&quot; Gyukatsu Restaurant on B1 of Sōtetsu Joinus ✨\&quot; \&quot;Enjoy freshly fried gyukatsu cooked to your liking on a hot stone in just 60 seconds‼️&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.2,
-        &quot;supports_paypay&quot;: false
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;Gohan Susumu 橫濱PORTA店&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140101/14085501/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 411,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;I stumbled upon this place and was wondering why there was a long queue even before opening hours so I decided to give it a try. If you are looking for a healthier/lighter food option, this is the place to go. The food was delicious, particularly the shumai. The furikake/condiments at the table was seriously good with rice.\n\nFortunately I managed to be part of the first batch of customers to enter the store. I was shocked by how long the queue had gotten after I finished my meal.&quot;,
-            &quot;author&quot;: &quot;Robin&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;I stumbled upon this place and was wondering why there was a long queue even before opening hours so I decided to give it a try. If you are looking for a healthier/lighter food option, this is the place to go. The food was delicious, particularly the shumai. The furikake/condiments at the table was seriously good with rice.\n\nFortunately I managed to be part of the first batch of customers to enter the store. I was shocked by how long the queue had gotten after I finished my meal.&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Delightful food.  Food was amazing, tasted like home cooked meals and very well presented.  Free refill for the rice.  Thoroughly enjoyed our lunch here.&quot;,
-            &quot;author&quot;: &quot;Raymond Y&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;Delightful food.  Food was amazing, tasted like home cooked meals and very well presented.  Free refill for the rice.  Thoroughly enjoyed our lunch here.&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Simple and good meal located near Yokohama station. The soup was delicious and I really liked the mini beef patty. There was also an array of sauces and condiments to add extra flavours to your meal.\n\nOverall a quick and easy meal but be prepared to wait a little bit for seats!&quot;,
-            &quot;author&quot;: &quot;dolce bibobi&quot;,
-            &quot;rating&quot;: 4,
-            &quot;original_text&quot;: &quot;Simple and good meal located near Yokohama station. The soup was delicious and I really liked the mini beef patty. There was also an array of sauces and condiments to add extra flavours to your meal.\n\nOverall a quick and easy meal but be prepared to wait a little bit for seats!&quot;
-          },
-          {
-            &quot;text&quot;: &quot;I went for an early dinner around 4pm on a Monday so no wait time. As I was eating, the restaurant was filling up. menu isn’t huge but sometimes that is best. I got the limited seasonal dish which is suppose to be spicy red on the picture menu but came out very mild. soup is tasty and love all the side dishes. There is grated yuzu if you want to change up the soup taste. prompt and polite service. they will explain every dish on tray unless you’re non Japanese speaking.&quot;,
-            &quot;author&quot;: &quot;milky doll&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;I went for an early dinner around 4pm on a Monday so no wait time. As I was eating, the restaurant was filling up. menu isn’t huge but sometimes that is best. I got the limited seasonal dish which is suppose to be spicy red on the picture menu but came out very mild. soup is tasty and love all the side dishes. There is grated yuzu if you want to change up the soup taste. prompt and polite service. they will explain every dish on tray unless you’re non Japanese speaking.&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Would definitely come back here again! The food was delicious, healthy and filling. Each set was so complete, which included 2 pcs of mochi too. Love it, worth trying! ❤️ Do try the furikake and a few condiments on the table too 🤗&quot;,
-            &quot;author&quot;: &quot;ollivia&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;Would definitely come back here again! The food was delicious, healthy and filling. Each set was so complete, which included 2 pcs of mochi too. Love it, worth trying! ❤️ Do try the furikake and a few condiments on the table too 🤗&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.5,
-        &quot;supports_paypay&quot;: false
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;Yamatoshi&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: null,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 308,
-        &quot;rating_source&quot;: &quot;Google&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;Fantastic spot for everything shirasu. Had the summer special where the shirasu was prepared in 3 different ways, and while everything was good it was overall a little too salty. Still a lovely meal though.&quot;,
-            &quot;author&quot;: &quot;Anisa&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;Fantastic spot for everything shirasu. Had the summer special where the shirasu was prepared in 3 different ways, and while everything was good it was overall a little too salty. Still a lovely meal though.&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Highly recommend. I come here every time I visit Yokohama. I highly recommend the set lunch with the fish shrimp and chicken. It&#x27;s a great balance, has a bit of everything. And the tiny little fishy on the rich is a bonus, it&#x27;s reminds me of my childhood in Hong Kong.&quot;,
-            &quot;author&quot;: &quot;Stephen Lo&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;Highly recommend. I come here every time I visit Yokohama. I highly recommend the set lunch with the fish shrimp and chicken. It&#x27;s a great balance, has a bit of everything. And the tiny little fishy on the rich is a bonus, it&#x27;s reminds me of my childhood in Hong Kong.&quot;
-          },
-          {
-            &quot;text&quot;: &quot;I feel spoiled 😭&quot;,
-            &quot;author&quot;: &quot;Xy&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;I feel spoiled 😭&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Entering before 11:30 AM is definitely the best deal! A superb shirasu (whitebait) rice bowl with a croquette topping for a truly satisfying lunch\nI was looking for an early lunch near Yokohama Station, so I headed to \&quot;Shirasu Shokudo Jakoya Nanadaime Yamari,\&quot; a restaurant I&#x27;d been curious about.\nThey were offering an amazing deal: if you entered before 11:30 AM, you could get either a \&quot;Boiled Shirasu Rice Bowl\&quot; or an \&quot;Aji Fry Set Meal\&quot; for a bargain price of 1,000 yen! I didn&#x27;t hesitate to take advantage of it!\nThis time, I ordered the \&quot;Boiled Shirasu Rice Bowl\&quot; with a \&quot;Croquette\&quot; topping.\nThe shirasu rice bowl that arrived was absolutely delicious, with plenty of plump, tender shirasu on top and just the right amount of saltiness. A little soy sauce made the rice irresistible. The croquette topping was also freshly fried, crispy on the outside and fluffy on the inside, leaving me completely satisfied.\n\nThe fact that you can get a shirasu (whitebait) rice bowl of this quality for just 1,000 yen before 11:30 AM is incredible value for money. I&#x27;ll definitely come back again, aiming for an early lunch time!&quot;,
-            &quot;author&quot;: &quot;グルメハッカーねこまる&quot;,
-            &quot;rating&quot;: 3,
-            &quot;original_text&quot;: &quot;11:30までの入店が絶対お得！極上しらす丼にコロッケトッピングで大満足ランチ\n横浜駅で早めのランチになり、気になっていた「しらす食堂じゃこ屋七代目山利」さんへ。\nなんと11時半までに入店すると、通常よりお得な1,000円で「釜揚げしらす丼」か「アジフライ定食」が食べられる神サービスをやっていたので、迷わず利用しました！\n今回は「釜揚げしらす丼」に、トッピングで「コロッケ」を追加。\n運ばれてきたしらす丼は、ふっくらと柔らかいしらすがたっぷりのっていて、塩気もちょう度よくて絶品です。醤油を少し垂らすとご飯が止まりません。トッピングしたコロッケも揚げたてサクサク、中はホクホクでお腹もしっかり満たされました。\nこのクオリティのしらす丼が11:30前なら1,000円ポッキリで食べられるのはコスパが良すぎます。また早めのランチのタイミングを狙って伺います！&quot;
-          },
-          {
-            &quot;text&quot;: &quot;I visited for a late lunch after 2 PM. It wasn&#x27;t crowded at that time, and I was seated without waiting. The interior had a stylish, cafe-like atmosphere rather than a typical Japanese restaurant, making for a relaxing dining experience.\n\nThe menu was extensive, making it difficult to choose, but I ordered the boiled whitebait and negitoro (minced tuna) rice bowl. The free extra rice was a nice touch. The whitebait was plump and delicious, but the dried mackerel I ordered as a side dish was surprisingly fatty and, personally, the best part.\n\nThe road in front of the restaurant is a little narrow, so you might need to be careful when entering and exiting by car. There are a few parking spaces right in front of the restaurant.\n\nNext time, I&#x27;d like to try a different combination of rice bowls.&quot;,
-            &quot;author&quot;: &quot;KAKO&quot;,
-            &quot;rating&quot;: 4,
-            &quot;original_text&quot;: &quot;14時過ぎの遅めのランチで訪問しました。この時間帯は空いていて、待たずに入れました。店内は和食屋というよりカフェのようなオシャレな雰囲気で、落ち着いて食事ができます。\n\nメニューが豊富で迷いましたが、今回は釜揚げしらすとネギトロの丼を注文。ご飯の大盛が無料なのは嬉しいサービスです。しらすはふっくらしていて美味しいですが、サイドで頼んだ鯖の干物が驚くほど脂が乗っていて、個人的にはこれが一番の当たりでした。\n\nお店の前の道が少し狭いので、車で行く際は出し入れに注意が必要かもしれません。駐車場は店舗のすぐ前に数台分あります。\n\n次は別の組み合わせの丼も食べてみたいです。&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: null,
-        &quot;supports_paypay&quot;: null
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;Komeraku大家一起､茶泡飯良日｡橫濱紅磚倉庫店&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140104/14093038/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 25,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;此次，我們的全新餐廳『こめらく』在 橫濱 的觀光景點「 橫濱 赤磚倉庫」開業了。 『こめらくみんなで､お茶漬け日和｡ 橫濱 赤磚倉庫店』位於赤磚倉庫2號館的一樓剛剛開業。 確實 ...&quot;,
-            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
-            &quot;source&quot;: &quot;tabelog&quot;,
-            &quot;original_text&quot;: &quot;此次，我們的全新餐廳『こめらく』在 橫濱 的觀光景點「 橫濱 赤磚倉庫」開業了。 『こめらくみんなで､お茶漬け日和｡ 橫濱 赤磚倉庫店』位於赤磚倉庫2號館的一樓剛剛開業。 確實 ...&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: null,
-        &quot;supports_paypay&quot;: false
-      }
-    ],
-    &quot;enriched_count&quot;: 4
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 4</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_4_synthesis (card_synthesis)</div>
-                <div class="step-sub-title">單步耗時: 2299 ms</div>
-            </div>
-            <span class="step-badge">2299ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2299 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;cuisine&quot;: &quot;丼飯&quot;,
-    &quot;location&quot;: &quot;橫濱車站&quot;,
-    &quot;stores_count&quot;: 4
-  },
-  &quot;output&quot;: {
-    &quot;length&quot;: 1409,
-    &quot;card_content&quot;: &quot;🍱 **橫濱車站周邊精選丼飯推薦**\n\n為您精選 3 家位於橫濱車站步行圈內、風格各異的高評價丼飯名店，滿足您從快速補給到特色體驗的不同需求！\n\n---\n\n### 1. 🥩 現炸牛肉炸豬排丼（特色體驗型）\n🍱 **店名**：Gyukatsu Motomura Yokohamajoinasu ten\n`Gyukatsu Motomura Yokohamajoinasu ten`\n🚶 **步行距離**：從「橫濱車站」步行約 2 分鐘 (144m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.2 (290則評價) / Google 4.7\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n💰 **預算區間**：約 ￥1,000 ~ ￥1,500 (參考價)\n📍 **老饕推薦理由 (食べログ 口コミ)**：主打「現炸牛肉炸豬排」，肉片在熱石上現炸 60 秒即食，能吃到外酥內嫩、肉汁豐盈的極致口感，是橫濱車站地下街 B1 的熱門話題店。\n🔗 **店家連結**：[Tabelog](https://tabelog.com/kanagawa/A1401/A140101/14077543/)\n\n---\n\n### 2. 🍚 平價快速丼飯（高性價比型）\n🍱 **店名**：Gohan Susumu 橫濱PORTA店\n`Gohan Susumu 橫濱PORTA店`\n🚶 **步行距離**：從「橫濱車站」步行約 2 分鐘 (130m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.5 (411則評價) / Google 4.2\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n💰 **預算區間**：約 ￥800 ~ ￥1,200 (參考價)\n📍 **老饕推薦理由 (食べログ 口コミ)**：位於 JR 橫濱站中央閘口旁的 PORTA 地下街，位置極佳且出餐迅速。適合剛下火車、想快速填飽肚子或作為輕食選擇的旅客，品項豐富且價格親民。\n🔗 **店家連結**：[Tabelog](https://tabelog.com/kanagawa/A1401/A140101/14085501/)\n\n---\n\n### 3. 🐟 海鮮雞肉綜合丼（高評價人氣型）\n🍱 **店名**：Yamatoshi\n`Yamatoshi`\n🚶 **步行距離**：從「橫濱車站」步行約 1 分鐘 (31m)\n⭐️ **雙平台評分**：⭐️ Google 4.1 (308則評價) ｜ Tabelog 暫無評分\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：約 ￥1,200 ~ ￥1,800 (參考價)\n📍 **推薦理由 (Google 在地評價)**：位於 JR 橫濱塔 NEWoMan 8F，位置隱蔽但評價極高。網友盛讚「海鮮蝦雞肉套飯」平衡感極佳，食材新鮮且份量充足，是許多老顧客每次來橫濱必吃的隱藏寶藏。\n🔗 **店家連結**：[Google Maps](https://www.google.com/maps/search/?api=1&amp;query=Yamatoshi+JR+Yokohama+Tower+NEWoMan+8F)\n\n---\n\n💡 **特派員提醒**：這三家店皆以現金為主，請務必提前備好日圓現鈔；若追求極致酥脆口感，首選第 1 家的現炸牛肉丼！&quot;
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-                        </div>
-                    </div>
-                </td>
-            </tr>
-            
-
-            <tr class="live-row" onclick="toggleCaseDetails('live-204287e6-0677-4200-a4e5-a91fa3d8b6e2')">
-                <td><code>204287e6</code></td>
-                <td><span class="cat-pill">Live Telegram</span></td>
-                <td class="query-col">橫濱車站附近的好吃丼飯</td>
-                <td class="text-center"><code>N/A</code></td>
-                <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
-                <td class="text-right latency-text">9,101 ms</td>
-            </tr>
-            <tr id="case-live-204287e6-0677-4200-a4e5-a91fa3d8b6e2" class="stepper-drawer" style="display: none;">
-                <td colspan="6">
-                    <div class="stepper-container">
-                        <div class="drawer-header">
-                            <h4>⚡ 真實線上問答執行軌跡 (Run ID: 204287e6-0677-4200-a4e5-a91fa3d8b6e2 | 提問時間: 2026-10-11T08:19:43.803756+00:00)</h4>
-                        </div>
-                        <div class="steps-flow">
-                            
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 1</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_1_intent (intent_parser)</div>
-                <div class="step-sub-title">單步耗時: 358 ms</div>
-            </div>
-            <span class="step-badge">358ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">358 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;message&quot;: &quot;橫濱車站附近的好吃丼飯&quot;
-  },
-  &quot;output&quot;: {
-    &quot;intent&quot;: &quot;search&quot;,
-    &quot;cuisine&quot;: &quot;丼飯&quot;,
-    &quot;location&quot;: &quot;橫濱車站&quot;,
-    &quot;modifier&quot;: null,
-    &quot;question&quot;: null,
-    &quot;target_index&quot;: null
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 2</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_2_places (search_nearby_ladder)</div>
-                <div class="step-sub-title">單步耗時: 463 ms</div>
-            </div>
-            <span class="step-badge">463ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">463 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;lat&quot;: 35.46598110000001,
-    &quot;lng&quot;: 139.622062,
-    &quot;keyword&quot;: &quot;丼飯&quot;,
-    &quot;excluded_count&quot;: 0
-  },
-  &quot;output&quot;: {
-    &quot;count&quot;: 4
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 3</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_3_tabelog (parallel_tabelog_enrichment)</div>
-                <div class="step-sub-title">單步耗時: 2437 ms</div>
-            </div>
-            <span class="step-badge">2437ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2437 ms</span></div></div>
-            
-    <div class="aligned-stores-section">
-        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (4 間):</div>
-        <div class="aligned-stores-grid">
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 Densetsunosutadonya Yokohamanishiguchiten</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Google 4.0 (589 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「More than worth for paying..」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 三﨑市場橫濱Joinus店</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.30 (211 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「Good donburi for a quick lunch」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 Gohan Susumu 橫濱PORTA店</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.50 (411 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「I stumbled upon this place and was wondering why there was a long queue even before...」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 吉野家橫濱JOINUS店</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.10 (81 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「Fresh DELICOUS made to order karage rice bowls fo less than a coffee at *bs I didn&#x27;...」</em></div>
-        </div>
-        </div>
-    </div>
-    
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;stores_count&quot;: 4,
-    &quot;stores_searched&quot;: [
-      {
-        &quot;name&quot;: &quot;Densetsunosutadonya Yokohamanishiguchiten&quot;,
-        &quot;phone&quot;: &quot;045-317-2181&quot;,
-        &quot;google_rating&quot;: 3.7
-      },
-      {
-        &quot;name&quot;: &quot;MISAKI-ICHIBA&quot;,
-        &quot;phone&quot;: &quot;045-620-3187&quot;,
-        &quot;google_rating&quot;: 3.6
-      },
-      {
-        &quot;name&quot;: &quot;Gohan Susumu Yokohama Porta&quot;,
-        &quot;phone&quot;: &quot;045-534-4288&quot;,
-        &quot;google_rating&quot;: 4.2
-      },
-      {
-        &quot;name&quot;: &quot;Yoshinoya Yokohama Joinus&quot;,
-        &quot;phone&quot;: &quot;045-577-3747&quot;,
-        &quot;google_rating&quot;: 3.2
-      }
-    ]
-  },
-  &quot;output&quot;: {
-    &quot;aligned_stores&quot;: [
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;Densetsunosutadonya Yokohamanishiguchiten&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: null,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 589,
-        &quot;rating_source&quot;: &quot;Google&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;More than worth for paying..&quot;,
-            &quot;author&quot;: &quot;Arun Prahash&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;More than worth for paying..&quot;
-          },
-          {
-            &quot;text&quot;: &quot;I used to love Sutadon, but I hadn&#x27;t been there in a while.\nWhen I went around 8 PM on a weekend, there was only one other customer inside.\nSeating was counter-only.\nThere were about four staff members.\nThe service was average, but nothing unpleasant happened.\nThe restaurant wasn&#x27;t greasy or anything like that, so it was pleasant.\nThe taste was, for me personally, the same nostalgic taste as before, so I enjoyed it very much.&quot;,
-            &quot;author&quot;: &quot;ぷるぷる&quot;,
-            &quot;rating&quot;: 4,
-            &quot;original_text&quot;: &quot;昔は大好きだったが、最近はご無沙汰であったすた丼。\n土日20時頃に行くと店内には客が一名のみ。\n席はカウンターオンリー。\nスタッフは4名ほどいた。\n接客は普通の対応だが、不快な思いをするようなことは一切なし。\n店内も油でギトギトみたいなことはないので不快感もなし。\n味は個人的には懐かしい味で昔から変わらずだったのでとても美味しく食せた。&quot;
-          },
-          {
-            &quot;text&quot;: &quot;This is the legendary Sutadon restaurant, located about one block northwest of Okano intersection.\nI visited on a Meat Day evening. I ordered the original Sutadon with extra meat. It comes with a raw egg and miso soup.\nMeal tickets must be purchased in advance, and the restaurant has both counter and table seating. The ticket machine does not support the free extra meat on Meat Day, and on the day itself, the extra meat option is displayed as sold out. To get the free extra meat, purchase regular meat and verbally inform the staff when you hand your ticket to them.\nThe customer service was good. The staff confirmed that I wanted extra meat. They also chased after customers who had left something behind outside to hand it to them.\nGiven the good customer service and operation, I will not deduct points for the ticket machine issue.&quot;,
-            &quot;author&quot;: &quot;zeolite kimberlite&quot;,
-            &quot;rating&quot;: 4,
-            &quot;original_text&quot;: &quot;伝説のすた丼屋です。岡野交差点から北西に1ブロックほどの所在です。\n肉の日の夕刻に伺いました。すた丼元祖盛り肉増量をお願いしました。生玉子とお味噌汁付きです。\n食券の事前購入制、店内はカウンター席とテーブル席です。肉の日の肉増量無料に未対応の券売機、当日は肉増量が売り切れ表示の運用です。肉増量無料はお肉普通を購入し、フロアさんに食券を渡すときに口頭で伝えます。\n接客は良い部類です。フロアさんから肉増量の確認がありました。また、フロアさんがお客様の忘れ物を持って外まで追いかけて渡すなどです。\n接客、運用の良さから、券売機の件は減点は見送ります。&quot;
-          },
-          {
-            &quot;text&quot;: &quot;[Legendary Sutadon]\nAbura soba on the way home from drinking?\n[Soup]\nNo, but the sauce was a little too thick and salty.\n[Noodles]\nThick and curly, I quite like it.\n[Toppings]\nChar siu, green onions, raw egg\n\nI had been wanting to try this place on my way home from a party, so I stopped by. I really wanted to try the Sutadon as advertised, but I couldn&#x27;t resist the noodles.\nI didn&#x27;t have high expectations, but the noodles were delicious. The sauce was a little too thick, so I neutralized it with vinegar and chili oil, and I was able to finish it all.\n\nThank you for the meal.&quot;,
-            &quot;author&quot;: &quot;Hase HASE&quot;,
-            &quot;rating&quot;: 3,
-            &quot;original_text&quot;: &quot;【伝説のすた丼】\n飲んだ帰りに油そば？\n【スープ】\nないですが、タレは濃すぎなくらい塩辛い\n【麺】\n太めちぢれで結構好き\n【具】\nチャーシュー、ネギ、生卵\n\n宴会の帰りにかなり気になっていたので寄りました。本当は看板通りすた丼食べたかったのですが、麺の気分に負けました。\nあまり期待していませんでしたが麺はとても美味しかったです。タレが濃すぎたためお酢とラー油で中和、美味しく完食できました。\n\nごちそうさまでした。&quot;
-          },
-          {
-            &quot;text&quot;: &quot;I come here when I occasionally crave junk food.\nI forgot to take a picture of the most important thing: the rice bowl...&quot;,
-            &quot;author&quot;: &quot;こうすけ&quot;,
-            &quot;rating&quot;: 3,
-            &quot;original_text&quot;: &quot;たまにジャンクなものが食べたくなるときにきます\n肝心な丼の写真を撮り忘れた、、、&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: null,
-        &quot;supports_paypay&quot;: null
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;三﨑市場橫濱Joinus店&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140101/14043665/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 211,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;Good donburi for a quick lunch&quot;,
-            &quot;author&quot;: &quot;Faris Yahaya&quot;,
-            &quot;rating&quot;: 4,
-            &quot;original_text&quot;: &quot;Good donburi for a quick lunch&quot;
-          },
-          {
-            &quot;text&quot;: &quot;The portion of the food is big and overall, the taste is good.&quot;,
-            &quot;author&quot;: &quot;Melissa Poh&quot;,
-            &quot;rating&quot;: 4,
-            &quot;original_text&quot;: &quot;The portion of the food is big and overall, the taste is good.&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Very tasty maguro dishes at a very reasonable price.&quot;,
-            &quot;author&quot;: &quot;Reyes2&quot;,
-            &quot;rating&quot;: 4,
-            &quot;original_text&quot;: &quot;Very tasty maguro dishes at a very reasonable price.&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Really really good food!!!!&quot;,
-            &quot;author&quot;: &quot;Victor Hoyos&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;Really really good food!!!!&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Very good prices on some great quality fish!\nEspecially the lunch and late lunch menus.\n\nThe staff also rearranged some tables to accommodate a wheelchair user, which was nice.&quot;,
-            &quot;author&quot;: &quot;Norbi Whitney&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;Very good prices on some great quality fish!\nEspecially the lunch and late lunch menus.\n\nThe staff also rearranged some tables to accommodate a wheelchair user, which was nice.&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.3,
-        &quot;supports_paypay&quot;: false
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;Gohan Susumu 橫濱PORTA店&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140101/14085501/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 411,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;I stumbled upon this place and was wondering why there was a long queue even before opening hours so I decided to give it a try. If you are looking for a healthier/lighter food option, this is the place to go. The food was delicious, particularly the shumai. The furikake/condiments at the table was seriously good with rice.\n\nFortunately I managed to be part of the first batch of customers to enter the store. I was shocked by how long the queue had gotten after I finished my meal.&quot;,
-            &quot;author&quot;: &quot;Robin&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;I stumbled upon this place and was wondering why there was a long queue even before opening hours so I decided to give it a try. If you are looking for a healthier/lighter food option, this is the place to go. The food was delicious, particularly the shumai. The furikake/condiments at the table was seriously good with rice.\n\nFortunately I managed to be part of the first batch of customers to enter the store. I was shocked by how long the queue had gotten after I finished my meal.&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Delightful food.  Food was amazing, tasted like home cooked meals and very well presented.  Free refill for the rice.  Thoroughly enjoyed our lunch here.&quot;,
-            &quot;author&quot;: &quot;Raymond Y&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;Delightful food.  Food was amazing, tasted like home cooked meals and very well presented.  Free refill for the rice.  Thoroughly enjoyed our lunch here.&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Simple and good meal located near Yokohama station. The soup was delicious and I really liked the mini beef patty. There was also an array of sauces and condiments to add extra flavours to your meal.\n\nOverall a quick and easy meal but be prepared to wait a little bit for seats!&quot;,
-            &quot;author&quot;: &quot;dolce bibobi&quot;,
-            &quot;rating&quot;: 4,
-            &quot;original_text&quot;: &quot;Simple and good meal located near Yokohama station. The soup was delicious and I really liked the mini beef patty. There was also an array of sauces and condiments to add extra flavours to your meal.\n\nOverall a quick and easy meal but be prepared to wait a little bit for seats!&quot;
-          },
-          {
-            &quot;text&quot;: &quot;I went for an early dinner around 4pm on a Monday so no wait time. As I was eating, the restaurant was filling up. menu isn’t huge but sometimes that is best. I got the limited seasonal dish which is suppose to be spicy red on the picture menu but came out very mild. soup is tasty and love all the side dishes. There is grated yuzu if you want to change up the soup taste. prompt and polite service. they will explain every dish on tray unless you’re non Japanese speaking.&quot;,
-            &quot;author&quot;: &quot;milky doll&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;I went for an early dinner around 4pm on a Monday so no wait time. As I was eating, the restaurant was filling up. menu isn’t huge but sometimes that is best. I got the limited seasonal dish which is suppose to be spicy red on the picture menu but came out very mild. soup is tasty and love all the side dishes. There is grated yuzu if you want to change up the soup taste. prompt and polite service. they will explain every dish on tray unless you’re non Japanese speaking.&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Would definitely come back here again! The food was delicious, healthy and filling. Each set was so complete, which included 2 pcs of mochi too. Love it, worth trying! ❤️ Do try the furikake and a few condiments on the table too 🤗&quot;,
-            &quot;author&quot;: &quot;ollivia&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;Would definitely come back here again! The food was delicious, healthy and filling. Each set was so complete, which included 2 pcs of mochi too. Love it, worth trying! ❤️ Do try the furikake and a few condiments on the table too 🤗&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.5,
-        &quot;supports_paypay&quot;: false
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;吉野家橫濱JOINUS店&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/kanagawa/A1401/A140101/14086996/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 81,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;Fresh DELICOUS made to order karage rice bowls fo less than a coffee at *bs\nI didn&#x27;t realize this was a chain when i ate here, it was 10:30 and my choice was this or mcDs RIGHT choice.\nWe order 3 dishes and one beer and the total was 16usd if you like fried chicken this is a must try&quot;,
-            &quot;author&quot;: &quot;Marion Frazier&quot;,
-            &quot;rating&quot;: 4,
-            &quot;original_text&quot;: &quot;Fresh DELICOUS made to order karage rice bowls fo less than a coffee at *bs\nI didn&#x27;t realize this was a chain when i ate here, it was 10:30 and my choice was this or mcDs RIGHT choice.\nWe order 3 dishes and one beer and the total was 16usd if you like fried chicken this is a must try&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Using self-order pad. Fast serving speed. High cp value compared with yoshinoya in HK. Have charger port near seat.&quot;,
-            &quot;author&quot;: &quot;橋本奈々未&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;Using self-order pad. Fast serving speed. High cp value compared with yoshinoya in HK. Have charger port near seat.&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Every weekend v use to travel yokohoma ... Same time we ll have nice dinner here and return back.....gd service.and filling food....karagey chicken awesome&quot;,
-            &quot;author&quot;: &quot;anithank ani&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;Every weekend v use to travel yokohoma ... Same time we ll have nice dinner here and return back.....gd service.and filling food....karagey chicken awesome&quot;
-          },
-          {
-            &quot;text&quot;: &quot;So hard to find yours restaurant at the Yokohama Station&quot;,
-            &quot;author&quot;: &quot;htetmyat kaung&quot;,
-            &quot;rating&quot;: 2,
-            &quot;original_text&quot;: &quot;So hard to find yours restaurant at the Yokohama Station&quot;
-          },
-          {
-            &quot;text&quot;: &quot;Very fast&quot;,
-            &quot;author&quot;: &quot;Mario Alvin&quot;,
-            &quot;rating&quot;: 5,
-            &quot;original_text&quot;: &quot;Very fast&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.1,
-        &quot;supports_paypay&quot;: false
-      }
-    ],
-    &quot;enriched_count&quot;: 4
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 4</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_4_synthesis (card_synthesis)</div>
-                <div class="step-sub-title">單步耗時: 2203 ms</div>
-            </div>
-            <span class="step-badge">2203ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2203 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;cuisine&quot;: &quot;丼飯&quot;,
-    &quot;location&quot;: &quot;橫濱車站&quot;,
-    &quot;stores_count&quot;: 4
-  },
-  &quot;output&quot;: {
-    &quot;length&quot;: 1386,
-    &quot;card_content&quot;: &quot;🍱 **橫濱車站周邊丼飯精選推薦**\n\n🍱 **店名** (中日文對照)：\n`Densetsunosutadonya Yokohamanishiguchiten`\n(傳說中的すた丼 橫濱西口店)\n\n🚶 **步行距離**：從「橫濱車站」步行約 9 分鐘 (700m)\n⭐️ **雙平台評分**：⭐️ Google 3.7 分 (589 則評價) ｜ Tabelog 暫無評分\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：約 ￥1,000 ~ ￥1,500 (依肉量選擇)\n📍 **老饕推薦理由 (Google 在地評價)**：橫濱西口的傳奇「炸豬排丼」名店！必點「原味すた丼」，搭配生蛋與味噌湯，肉片酥脆多汁。特別注意：若逢「Meat Day」想加肉，需先買普通票再口頭告知店員，機器無法直接選加肉，服務態度親切熱情。\n🔗 **店家連結**：[Google Maps 位置](https://www.google.com/maps/search/?api=1&amp;query=Densetsunosutadonya+Yokohamanishiguchiten)\n\n---\n\n🍱 **店名** (中日文對照)：\n`Gohan Susumu 橫濱PORTA店`\n(飯 進 橫濱PORTA店)\n\n🚶 **步行距離**：從「橫濱車站」步行約 2 分鐘 (130m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.5 分 (411 則評價) / Google 4.2\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n💰 **預算區間**：約 ￥800 ~ ￥1,200\n📍 **老饕推薦理由 (食べログ 口コミ)**：位於 JR 橫濱站東口地下街 PORTA 內，交通極其便利。主打平價且飽足感高的丼飯，適合剛下火車或趕時間的旅客快速補充能量，Google 評分高達 4.2 顯示其穩定品質深受大眾喜愛。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/kanagawa/A1401/A140101/14085501/)\n\n---\n\n🍱 **店名** (中日文對照)：\n`三﨑市場橫濱Joinus店`\n(三崎市場 橫濱Joinus店)\n\n🚶 **步行距離**：從「橫濱車站」步行約 2 分鐘 (92m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.3 分 (211 則評價) / Google 3.6\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n💰 **預算區間**：約 ￥1,000 ~ ￥1,500\n📍 **老饕推薦理由 (食べログ 口コミ)**：位於橫濱站西口相鐵 Joinus 地下一層，主打新鮮海鮮丼飯。雖然評分中等，但對於想體驗「市場直送」新鮮度且不想走太遠的旅客來說，是極具便利性的高性價比選擇，營業時間長至晚間 9 點。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/kanagawa/A1401/A140101/14043665/)\n\n💡 特派員提醒：這三家皆以現金為主，請務必備好日圓現鈔；若追求極致炸豬排體驗，建議多花 9 分鐘步行至「傳說中的すた丼」，其餘兩家則勝在出站即達的便利性。&quot;
   }
 }</code></pre>
             </details>

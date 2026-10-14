@@ -115,6 +115,138 @@ PREFECTURE_MAP = {
 }
 
 
+TOKYO_WARDS = {
+    "千代田区",
+    "中央区",
+    "港区",
+    "新宿区",
+    "文京区",
+    "台東区",
+    "墨田区",
+    "江東区",
+    "品川区",
+    "目黒区",
+    "大田区",
+    "世田谷区",
+    "渋谷区",
+    "中野区",
+    "杉並区",
+    "豊島区",
+    "北区",
+    "荒川区",
+    "板橋区",
+    "練馬区",
+    "足立区",
+    "葛飾区",
+    "江戸川区",
+    "千代田區",
+    "中央區",
+    "港區",
+    "新宿區",
+    "文京區",
+    "台東區",
+    "墨田區",
+    "江東區",
+    "品川區",
+    "目黑區",
+    "大田區",
+    "世田谷區",
+    "澀谷區",
+    "渋谷區",
+    "中野區",
+    "杉並區",
+    "豐島區",
+    "北區",
+    "荒川區",
+    "板橋區",
+    "練馬區",
+    "足立區",
+    "葛飾區",
+    "江戶川區",
+    "chiyoda",
+    "shinjuku",
+    "shibuya",
+    "ginza",
+    "roppongi",
+    "akihabara",
+    "ueno",
+    "asakusa",
+    "ikebukuro",
+}
+
+KANAGAWA_CITIES = {
+    "横浜市",
+    "橫濱市",
+    "川崎市",
+    "相模原市",
+    "藤沢市",
+    "藤澤市",
+    "鎌倉市",
+    "yokohama",
+    "kawasaki",
+    "kamakura",
+}
+
+OSAKA_CITIES = {
+    "大阪市",
+    "堺市",
+    "東大阪市",
+    "豊中市",
+    "豐中市",
+    "吹田市",
+    "osaka",
+    "umeda",
+    "namba",
+}
+
+KYOTO_CITIES = {
+    "京都市",
+    "宇治市",
+    "kyoto",
+}
+
+
+def extract_prefecture_from_postal_code(text: str) -> Optional[str]:
+    """從日本郵遞區號 (〒101-0051 或 101-0051) 前三碼精準推導都道府縣代碼"""
+    m = re.search(r"(?:〒|\b)(\d{3})-?(\d{4})\b", text)
+    if not m:
+        return None
+    try:
+        prefix = int(m.group(1))
+    except ValueError:
+        return None
+
+    if 100 <= prefix <= 208:
+        return "tokyo"
+    if 210 <= prefix <= 259:
+        return "kanagawa"
+    if 260 <= prefix <= 299:
+        return "chiba"
+    if 330 <= prefix <= 369:
+        return "saitama"
+    if 530 <= prefix <= 599:
+        return "osaka"
+    if 600 <= prefix <= 629:
+        return "kyoto"
+    if 450 <= prefix <= 499:
+        return "aichi"
+    if 810 <= prefix <= 839:
+        return "fukuoka"
+    if 1 <= prefix <= 99:
+        return "hokkaido"
+    if 650 <= prefix <= 679:
+        return "hyogo"
+    if 730 <= prefix <= 739:
+        return "hiroshima"
+    if 980 <= prefix <= 989:
+        return "miyagi"
+    if 410 <= prefix <= 439:
+        return "shizuoka"
+    if 900 <= prefix <= 907:
+        return "okinawa"
+    return None
+
+
 def extract_prefecture_from_tabelog_url(url: Optional[str]) -> Optional[str]:
     """從 Tabelog URL 提取都道府縣代碼 (例如 https://tabelog.com/kanagawa/... -> kanagawa)"""
     if not url:
@@ -128,13 +260,36 @@ def extract_prefecture_from_tabelog_url(url: Optional[str]) -> Optional[str]:
 
 
 def extract_prefecture_from_address(address: Optional[str]) -> Optional[str]:
-    """從中日文/英文地址中提取都道府縣代碼 (例如 神奈川県 -> kanagawa, Kanagawa -> kanagawa)"""
+    """從中日文/英文地址中提取都道府縣代碼 (郵遞區號 ➡️ 漢字縣名 ➡️ 23區/政令市 ➡️ 英文單詞)"""
     if not address:
         return None
+
+    # 1. 優先掃描日本郵遞區號前三碼 (100% 嚴密地理映射)
+    postal_pref = extract_prefecture_from_postal_code(address)
+    if postal_pref:
+        return postal_pref
+
+    # 2. 漢字都道府縣全名比對
     for kanji, code in PREFECTURE_MAP.items():
         if kanji in address:
             return code
+
+    # 3. 東京 23 區與重要政令市補全 (防範省略都道府縣)
     addr_lower = address.lower()
+    for ward in TOKYO_WARDS:
+        if ward in address or ward in addr_lower:
+            return "tokyo"
+    for city in KANAGAWA_CITIES:
+        if city in address or city in addr_lower:
+            return "kanagawa"
+    for city in OSAKA_CITIES:
+        if city in address or city in addr_lower:
+            return "osaka"
+    for city in KYOTO_CITIES:
+        if city in address or city in addr_lower:
+            return "kyoto"
+
+    # 4. 英文單詞邊界比對
     for code in set(PREFECTURE_MAP.values()):
         if re.search(rf"\b{code}\b", addr_lower):
             return code
@@ -284,11 +439,16 @@ class EntityResolver:
         best_score = 0.0
 
         # Step 1: 電話號碼完全比對 (Highest Priority)
-        if google_phone:
+        # 排除 0120, 0800, 0570 全國免付費/NaviDial 虛擬號碼直接秒通，防止跨分店總部專線誤導
+        is_virtual_toll_free = any(google_phone.startswith(p) for p in ("0120", "0800", "0570"))
+        if google_phone and not is_virtual_toll_free:
             for cand in valid_candidates:
                 cand_phone = normalize_japanese_phone(cand.get("phone"))
-                if cand_phone and (
-                    google_phone == cand_phone or google_phone in cand_phone or cand_phone in google_phone
+                cand_is_virtual = cand_phone and any(cand_phone.startswith(p) for p in ("0120", "0800", "0570"))
+                if (
+                    cand_phone
+                    and not cand_is_virtual
+                    and (google_phone == cand_phone or google_phone in cand_phone or cand_phone in google_phone)
                 ):
                     return {
                         "match_found": True,

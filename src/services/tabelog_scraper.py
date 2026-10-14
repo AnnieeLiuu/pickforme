@@ -201,8 +201,14 @@ class TabelogScraper:
             logger.warning(f"Error fetching tabelog reviews for '{store_name}': {e}")
         return reviews
 
-    async def search_tabelog_candidates(self, store_name: str, area_name: str = "") -> list[dict[str, Any]]:
-        """搜尋 Tabelog 候選店家頁面 (Fail-Fast 降級至 Web Grounding)"""
+    async def search_tabelog_candidates(
+        self, store_name: str, area_name: str = "", enable_direct_scrape: bool = False
+    ) -> list[dict[str, Any]]:
+        """搜尋 Tabelog 候選店家頁面 (Grounding-First: 跳過純 HTTP 直爬 100% 403 撞牆，直達 Yahoo Web Grounding)"""
+        if not enable_direct_scrape:
+            # Grounding-First 原則：Tabelog 純 HTTP 直爬因 Cloudflare 成功率為 0%，預設直接走 Grounding 省下 400~800ms
+            return await self.search_via_grounding(store_name=store_name, area_name=area_name)
+
         query_str = f"{area_name} {store_name}".strip()
         search_url = f"https://tabelog.com/rstLst/?vs=1&sa={httpx.QueryParams({'sk': query_str})['sk']}"
 
@@ -218,9 +224,29 @@ class TabelogScraper:
         return parsed
 
     async def scrape_restaurant_details(
-        self, tabelog_url: str, fallback_candidate: Optional[dict[str, Any]] = None
+        self,
+        tabelog_url: str,
+        fallback_candidate: Optional[dict[str, Any]] = None,
+        enable_direct_scrape: bool = False,
     ) -> dict[str, Any]:
-        """抓取 Tabelog 店家詳細頁面評分、預算與電話 (Fail-Fast 降級)"""
+        """抓取 Tabelog 店家詳細頁面評分、預算與電話 (Grounding-First 快速融合)"""
+        if not enable_direct_scrape and fallback_candidate:
+            # 若已有 Grounding 提取出的候選人資料，預設直接使用，避免無效 403 請求
+            return {
+                "tabelog_url": tabelog_url,
+                "name_ja": fallback_candidate.get("name_ja", ""),
+                "tabelog_rating": fallback_candidate.get("tabelog_rating"),
+                "review_count": fallback_candidate.get("review_count"),
+                "price_lunch": fallback_candidate.get("price_lunch"),
+                "price_dinner": fallback_candidate.get("price_dinner"),
+                "phone": fallback_candidate.get("phone", ""),
+                "awards": fallback_candidate.get("awards", []),
+                "hyakumeiten": fallback_candidate.get("hyakumeiten", []),
+                "supports_paypay": fallback_candidate.get("supports_paypay"),
+                "credit_cards": fallback_candidate.get("credit_cards"),
+                "sample_reviews": fallback_candidate.get("sample_reviews", []),
+            }
+
         html_content = await self._fetch_url_with_retry(tabelog_url)
         if not html_content:
             logger.info(f"Direct store fetch blocked for '{tabelog_url}'. Using candidate metadata fallback.")

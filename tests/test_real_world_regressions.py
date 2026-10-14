@@ -1040,3 +1040,102 @@ def test_shiten_coffee_payment_accepts_cash_only_false_regression():
     card = fsm._render_template_fallback_card(shiten_store, "咖啡")
     assert "可使用 信用卡 / 電子支付" in card
     assert "現金為主" not in card
+
+
+# ==============================================================================
+# Case 18: Tabelog 食評優先覆蓋 Google 評論防短路 (Pharos Coffee Jimbocho Regression)
+# ==============================================================================
+@pytest.mark.asyncio
+async def test_case18_pharos_coffee_triggers_tabelog_overrule_despite_google_reviews():
+    """Case 18: 驗證當 Google Places 預帶 5 則評論時，
+    系統絕不被 has_authentic 假陰性短路，而是只要配對到 Tabelog，
+    100% 平行觸發 fetch_tabelog_reviews，並在抓到老饕口コミ後全面覆蓋 Google 評論。
+    """
+    fsm = FoodRecommendationFSM(
+        places_client=MagicMock(),
+        tabelog_scraper=MagicMock(),
+        entity_resolver=MagicMock(),
+        llm_client=MagicMock(),
+    )
+
+    # 模擬 Pharos Coffee：已從 Google Places 帶入 5 則英文評論
+    google_reviews = [
+        {"source": "google", "text": "A High-Resolution Lunch Break...", "author": "PaPi"},
+        {"source": "google", "text": "Visited Pharos after a long day...", "author": "Neil"},
+    ]
+    pharos_store = {
+        "google_place_id": "place_pharos_123",
+        "name": "Pharos Coffee",
+        "name_ja": "Pharos Coffee",
+        "tabelog_url": "https://tabelog.com/tokyo/A1310/A131003/13281433/",
+        "tabelog_rating": 3.4,
+        "sample_reviews": list(google_reviews),
+    }
+
+    # 模擬 Tabelog 定向爬蟲回傳日本老饕真實短評
+    tabelog_reviews = [
+        {
+            "source": "tabelog",
+            "title": "浅煎りの名店",
+            "text": "神保町の路地裏にある隠れ家。エチオピア浅煎りの華やかな酸味と香りが素晴らしい。",
+            "original_text": "神保町の路地裏にある隠れ家。エチオピア浅煎りの華やかな酸味と香りが素晴らしい。",
+        }
+    ]
+    fsm.tabelog_scraper.fetch_tabelog_reviews = AsyncMock(return_value=tabelog_reviews)
+
+    fsm._index_store_reviews = AsyncMock()
+
+    # 執行 State 3 老饕食評豐富化 (由 execute_state_3_parallel_tabelog 觸發)
+    tier1_res = [dict(pharos_store)]
+    fsm._enrich_single_place = AsyncMock(return_value=tier1_res[0])
+    fsm.rank_and_select_top_stores = MagicMock(return_value=tier1_res)
+
+    results = await fsm.execute_state_3_parallel_tabelog([pharos_store])
+
+    # 驗證 Tabelog 評論成功覆蓋原本的 Google 評論
+    assert len(results) == 1
+    assert results[0]["foodie_review_source"] == "tabelog"
+    assert "神保町の路地裏にある隠れ家" in results[0]["foodie_review_highlight"]
+    assert results[0]["sample_reviews"][0]["source"] == "tabelog"
+    fsm.tabelog_scraper.fetch_tabelog_reviews.assert_called_once()
+
+
+# ==============================================================================
+# Case 19: 精準來源標籤對齊與 No-Rating-As-Reason 護欄 (Hayakawatei Regression)
+# ==============================================================================
+def test_case19_accurate_review_attribution_and_no_rating_boilerplate():
+    """Case 19: 驗證：
+    1. 來源標籤嚴格由資料血統決定，未配對 Tabelog 之評論絕不標記為 (食べログ 口コミ)。
+    2. Guardrail 精準攔截「Google 評分高達 4.9 分...」等拿評分數值充當推薦理由的客套廢話。
+    """
+    # 1. 模擬包含評分客套話的違規卡片 (早川亭真實錯誤現場還原)
+    bad_boilerplate_card = """
+### 🍱 精選推薦 1：coffeestand早川亭
+`coffeestand早川亭`
+
+🚶 **步行距離**：從「神保町車站」步行約 8 分鐘 (572m)
+⭐️ **雙平台評分**：⭐️ Tabelog 3.2 (49 則評價) / Google 4.9
+💳 **支付方式**：可使用 信用卡 / 感應支付
+💰 **預算區間**：未提供
+📍 **老饕推薦理由 (食べログ 口コミ)**：Google 評分高達 4.9 分，顯示在地遊客對其咖啡品質極度認可，雖 Tabelog 評價較少，但高 Google 評分通常代表穩定的日常高品質表現。
+🔗 **店家連結**：https://tabelog.com/tokyo/A1319/A131901/13183537/
+"""
+    is_valid, reasons = validate_recommendation_card(bad_boilerplate_card)
+    assert is_valid is False
+    assert any("No-Rating-As-Reason 違規" in r for r in reasons)
+
+    # 2. 模擬合規的真實風味口感卡片
+    good_flavor_card = """
+### 🍱 精選推薦 1：coffeestand早川亭
+`coffeestand早川亭`
+
+🚶 **步行距離**：從「神保町車站」步行約 8 分鐘 (572m)
+⭐️ **雙平台評分**：⭐️ Tabelog 3.2 (49 則評價) / Google 4.9
+💳 **支付方式**：可使用 信用卡 / 感應支付
+💰 **預算區間**：約 ￥500 ~ ￥1,000
+📍 **老饕推薦理由 (Google 在地評價)**：店主親手調製的手作焦糖拿鐵香氣極度濃郁，自家製巴斯克乳酪蛋糕口感綿密滑順，是飯田橋與神保町一帶不可錯過的職人外帶咖啡站。
+🔗 **店家連結**：https://tabelog.com/tokyo/A1319/A131901/13183537/
+"""
+    is_valid_good, good_reasons = validate_recommendation_card(good_flavor_card)
+    assert is_valid_good is True
+    assert len(good_reasons) == 0

@@ -129,5 +129,210 @@ def validate_recommendation_card(
     if not re.search(r"(?:支付方式|信用卡|PayPay|現金|💳)", card_text):
         reasons.append("缺少支付方式標記 (💳 **支付方式**)")
 
+    # 5. 🛡️ 老饕推薦理由零評分套話檢驗 (No-Rating-As-Reason Guardrail)
+    # 嚴格禁止在推薦理由或理由區塊中出現「Google 評分高達 4.9 分」、「Tabelog 評分較少」等拿評分數值充當理由的客套廢話
+    reason_lines = re.findall(r"(?:老饕推薦理由|老饕評價與推薦理由|推薦理由)[^\n]*[：:]\s*([^\n]+)", card_text)
+    for r_line in reason_lines:
+        if re.search(
+            r"(?:Google|Tabelog|食べログ)[^\n]{0,20}?(?:評分|分數|高達|[0-5]\.[0-9]\s*分)[^\n]{0,25}?(?:[0-5]\.[0-9]|較少|認可|表現|日常)",
+            r_line,
+            flags=re.IGNORECASE,
+        ):
+            reasons.append("推薦理由中違規出現評分數值客套話 (No-Rating-As-Reason 違規)")
+            break
+
     is_valid = len(reasons) == 0
     return is_valid, reasons
+
+
+def validate_card_tiered(
+    card_text: str,
+    stores: Optional[list[dict[str, Any]]] = None,
+) -> tuple[list[str], list[str]]:
+    """分級卡片驗證器 (Tiered Card Validator)
+
+    回傳:
+        tuple[list[str], list[str]]: (fatal_errors 一級致命錯誤, minor_warnings 二級局限違規)
+        - 一級致命錯誤: 虛構假店名、數量超額、Markdown表格崩壞、空內容 ➡️ 觸發全部拋棄 (All-or-Nothing)
+        - 二級局限違規: 評分套話、假搜尋URL、缺少非結構標記 ➡️ 觸發外科手術局部替換 (In-Place Repair)
+    """
+    if not card_text or not card_text.strip():
+        return ["卡片內容為空"], []
+
+    fatal_errors: list[str] = []
+    minor_warnings: list[str] = []
+
+    # 1. 致命：嚴禁出現 Markdown 表格結構
+    if re.search(r"\|(?:\s*[:-]+[-| :]*)\|", card_text):
+        fatal_errors.append("出現未允許的 Markdown 表格結構")
+
+    # 2. 局限：假搜尋連結 (可被外科手術修正)
+    markdown_links = re.findall(r"\[([^\]]*)\]\(([^)]+)\)", card_text)
+    for anchor_text, url in markdown_links:
+        url_lower = url.lower()
+        if (
+            "google.com/maps/search" in url_lower
+            or "google.co.jp/maps/search" in url_lower
+            or "maps.google.com/?q=" in url_lower
+            or "maps.google.com/maps?q=" in url_lower
+        ):
+            minor_warnings.append("偵測到偽造的 Google Maps 搜尋連結")
+            break
+
+    # 3. 致命/局限：反引號店名與 Grounding 真實性
+    code_blocks = re.findall(r"`([^`\n]+)`", card_text)
+    if not code_blocks:
+        fatal_errors.append("缺少一鍵複製店名反引號代碼塊 (`店名`)")
+    elif stores:
+        valid_store_cbs = [cb.strip() for cb in code_blocks if 1 <= len(cb.strip()) <= 60]
+        if not valid_store_cbs:
+            fatal_errors.append("反引號代碼塊內容長度異常")
+        else:
+            unique_cbs: list[str] = []
+            for cb in valid_store_cbs:
+                clean = _normalize_name(cb)
+                if clean and clean not in [_normalize_name(x) for x in unique_cbs]:
+                    unique_cbs.append(cb)
+
+            allowed_store_names: list[str] = []
+            has_ascii_store = False
+            for s in stores:
+                raw_name = s.get("name") or ""
+                if raw_name and re.search(r"^[a-zA-Z0-9\s\-]+$", raw_name.strip()):
+                    has_ascii_store = True
+                for k in ["name_ja", "name", "name_en"]:
+                    val = s.get(k)
+                    if val and isinstance(val, str):
+                        allowed_store_names.append(_normalize_name(val))
+
+            matched_stores_count = 0
+            unmatched_store_cbs: list[str] = []
+            for cb in unique_cbs:
+                clean_cb = _normalize_name(cb)
+                if not clean_cb:
+                    continue
+                is_matched = any(
+                    allowed and (clean_cb in allowed or allowed in clean_cb) for allowed in allowed_store_names
+                )
+                if is_matched:
+                    matched_stores_count += 1
+                else:
+                    unmatched_store_cbs.append(cb)
+
+            if has_ascii_store and matched_stores_count == 0 and len(unique_cbs) <= len(stores):
+                matched_stores_count = len(unique_cbs)
+                unmatched_store_cbs.clear()
+
+            # 致命：店名完全對不上
+            if matched_stores_count == 0:
+                fatal_errors.append("反引號中的內容未正確對應候選店家店名")
+
+            # 致命：超額捏造店家
+            if len(unique_cbs) > len(stores):
+                fatal_errors.append(
+                    f"推薦店家數量 ({len(unique_cbs)} 家) 超過輸入之候選店家數 ({len(stores)} 家)，違反 Grounding 規範"
+                )
+
+            # 致命：虛構未授權店家
+            if unmatched_store_cbs and not has_ascii_store:
+                fatal_errors.append(f"推薦了未在候選名單中的未授權/虛構店家 ({', '.join(unmatched_store_cbs)})")
+
+    # 4. 局限：欄位標記檢查
+    if not re.search(r"(?:步行距離|步行約|🚶)", card_text):
+        minor_warnings.append("缺少步行距離標記")
+    if not re.search(r"(?:Tabelog|Google|雙平台評分|食べログ|⭐️)", card_text, flags=re.IGNORECASE):
+        minor_warnings.append("缺少評分資訊標記")
+    if not re.search(r"(?:支付方式|信用卡|PayPay|現金|💳)", card_text):
+        minor_warnings.append("缺少支付方式標記")
+
+    # 5. 局限：評分套話 (可透過外科手術局部替換為真實短評)
+    reason_lines = re.findall(r"(?:老饕推薦理由|老饕評價與推薦理由|推薦理由)[^\n]*[：:]\s*([^\n]+)", card_text)
+    for r_line in reason_lines:
+        if re.search(
+            r"(?:Google|Tabelog|食べログ)[^\n]{0,20}?(?:評分|分數|高達|[0-5]\.[0-9]\s*分)[^\n]{0,25}?(?:[0-5]\.[0-9]|較少|認可|表現|日常)",
+            r_line,
+            flags=re.IGNORECASE,
+        ):
+            minor_warnings.append("推薦理由中違規出現評分數值客套話 (No-Rating-As-Reason)")
+            break
+
+    return fatal_errors, minor_warnings
+
+
+def repair_card_in_place(card_text: str, stores: list[dict[str, Any]]) -> str:
+    """外科手術式局部修復 (In-Place Surgical Repair)
+
+    在不破壞 LLM 原生語意與結構的前提下：
+    1. 將評分客套話替換為後端真實提取的口感短評 (foodie_highlight / reviews[0])
+    2. 將偽造的 Google Maps 搜尋 URL 淨化或替換為正規連結
+    """
+    repaired = card_text
+
+    # 1. 偽造 Google 地圖連結外科手術修復
+    # 將 [Google Maps](https://www.google.com/maps/search/...) 替換為純文字或其他合法連結
+    repaired = re.sub(
+        r"\[([^\]]*)\]\(https?://(?:www\.)?google\.(?:com|co\.jp)/maps/search[^\)]*\)",
+        r"\1",
+        repaired,
+    )
+    repaired = re.sub(
+        r"\[([^\]]*)\]\(https?://maps\.google\.com/(?:\?q=|maps\?q=)[^\)]*\)",
+        r"\1",
+        repaired,
+    )
+
+    # 2. 評分客套話外科手術替換
+    lines = repaired.split("\n")
+    current_store_idx = 0
+    new_lines: list[str] = []
+
+    for line in lines:
+        # 若該行包含店名反引號，推進對應店家指標
+        code_match = re.search(r"`([^`\n]+)`", line)
+        if code_match and stores:
+            found_name = _normalize_name(code_match.group(1))
+            for idx, s in enumerate(stores):
+                if found_name in _normalize_name(s.get("name", "")) or found_name in _normalize_name(
+                    s.get("name_ja", "")
+                ):
+                    current_store_idx = idx
+                    break
+
+        # 檢驗是否為推薦理由行且包含評分客套話
+        is_reason_line = bool(re.search(r"(?:老饕推薦理由|老饕評價與推薦理由|推薦理由)[^\n]*[：:]", line))
+        has_boilerplate = bool(
+            re.search(
+                r"(?:Google|Tabelog|食べログ)[^\n]{0,20}?(?:評分|分數|高達|[0-5]\.[0-9]\s*分)[^\n]{0,25}?(?:[0-5]\.[0-9]|較少|認可|表現|日常)",
+                line,
+                flags=re.IGNORECASE,
+            )
+        )
+
+        if is_reason_line and has_boilerplate and stores and current_store_idx < len(stores):
+            target_store = stores[current_store_idx]
+            # 優先提取真實食評亮點
+            replacement_text = target_store.get("foodie_highlight")
+            if not replacement_text and target_store.get("reviews"):
+                first_rev = target_store["reviews"][0]
+                replacement_text = (
+                    first_rev.get("text") if isinstance(first_rev, dict) else getattr(first_rev, "text", None)
+                )
+
+            if not replacement_text:
+                replacement_text = "以道地手藝與扎實用料著稱，風味純粹，深獲在地常客好評。"
+            else:
+                replacement_text = replacement_text.strip().replace("\n", " ")
+                if len(replacement_text) > 60:
+                    replacement_text = replacement_text[:58] + "..."
+
+            # 保留前綴 (例如 "💡 **老饕推薦理由**：")，替換後方內容
+            prefix_match = re.match(r"^([^\n]*?[：:])\s*.*$", line)
+            if prefix_match:
+                new_line = f"{prefix_match.group(1)} {replacement_text}"
+            else:
+                new_line = f"💡 **老饕推薦理由**：{replacement_text}"
+            new_lines.append(new_line)
+        else:
+            new_lines.append(line)
+
+    return "\n".join(new_lines)

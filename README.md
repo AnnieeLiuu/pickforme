@@ -47,6 +47,9 @@
 
 ## 📐 系統架構圖 (Architecture)
 
+> [!TIP]
+> 欲查閱端到端「高精度多維全景河流圖 (Global Blueprint River)」、6 維個案深入盤點矩陣與根因排查 SOP，請參閱 **[`docs/SOP_ROOT_CAUSE_DEBUGGING.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/SOP_ROOT_CAUSE_DEBUGGING.md)**。更多架構深潛見 **[`docs/ARCHITECTURE.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/ARCHITECTURE.md)**。
+
 ```mermaid
 graph TD
     User(["Telegram App / 每次發送位置與問句"]) -->|Webhook| Server["FastAPI 後端 @ Cloud Run"]

@@ -11,7 +11,7 @@ from uuid import UUID
 
 from src.agent.llm_client import LLMClient
 from src.agent.trace import AgentTraceLogger
-from src.agent.validator import validate_recommendation_card
+from src.agent.validator import repair_card_in_place, validate_card_tiered
 from src.db.repositories.restaurant import RestaurantRepository
 from src.db.repositories.session import SessionRepository
 from src.db.repositories.vector import VectorRepository
@@ -823,19 +823,16 @@ class FoodRecommendationFSM:
         # 4. 老饕綜合加權重排，精選 Top 3
         top_stores = self.rank_and_select_top_stores(final_enriched, top_k=3)
 
-        # 5. 為最終入選的 Top 店家平行豐富定向老饕食評 (Tabelog 口コミ定向擷取，自然全收至多 5 則)
+        # 5. 為最終入選的 Top 店家平行豐富定向老饕食評 (Tabelog 口コミ絕對優先合約)
         async def _enrich_foodie_reviews(store: dict[str, Any]) -> None:
-            from src.services.review_sanitizer import is_pure_metadata_noise
+            tabelog_url = store.get("tabelog_url")
+            tabelog_fetcher = getattr(self.tabelog_scraper, "fetch_tabelog_reviews", None)
 
-            existing_revs = store.get("sample_reviews") or []
-            has_authentic = any(
-                isinstance(r, dict) and not is_pure_metadata_noise(r.get("text", "")) for r in existing_revs
-            )
-            if not has_authentic and hasattr(self.tabelog_scraper, "fetch_tabelog_reviews"):
+            # 優先級合約：只要店家配對到 Tabelog，無條件平行檢索 Tabelog 口コミ
+            if tabelog_url and callable(tabelog_fetcher):
                 search_name = store.get("name_ja") or store.get("name") or ""
-                tabelog_fetcher = getattr(self.tabelog_scraper, "fetch_tabelog_reviews", None)
                 tabelog_revs: list[dict[str, Any]] = []
-                if callable(tabelog_fetcher):
+                try:
                     res = tabelog_fetcher(search_name, max_reviews=5)
                     if asyncio.iscoroutine(res):
                         raw_revs = await res
@@ -843,15 +840,30 @@ class FoodRecommendationFSM:
                             tabelog_revs = raw_revs
                     elif isinstance(res, list):
                         tabelog_revs = res
+                except Exception as e:
+                    logger.warning(f"Error fetching tabelog reviews for '{search_name}': {e}")
 
-                if isinstance(tabelog_revs, list) and len(tabelog_revs) > 0:
+                if tabelog_revs and len(tabelog_revs) > 0:
+                    # Tabelog 成功：全面覆蓋原本的 Google 評論作為首選核心
                     store["sample_reviews"] = tabelog_revs
                     first_text = tabelog_revs[0].get("text") if isinstance(tabelog_revs[0], dict) else None
                     if isinstance(first_text, str):
                         store["foodie_review_highlight"] = first_text
+                    store["foodie_review_source"] = "tabelog"
                     rid = store.get("restaurant_id")
                     if rid:
                         asyncio.create_task(self._index_store_reviews(rid, tabelog_revs))
+                    return
+
+            # 若無 Tabelog 或 Tabelog 未抓到食評，回退檢查既有評論（如 Google 評論）
+            existing_revs = store.get("sample_reviews") or []
+            if existing_revs and isinstance(existing_revs, list) and isinstance(existing_revs[0], dict):
+                src = existing_revs[0].get("source") or ("tabelog" if store.get("tabelog_url") else "google")
+                store["foodie_review_source"] = src
+                if not store.get("foodie_review_highlight"):
+                    first_text = existing_revs[0].get("text") or existing_revs[0].get("original_text")
+                    if isinstance(first_text, str):
+                        store["foodie_review_highlight"] = first_text
 
         if top_stores:
             await asyncio.gather(*[_enrich_foodie_reviews(s) for s in top_stores])
@@ -1075,19 +1087,27 @@ class FoodRecommendationFSM:
                 f"- 地址：{s.get('address')}\n"
                 f"- Tabelog網址：{s.get('tabelog_url')}\n"
             )
-            # 帶入食評亮點與明確標示來源 (Tabelog 口コミ / Google 評論)
+            # 帶入食評亮點與明確標示來源 (Tabelog 口コミ / Google 評價 / 特派員推薦)
             review_text = s.get("foodie_review_highlight")
-            rev_source_label = "食べログ 口コミ"
+            source_type = s.get("foodie_review_source")
+
             if not review_text:
                 sample_revs = s.get("sample_reviews") or []
                 if sample_revs and isinstance(sample_revs, list):
                     first_rev = sample_revs[0]
                     if isinstance(first_rev, dict):
                         review_text = first_rev.get("text") or first_rev.get("original_text") or first_rev.get("zh")
-                        if first_rev.get("source") != "tabelog":
-                            rev_source_label = "Google 在地評價"
+                        if not source_type:
+                            source_type = first_rev.get("source")
                     elif isinstance(first_rev, str):
                         review_text = first_rev
+
+            if source_type == "tabelog":
+                rev_source_label = "食べログ 口コミ"
+            elif source_type == "google":
+                rev_source_label = "Google 在地評價"
+            else:
+                rev_source_label = "特派員推薦理由"
 
             if review_text:
                 prompt_content += f"- 顧客/老饕真實評價 (來源: {rev_source_label})：{review_text}\n"
@@ -1106,11 +1126,11 @@ class FoodRecommendationFSM:
             # 🛡️ 執行 Scoped Anchor 毫秒級數值防偽校正護欄
             card_text = self._sanitize_card_ratings(card_text, stores)
 
-            # 🛡️ 排版規範驗證 (Card Layout Guardrail)
-            is_valid, reasons = validate_recommendation_card(card_text, stores)
-            if not is_valid:
+            # 🛡️ 分級排版與真實性防禦 (Tiered Defense Guardrail)
+            fatal_errors, minor_warnings = validate_card_tiered(card_text, stores)
+            if fatal_errors:
                 logger.warning(
-                    f"[CardGuardrail] LLM generated non-compliant card layout ({', '.join(reasons)}). "
+                    f"[CardGuardrail] Fatal violation detected ({', '.join(fatal_errors)}). "
                     f"Falling back to deterministic template card."
                 )
                 fallback_card = self._render_template_fallback_card(stores, cuisine, is_format_fallback=True)
@@ -1118,11 +1138,18 @@ class FoodRecommendationFSM:
                 await self.trace_logger.log_step(
                     action_type="state_4_synthesis",
                     tool_name="card_synthesis_format_fallback",
-                    tool_input={"stores_count": len(stores), "cuisine": cuisine, "invalid_reasons": reasons},
+                    tool_input={"stores_count": len(stores), "cuisine": cuisine, "fatal_errors": fatal_errors},
                     tool_output={"card_content": fallback_card, "length": len(fallback_card)},
                     latency_ms=latency,
                 )
                 return fallback_card
+
+            if minor_warnings:
+                logger.info(
+                    f"[CardGuardrail] Minor violations detected ({', '.join(minor_warnings)}). "
+                    f"Performing in-place surgical repair."
+                )
+                card_text = repair_card_in_place(card_text, stores)
 
             latency = int((time.time() - t0) * 1000)
             await self.trace_logger.log_step(

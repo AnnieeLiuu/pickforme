@@ -20,9 +20,10 @@ Welcome to **PickForMe** — a high-performance Japan Food AI Agent system built
 
 ## 📚 Key Documentation Files
 
-- **`docs/ARCHITECTURE.md`**: Master architectural blueprint, system topologies, Neon DB schema DDL, Scoped Anchor guardrails, and Mermaid flows.
+- **`docs/ARCHITECTURE.md`**: Master blueprint, system topologies, Neon DB DDL schema, and Scoped Anchor.
+- **`docs/SOP_ROOT_CAUSE_DEBUGGING.md`**: 全景河流圖 (Global Blueprint River)、6維個案盤點矩陣與5步排查 SOP。
 - **`docs/tabelog_structure.md`**: Detailed HTML DOM structure, CSS selectors, and parsing rules for Tabelog pages.
-- **`config/prompts/agent_system.md`**: System prompt for the Agent, including Telegram Markdown Code Block formatting (`\`寿々喜家 本店\``) for one-tap store name copying.
+- **`config/prompts/agent_system.md`**: System prompt for Agent, including one-tap store name copying.
 
 ---
 
@@ -94,9 +95,9 @@ Whenever modifying code, schemas, configurations, or business logic, AI Agents a
    - **嚴禁將個別函式的程式碼筆記、正則語法小撇步、特定 HTML CSS 選擇器、API 參數技巧或特定店家修復歷程追加至本文件**。
 3. **知識職責分流原則 (Separation of Concerns)**：
    - **Bug 個案防禦** ➡️ 唯一收斂至單元測試與 [`tests/test_real_world_regressions.py`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/tests/test_real_world_regressions.py)。
+   - **排查 SOP 與全景圖** ➡️ 唯一收斂至 [`docs/SOP_ROOT_CAUSE_DEBUGGING.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/SOP_ROOT_CAUSE_DEBUGGING.md)。
    - **現行系統架構 (Living State)** ➡️ 唯一收斂至 [`docs/ARCHITECTURE.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/ARCHITECTURE.md)。
-   - **重大架構取捨與技術決策 (ADR)** ➡️ 唯一收斂至 [`docs/adr/`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/adr/)。
-   - **版本演進與變更歷史 (Timeline)** ➡️ 唯一收斂至 [`CHANGELOG.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/CHANGELOG.md)。
+   - **重大架構取捨與歷史** ➡️ 唯一收斂至 [`docs/adr/`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/adr/) 與 [`CHANGELOG.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/CHANGELOG.md)。
    - **HTML 剖析規則** ➡️ 唯一收斂至 [`docs/tabelog_structure.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/tabelog_structure.md)。
    - **函式邊界與用法** ➡️ 唯一收斂至程式碼內部 Docstring 與 Type Annotations。
 4. **篇幅警戒線 (Length Limit)**：
