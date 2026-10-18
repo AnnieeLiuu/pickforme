@@ -45,7 +45,7 @@ def inspect_single_run(
     run_id = run.get("run_id") or run.get("id")
     query = run.get("user_query", "（無提問文字）")
     status = run.get("status", "unknown")
-    latency = run.get("latency_ms", 0)
+    latency = run.get("latency_ms") or 0
     model = run.get("model_used") or "N/A"
     tokens = run.get("total_tokens") or 0
     created_at = run.get("created_at", "N/A")

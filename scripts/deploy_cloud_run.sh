@@ -39,7 +39,7 @@ MIN_INSTANCES=0
 MAX_INSTANCES=5
 MEMORY="1Gi"
 CPU="1"
-TIMEOUT="60s"
+TIMEOUT="300s"
 CONCURRENCY=80
 
 # 解析命令列參數
@@ -170,6 +170,7 @@ DEPLOY_CMD="gcloud run deploy ${SERVICE_NAME} \
   --allow-unauthenticated \
   --memory ${MEMORY} \
   --cpu ${CPU} \
+  --no-cpu-throttling \
   --min-instances ${MIN_INSTANCES} \
   --max-instances ${MAX_INSTANCES} \
   --timeout ${TIMEOUT} \

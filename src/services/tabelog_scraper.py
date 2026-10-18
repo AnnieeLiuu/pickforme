@@ -48,23 +48,15 @@ class TabelogScraper:
             "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
         }
         candidates: list[dict[str, Any]] = []
-        html = ""
-        for attempt in range(2):
-            try:
-                async with httpx.AsyncClient(timeout=6.0) as client:
-                    resp = await client.get(search_url, headers=headers)
-                    if resp.status_code == 200:
-                        html = resp.text
-                        break
-                    logger.warning(f"Web Grounding search attempt {attempt + 1} failed with status {resp.status_code}")
-            except Exception as e:
-                logger.warning(f"Web Grounding search attempt {attempt + 1} exception: {e}")
-                if attempt == 0:
-                    import asyncio
-
-                    await asyncio.sleep(0.3)
-
-        if not html:
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(search_url, headers=headers)
+                if resp.status_code != 200:
+                    logger.warning(f"Web Grounding search failed with status {resp.status_code}")
+                    return []
+                html = resp.text
+        except Exception as e:
+            logger.warning(f"Web Grounding search request exception: {e}")
             return []
 
         soup = BeautifulSoup(html, "html.parser")
