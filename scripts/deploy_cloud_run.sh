@@ -135,24 +135,21 @@ fi
 
 IMAGE_TAG="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${SERVICE_NAME}:latest"
 
-# 4. 整理需注入 Cloud Run 的生產環境變數
-ENV_VARS_LIST=()
+# 4. 整理需注入 Cloud Run 的生產環境變數 (使用 env.yaml 避免連線字串包含 & 與特殊符號被截斷)
+ENV_FILE_TEMP=".env.run.yaml"
+cat <<EOF > "${ENV_FILE_TEMP}"
+ENVIRONMENT: "production"
+EOF
 
-# 必填或重要連線設定
-[ -n "${DATABASE_URL:-}" ] && ENV_VARS_LIST+=("DATABASE_URL=${DATABASE_URL}")
-[ -n "${TELEGRAM_BOT_TOKEN:-}" ] && ENV_VARS_LIST+=("TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}")
-[ -n "${TELEGRAM_WEBHOOK_SECRET:-}" ] && ENV_VARS_LIST+=("TELEGRAM_WEBHOOK_SECRET=${TELEGRAM_WEBHOOK_SECRET}")
-[ -n "${GOOGLE_MAPS_API_KEY:-}" ] && ENV_VARS_LIST+=("GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY}")
-[ -n "${GEMINI_API_KEY:-}" ] && ENV_VARS_LIST+=("GEMINI_API_KEY=${GEMINI_API_KEY}")
-[ -n "${GROQ_API_KEY:-}" ] && ENV_VARS_LIST+=("GROQ_API_KEY=${GROQ_API_KEY}")
-[ -n "${LLM_PRIMARY_PROVIDER:-}" ] && ENV_VARS_LIST+=("LLM_PRIMARY_PROVIDER=${LLM_PRIMARY_PROVIDER}")
-[ -n "${TELEGRAM_ALLOWED_USERS:-}" ] && ENV_VARS_LIST+=("TELEGRAM_ALLOWED_USERS=${TELEGRAM_ALLOWED_USERS}")
-
-# 合併為 gcloud 接受的逗號分隔字串
-ENV_VARS_STR=""
-if [ ${#ENV_VARS_LIST[@]} -gt 0 ]; then
-    ENV_VARS_STR=$(IFS=,; echo "${ENV_VARS_LIST[*]}")
-fi
+[ -n "${DATABASE_URL:-}" ] && echo "DATABASE_URL: \"${DATABASE_URL}\"" >> "${ENV_FILE_TEMP}"
+[ -n "${TELEGRAM_BOT_TOKEN:-}" ] && echo "TELEGRAM_BOT_TOKEN: \"${TELEGRAM_BOT_TOKEN}\"" >> "${ENV_FILE_TEMP}"
+[ -n "${TELEGRAM_ALLOWED_USER_ID:-}" ] && echo "TELEGRAM_ALLOWED_USER_ID: \"${TELEGRAM_ALLOWED_USER_ID}\"" >> "${ENV_FILE_TEMP}"
+[ -n "${TELEGRAM_WEBHOOK_SECRET:-}" ] && echo "TELEGRAM_WEBHOOK_SECRET: \"${TELEGRAM_WEBHOOK_SECRET}\"" >> "${ENV_FILE_TEMP}"
+[ -n "${GOOGLE_PLACES_API_KEY:-}" ] && echo "GOOGLE_PLACES_API_KEY: \"${GOOGLE_PLACES_API_KEY}\"" >> "${ENV_FILE_TEMP}"
+[ -n "${GEMINI_API_KEY:-}" ] && echo "GEMINI_API_KEY: \"${GEMINI_API_KEY}\"" >> "${ENV_FILE_TEMP}"
+[ -n "${GROQ_API_KEY:-}" ] && echo "GROQ_API_KEY: \"${GROQ_API_KEY}\"" >> "${ENV_FILE_TEMP}"
+[ -n "${GCS_BUCKET_NAME:-}" ] && echo "GCS_BUCKET_NAME: \"${GCS_BUCKET_NAME}\"" >> "${ENV_FILE_TEMP}"
+[ -n "${LLM_PRIMARY_PROVIDER:-}" ] && echo "LLM_PRIMARY_PROVIDER: \"${LLM_PRIMARY_PROVIDER}\"" >> "${ENV_FILE_TEMP}"
 
 echo -e "\n${BLUE}📦 步驟 1/3: 建構並推送容器映像檔至 Artifact Registry...${NC}"
 BUILD_CMD="gcloud builds submit --tag ${IMAGE_TAG} --project ${PROJECT_ID}"
@@ -177,11 +174,8 @@ DEPLOY_CMD="gcloud run deploy ${SERVICE_NAME} \
   --max-instances ${MAX_INSTANCES} \
   --timeout ${TIMEOUT} \
   --concurrency ${CONCURRENCY} \
-  --port 8080"
-
-if [ -n "$ENV_VARS_STR" ]; then
-    DEPLOY_CMD="${DEPLOY_CMD} --set-env-vars \"${ENV_VARS_STR}\""
-fi
+  --port 8080 \
+  --env-vars-file ${ENV_FILE_TEMP}"
 
 echo -e "執行指令: ${YELLOW}${DEPLOY_CMD}${NC}"
 
