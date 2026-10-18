@@ -2328,7 +2328,7 @@
             <td class="text-center"><span class="pill pill-green">PASS</span></td>
             <td class="text-center"><span class="pill pill-green">PASS</span></td>
             <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
-            <td class="text-right latency-text">0 ms</td>
+            <td class="text-right latency-text">1 ms</td>
         </tr>
         <tr id="case-eval_014" class="stepper-drawer" style="display: none;">
             <td colspan="8">
@@ -3362,6 +3362,367 @@
                 </thead>
                 <tbody>
                     
+            <tr class="live-row" onclick="toggleCaseDetails('live-131047f5-3770-4e9e-b2dc-a1ff4584cf23')">
+                <td><code>131047f5</code></td>
+                <td><span class="cat-pill">Live Telegram</span></td>
+                <td class="query-col">神保町車站 壽喜燒</td>
+                <td class="text-center"><code>N/A</code></td>
+                <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+                <td class="text-right latency-text">348,173 ms</td>
+            </tr>
+            <tr id="case-live-131047f5-3770-4e9e-b2dc-a1ff4584cf23" class="stepper-drawer" style="display: none;">
+                <td colspan="6">
+                    <div class="stepper-container">
+                        <div class="drawer-header">
+                            <h4>⚡ 真實線上問答執行軌跡 (Run ID: 131047f5-3770-4e9e-b2dc-a1ff4584cf23 | 提問時間: 2026-10-18T11:49:04.004626+00:00)</h4>
+                        </div>
+                        <div class="steps-flow">
+                            
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 1</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_1_intent (intent_parser)</div>
+                <div class="step-sub-title">單步耗時: 6499 ms</div>
+            </div>
+            <span class="step-badge">6499ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">6499 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;message&quot;: &quot;神保町車站 壽喜燒&quot;
+  },
+  &quot;output&quot;: {
+    &quot;intent&quot;: &quot;search&quot;,
+    &quot;cuisine&quot;: &quot;壽喜燒&quot;,
+    &quot;location&quot;: &quot;神保町車站&quot;,
+    &quot;modifier&quot;: null,
+    &quot;question&quot;: null,
+    &quot;target_index&quot;: null
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 2</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_2_places (search_nearby_ladder)</div>
+                <div class="step-sub-title">單步耗時: 10201 ms</div>
+            </div>
+            <span class="step-badge">10201ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">10201 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;lat&quot;: 35.696966,
+    &quot;lng&quot;: 139.7562635,
+    &quot;keyword&quot;: &quot;壽喜燒&quot;,
+    &quot;excluded_count&quot;: 0
+  },
+  &quot;output&quot;: {
+    &quot;count&quot;: 6
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 3</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_3_tabelog (parallel_tabelog_enrichment)</div>
+                <div class="step-sub-title">單步耗時: 286699 ms</div>
+            </div>
+            <span class="step-badge">286699ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">286699 ms</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (3 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 黒毛和牛食べ放題しゃぶしゃぶ すき焼 黄金だし しゃぶき 御徒町</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.20 (71 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「黒毛和牛食べ放題しゃぶしゃぶ すき焼 黄金だし しゃぶき 御徒町 . 御徒町駅/しゃぶしゃぶ､ すき焼き. 総合得点 3.19. 口コミ 71人. 保存 1230人....」</em></div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 和牛すき焼 そしじ 上 本郷三丁目店</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Google 4.0 (61 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">在地饕客評價</span> 💬 <em>「肉亭ikiの離れにオープンした「和牛すき焼き そしじ上」を初訪問。完全個室で落ち着いた雰囲気の中、黒毛和牛へれのすき焼きコースをいただきました。特に印象に残ったのは、...」</em></div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 MO</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.10 (24 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「mo ./モ (京終/ソフトクリーム)への 口コミ です。日本最大級のグルメサイト「食べログ」では、 mo ./モの 口コミ 12件を掲載中。」</em></div>
+        </div>
+        </div>
+    </div>
+    
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;stores_count&quot;: 6,
+    &quot;stores_searched&quot;: [
+      {
+        &quot;name&quot;: &quot;MO-MO-PARADISE 秋葉原店&quot;,
+        &quot;phone&quot;: &quot;050-1721-9010&quot;,
+        &quot;google_rating&quot;: 4.9
+      },
+      {
+        &quot;name&quot;: &quot;和牛すき焼 そしじ 上 本郷三丁目店&quot;,
+        &quot;phone&quot;: &quot;03-3868-2707&quot;,
+        &quot;google_rating&quot;: 4.8
+      },
+      {
+        &quot;name&quot;: &quot;WAGYU SUKIYAKI 極〜GOKU〜上野 Ueno&quot;,
+        &quot;phone&quot;: &quot;03-4400-8398&quot;,
+        &quot;google_rating&quot;: 4.9
+      },
+      {
+        &quot;name&quot;: &quot;いし橋&quot;,
+        &quot;phone&quot;: &quot;03-3251-3580&quot;,
+        &quot;google_rating&quot;: 4.5
+      },
+      {
+        &quot;name&quot;: &quot;鳥すき焼き ぼたん&quot;,
+        &quot;phone&quot;: &quot;03-3251-0577&quot;,
+        &quot;google_rating&quot;: 4.4
+      },
+      {
+        &quot;name&quot;: &quot;黄金だし しゃぶき&quot;,
+        &quot;phone&quot;: &quot;03-4400-5120&quot;,
+        &quot;google_rating&quot;: 4.6
+      }
+    ]
+  },
+  &quot;output&quot;: {
+    &quot;aligned_stores&quot;: [
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;黒毛和牛食べ放題しゃぶしゃぶ すき焼 黄金だし しゃぶき 御徒町&quot;,
+        &quot;rank_badge&quot;: &quot;🥇&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1311/A131101/13317776/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 71,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;黒毛和牛食べ放題しゃぶしゃぶ すき焼 黄金だし しゃぶき 御徒町 . 御徒町駅/しゃぶしゃぶ､ すき焼き. 総合得点 3.19. 口コミ 71人. 保存 1230人. ￥4,000～￥4,999. ￥ ...&quot;,
+            &quot;title&quot;: &quot;黒毛和牛食べ放題しゃぶしゃぶ すき焼 黄金だし しゃぶき 御徒町&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;黒毛和牛食べ放題しゃぶしゃぶ すき焼 黄金だし しゃぶき 御徒町 . 御徒町駅/しゃぶしゃぶ､ すき焼き. 総合得点 3.19. 口コミ 71人. 保存 1230人. ￥4,000～￥4,999. ￥ ...&quot;
+          },
+          {
+            &quot;text&quot;: &quot;黒毛和牛食べ放題しゃぶしゃぶ すき焼 黄金だし しゃぶき 御徒町 . 御徒町駅/しゃぶしゃぶ､ すき焼き. 総合得点 3.19. 口コミ 71人. 保存 1230人. ￥4,000～￥4,999. ￥ ...&quot;,
+            &quot;title&quot;: &quot;黒毛和牛食べ放題しゃぶしゃぶ すき焼 黄金だし しゃぶき 御徒町&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;黒毛和牛食べ放題しゃぶしゃぶ すき焼 黄金だし しゃぶき 御徒町 . 御徒町駅/しゃぶしゃぶ､ すき焼き. 総合得点 3.19. 口コミ 71人. 保存 1230人. ￥4,000～￥4,999. ￥ ...&quot;
+          },
+          {
+            &quot;text&quot;: &quot;黒毛和牛食べ放題しゃぶしゃぶ すき焼 黄金だし しゃぶき 御徒町 . 御徒町駅/しゃぶしゃぶ､ すき焼き. トップ · 座席 · メニュー · 写真371 · 口コミ 71 · クーポン3. 口コミ ...&quot;,
+            &quot;title&quot;: &quot;黒毛和牛食べ放題しゃぶしゃぶ すき焼 黄金だし しゃぶき 御徒町&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;黒毛和牛食べ放題しゃぶしゃぶ すき焼 黄金だし しゃぶき 御徒町 . 御徒町駅/しゃぶしゃぶ､ すき焼き. トップ · 座席 · メニュー · 写真371 · 口コミ 71 · クーポン3. 口コミ ...&quot;
+          },
+          {
+            &quot;text&quot;: &quot;黒毛和牛食べ放題しゃぶしゃぶ すき焼 黄金だし しゃぶき 御徒町 . 御徒町駅/しゃぶしゃぶ､ すき焼き. トップ · 座席 · メニュー · 写真371 · 口コミ 71 · クーポン3. 口コミ ...&quot;,
+            &quot;title&quot;: &quot;黒毛和牛食べ放題しゃぶしゃぶ すき焼 黄金だし しゃぶき 御徒町&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;黒毛和牛食べ放題しゃぶしゃぶ すき焼 黄金だし しゃぶき 御徒町 . 御徒町駅/しゃぶしゃぶ､ すき焼き. トップ · 座席 · メニュー · 写真371 · 口コミ 71 · クーポン3. 口コミ ...&quot;
+          },
+          {
+            &quot;text&quot;: &quot;黒毛和牛食べ放題しゃぶしゃぶ すき焼 黄金だし しゃぶき 御徒町 (仲御徒町/しゃぶしゃぶ)へのshimo556さんの 口コミ ... 口コミ （1）; 写真. 2026/03 訪問. 1回目.&quot;,
+            &quot;title&quot;: &quot;黒毛和牛食べ放題しゃぶしゃぶ すき焼 黄金だし しゃぶき 御徒町&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;黒毛和牛食べ放題しゃぶしゃぶ すき焼 黄金だし しゃぶき 御徒町 (仲御徒町/しゃぶしゃぶ)へのshimo556さんの 口コミ ... 口コミ （1）; 写真. 2026/03 訪問. 1回目.&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.2,
+        &quot;supports_paypay&quot;: null
+      },
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;和牛すき焼 そしじ 上 本郷三丁目店&quot;,
+        &quot;rank_badge&quot;: &quot;🥈&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: null,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 61,
+        &quot;rating_source&quot;: &quot;Google&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;肉亭ikiの離れにオープンした「和牛すき焼き そしじ上」を初訪問。完全個室で落ち着いた雰囲気の中、黒毛和牛へれのすき焼きコースをいただきました。特に印象に残ったのは、驚くほどやわらかなへれ肉、土鍋で炊き上げた八代目儀兵衛のご飯、そして〆のきしめん。割下と卵を絡める新感覚の味わいで、とても美味しかったです。追加した出し巻き卵も、焼き立て熱々でお出汁がしっかり効いた逸品。スタッフの皆さんも親しみやすく、居心地の良い時間を過ごせました。個室でゆっくり食事を楽しみたい方や、接待・会食・記念日にもおすすめのお店です。&quot;,
+            &quot;author&quot;: &quot;jeymama&quot;,
+            &quot;rating&quot;: 5,
+            &quot;source&quot;: &quot;google&quot;,
+            &quot;original_text&quot;: &quot;肉亭ikiの離れにオープンした「和牛すき焼き そしじ上」を初訪問。完全個室で落ち着いた雰囲気の中、黒毛和牛へれのすき焼きコースをいただきました。特に印象に残ったのは、驚くほどやわらかなへれ肉、土鍋で炊き上げた八代目儀兵衛のご飯、そして〆のきしめん。割下と卵を絡める新感覚の味わいで、とても美味しかったです。追加した出し巻き卵も、焼き立て熱々でお出汁がしっかり効いた逸品。スタッフの皆さんも親しみやすく、居心地の良い時間を過ごせました。個室でゆっくり食事を楽しみたい方や、接待・会食・記念日にもおすすめのお店です。&quot;
+          },
+          {
+            &quot;text&quot;: &quot;本郷三丁目の「そしじ」さんへ伺いました。\n\nお肉の質がとにかく良く、どの料理も本当に美味しかったです。特にお肉は見た目から素晴らしく、焼き加減も含めて大満足でした。\n\n個室なので周りを気にせず、ゆっくり食事を楽しめるのも非常に良かったです。接客やお店の雰囲気も含めて、全体的に満足度の高いお店でした！\n\nまた、ハラール対応されている点も素晴らしく、海外の方や食事に制限のある方との会食にも利用しやすいと思います。\n\n料理・空間・サービス、すべて良かったです。\nまたぜひ伺いたいお店です！&quot;,
+            &quot;author&quot;: &quot;TAKUMI KAMEI&quot;,
+            &quot;rating&quot;: 5,
+            &quot;source&quot;: &quot;google&quot;,
+            &quot;original_text&quot;: &quot;本郷三丁目の「そしじ」さんへ伺いました。\n\nお肉の質がとにかく良く、どの料理も本当に美味しかったです。特にお肉は見た目から素晴らしく、焼き加減も含めて大満足でした。\n\n個室なので周りを気にせず、ゆっくり食事を楽しめるのも非常に良かったです。接客やお店の雰囲気も含めて、全体的に満足度の高いお店でした！\n\nまた、ハラール対応されている点も素晴らしく、海外の方や食事に制限のある方との会食にも利用しやすいと思います。\n\n料理・空間・サービス、すべて良かったです。\nまたぜひ伺いたいお店です！&quot;
+          },
+          {
+            &quot;text&quot;: &quot;個室の雰囲気や店内の綺麗さも良く入り口も隠れ家のような感じでお洒落です。お料理もどれも美味しく、お肉とお米のツヤツヤ感や締めのきしめん...どれも絶品😋でした。店員さんの対応もフレンドリーで素敵で終始気持ちよく対応していただきました。おすすめです✨また来たいです✨&quot;,
+            &quot;author&quot;: &quot;まどか&quot;,
+            &quot;rating&quot;: 5,
+            &quot;source&quot;: &quot;google&quot;,
+            &quot;original_text&quot;: &quot;個室の雰囲気や店内の綺麗さも良く入り口も隠れ家のような感じでお洒落です。お料理もどれも美味しく、お肉とお米のツヤツヤ感や締めのきしめん...どれも絶品😋でした。店員さんの対応もフレンドリーで素敵で終始気持ちよく対応していただきました。おすすめです✨また来たいです✨&quot;
+          },
+          {
+            &quot;text&quot;: &quot;すき焼きが食べたくて。\nへれ焼肉すき焼きコースを注文。\n見た目から美味しいに決まってる🤤\nお店も綺麗でスタッフも丁寧🤩\nへれもすき焼きも焼いてくれて嬉しい。\nお肉はそりゃ美味しい🤤\n米が・・・すごい👍米が立ってる😳\nコースで十分満足デザートまであり腹パンです。\nへれ焼きはしっかり焼かないと中が冷たいので注意👀\nだし巻きは濃い目が好きな方はいいかも。\nハラール対応らしい。\nありがとうございました。\n美味しかったです🙇&quot;,
+            &quot;author&quot;: &quot;Y Y&quot;,
+            &quot;rating&quot;: 3,
+            &quot;source&quot;: &quot;google&quot;,
+            &quot;original_text&quot;: &quot;すき焼きが食べたくて。\nへれ焼肉すき焼きコースを注文。\n見た目から美味しいに決まってる🤤\nお店も綺麗でスタッフも丁寧🤩\nへれもすき焼きも焼いてくれて嬉しい。\nお肉はそりゃ美味しい🤤\n米が・・・すごい👍米が立ってる😳\nコースで十分満足デザートまであり腹パンです。\nへれ焼きはしっかり焼かないと中が冷たいので注意👀\nだし巻きは濃い目が好きな方はいいかも。\nハラール対応らしい。\nありがとうございました。\n美味しかったです🙇&quot;
+          },
+          {
+            &quot;text&quot;: &quot;個室で隠れ家的なラグジュアリー空間の中、とても美味しい食事を何品も楽しませて頂きました！\nスタッフの皆様のご対応も◎&quot;,
+            &quot;author&quot;: &quot;Tetsuro Takeda&quot;,
+            &quot;rating&quot;: 5,
+            &quot;source&quot;: &quot;google&quot;,
+            &quot;original_text&quot;: &quot;個室で隠れ家的なラグジュアリー空間の中、とても美味しい食事を何品も楽しませて頂きました！\nスタッフの皆様のご対応も◎&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: null,
+        &quot;supports_paypay&quot;: null
+      },
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;MO&quot;,
+        &quot;rank_badge&quot;: &quot;🥉&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1310/A131001/13311115/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 24,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;mo ./モ (京終/ソフトクリーム)への 口コミ です。日本最大級のグルメサイト「食べログ」では、 mo ./モの 口コミ 12件を掲載中。&quot;,
+            &quot;title&quot;: &quot;口コミ一覧 :mo. （モ） - 京終/ソフトクリーム [食べログ]&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;mo ./モ (京終/ソフトクリーム)への 口コミ です。日本最大級のグルメサイト「食べログ」では、 mo ./モの 口コミ 12件を掲載中。&quot;
+          },
+          {
+            &quot;text&quot;: &quot;mo ./モ (京終/ソフトクリーム)への 口コミ です。日本最大級のグルメサイト「食べログ」では、 mo ./モの 口コミ 12件を掲載中。&quot;,
+            &quot;title&quot;: &quot;口コミ一覧 :mo. （モ） - 京終/ソフトクリーム [食べログ]&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;mo ./モ (京終/ソフトクリーム)への 口コミ です。日本最大級のグルメサイト「食べログ」では、 mo ./モの 口コミ 12件を掲載中。&quot;
+          },
+          {
+            &quot;text&quot;: &quot;ミルクアイス MO - MO /モーモー (小宮/ジェラート・アイスクリーム)への 口コミ です。日本最大級のグルメサイト「食べログ」では、ミルクアイス MO - MO /モーモーの 口コミ 239件&quot;,
+            &quot;title&quot;: &quot;口コミ一覧 : ミルクアイスMO-MO（モーモー） - 食べログ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;ミルクアイス MO - MO /モーモー (小宮/ジェラート・アイスクリーム)への 口コミ です。日本最大級のグルメサイト「食べログ」では、ミルクアイス MO - MO /モーモーの 口コミ 239件&quot;
+          },
+          {
+            &quot;text&quot;: &quot;ミルクアイス MO - MO /モーモー (小宮/ジェラート・アイスクリーム)への 口コミ です。日本最大級のグルメサイト「食べログ」では、ミルクアイス MO - MO /モーモーの 口コミ 239件&quot;,
+            &quot;title&quot;: &quot;口コミ一覧 : ミルクアイスMO-MO（モーモー） - 食べログ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;ミルクアイス MO - MO /モーモー (小宮/ジェラート・アイスクリーム)への 口コミ です。日本最大級のグルメサイト「食べログ」では、ミルクアイス MO - MO /モーモーの 口コミ 239件&quot;
+          },
+          {
+            &quot;text&quot;: &quot;MO - MO -PARADISE 秋葉原店 (秋葉原/しゃぶしゃぶ)への 口コミ です。日本最大級のグルメサイト「食べログ」では、 MO - MO -PARADISE 秋葉原店の 口コミ 27件を掲載中。&quot;,
+            &quot;title&quot;: &quot;口コミ一覧 :MO-MO-PARADISE 秋葉原店 - 食べログ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;MO - MO -PARADISE 秋葉原店 (秋葉原/しゃぶしゃぶ)への 口コミ です。日本最大級のグルメサイト「食べログ」では、 MO - MO -PARADISE 秋葉原店の 口コミ 27件を掲載中。&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.1,
+        &quot;supports_paypay&quot;: null
+      }
+    ],
+    &quot;selected_count&quot;: 3
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 4</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_4_synthesis (card_synthesis)</div>
+                <div class="step-sub-title">單步耗時: 8800 ms</div>
+            </div>
+            <span class="step-badge">8800ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">8800 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;cuisine&quot;: &quot;壽喜燒&quot;,
+    &quot;location&quot;: &quot;神保町車站&quot;,
+    &quot;stores_count&quot;: 3
+  },
+  &quot;output&quot;: {
+    &quot;length&quot;: 1092,
+    &quot;card_content&quot;: &quot;🍱 **精選推薦：神保町周邊壽喜燒**\n\n🥇 **和牛すき焼 そしじ 上 本郷三丁目店**\n`和牛すき焼 そしじ 上 本郷三丁目店`\n🚶 **步行距離**：從「神保町車站」步行約 19 分鐘 (1441m)\n⭐️ **雙平台評分**：⭐️ Google 4.6 分 (61 則評價) ｜ Tabelog 暫無評分\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：未提供 (建議預備 ￥5,000~￥8,000 以上)\n📍 **老饕推薦理由 (Google 在地評價)**：完全個室設計氛圍沉穩，黑毛和牛橫膈膜（Hare）口感驚人軟嫩，搭配土鍋炊飯與〆麵，割下與蛋液交融的新風味層次豐富，適合接待或紀念日。\n🔗 **店家連結**：Google Maps 位置\n\n🥈 **黒毛和牛食べ放題しゃぶしゃぶ すき焼 黄金だし しゃぶき 御徒町**\n`黒毛和牛食べ放題しゃぶしゃぶ すき焼 黄金だし しゃぶき 御徒町`\n🚶 **步行距離**：從「神保町車站」步行約 25 分鐘 (1995m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.2 分 (71 則評價) / Google 4.6\n💳 **支付方式**：可使用 信用卡\n💰 **預算區間**：￥4,000～￥4,999\n📍 **老饕推薦理由 (食べログ 口コミ)**：主打黑毛和牛無限暢吃，結合涮涮鍋與壽喜燒雙重享受，「黃金出汁」湯底是最大亮點，適合想大快朵頜、追求飽足感的饕客。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1311/A131101/13317776/)\n\n🥉 **MO**\n`MO`\n🚶 **步行距離**：從「神保町車站」步行約 20 分鐘 (1579m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.1 分 (24 則評價) / Google 4.9\n💳 **支付方式**：可使用 信用卡 / 感應支付\n💰 **預算區間**：未提供\n📍 **老饕推薦理由 (食べログ 口コミ)**：位於秋葉原附近的隱世小店，評價筆數較少但 Google 評分極高，適合喜歡探索非主流、小眾氛圍的旅客，建議先確認當日壽喜燒供應狀況。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1310/A131001/13311115/)\n\n💡 特派員提醒：目前神保町車站周邊 2 公里內僅有這 3 家壽喜燒選擇，若想體驗更多頂級和牛壽喜燒，建議擴大範圍至鄰近的「上野」或「秋葉原」商圈。&quot;
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            
+
             <tr class="live-row" onclick="toggleCaseDetails('live-15660873-0ea1-44ee-8dfd-e63e203f18e3')">
                 <td><code>15660873</code></td>
                 <td><span class="cat-pill">Live Telegram</span></td>
@@ -7727,310 +8088,6 @@
   &quot;output&quot;: {
     &quot;length&quot;: 817,
     &quot;card_content&quot;: &quot;🍱 **WAGYU SUKIYAKI 極 新宿**\n`WAGYU SUKIYAKI極新宿`\n🚶 **步行距離**：從「新宿車站」步行約 3 分鐘 (234m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.2 (66 則評價) / Google 4.9\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n💰 **預算區間**：未公開 (建議預備 ￥3,000~￥5,000 以上)\n📍 **老饕推薦理由 (食べログ 口コミ)**：主打「每人一鍋」的 A5 和牛沙朗自助涮鍋，肉質鮮美且能親自體驗烹調樂趣，搭配招牌松露蛋拌飯是絕配，適合想享受高品質和牛又不想太拘束的旅客。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1304/A130401/13316287/)\n\n---\n\n🍱 **Momo Paradise 新宿東口店**\n`Momo Paradise 新宿東口店`\n🚶 **步行距離**：從「新宿車站」步行約 4 分鐘 (243m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.1 (89 則評價) / Google 4.9\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n💰 **預算區間**：未公開 (壽喜燒專門店通常為中高價位)\n📍 **老饕推薦理由 (食べログ 口コミ)**：位於新宿東口 Humanix Pavilion 3-4F，位置極佳且評價穩定，是體驗傳統日式壽喜燒氛圍的穩健選擇，適合喜歡安靜用餐環境的遊客。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1304/A130401/13027260/)\n\n💡 特派員提醒：這兩家店皆**僅收現金**，請務必提前換好日圓現鈔；若想體驗更精緻的懷石壽喜燒或確認是否有刷卡選項，可隨時告訴我！&quot;
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-                        </div>
-                    </div>
-                </td>
-            </tr>
-            
-
-            <tr class="live-row" onclick="toggleCaseDetails('live-64d0486b-a55d-4cbb-8fbf-5bb4838931e7')">
-                <td><code>64d0486b</code></td>
-                <td><span class="cat-pill">Live Telegram</span></td>
-                <td class="query-col">新宿車站 壽喜燒</td>
-                <td class="text-center"><code>N/A</code></td>
-                <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
-                <td class="text-right latency-text">9,476 ms</td>
-            </tr>
-            <tr id="case-live-64d0486b-a55d-4cbb-8fbf-5bb4838931e7" class="stepper-drawer" style="display: none;">
-                <td colspan="6">
-                    <div class="stepper-container">
-                        <div class="drawer-header">
-                            <h4>⚡ 真實線上問答執行軌跡 (Run ID: 64d0486b-a55d-4cbb-8fbf-5bb4838931e7 | 提問時間: 2026-10-11T09:42:48.548388+00:00)</h4>
-                        </div>
-                        <div class="steps-flow">
-                            
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 1</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_1_intent (intent_parser)</div>
-                <div class="step-sub-title">單步耗時: 595 ms</div>
-            </div>
-            <span class="step-badge">595ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">595 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;message&quot;: &quot;新宿車站 壽喜燒&quot;
-  },
-  &quot;output&quot;: {
-    &quot;intent&quot;: &quot;search&quot;,
-    &quot;cuisine&quot;: &quot;壽喜燒&quot;,
-    &quot;location&quot;: &quot;新宿車站&quot;,
-    &quot;modifier&quot;: null,
-    &quot;question&quot;: null,
-    &quot;target_index&quot;: null
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 2</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_2_places (search_nearby_ladder)</div>
-                <div class="step-sub-title">單步耗時: 626 ms</div>
-            </div>
-            <span class="step-badge">626ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">626 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;lat&quot;: 35.6896067,
-    &quot;lng&quot;: 139.7005713,
-    &quot;keyword&quot;: &quot;壽喜燒&quot;,
-    &quot;excluded_count&quot;: 0
-  },
-  &quot;output&quot;: {
-    &quot;count&quot;: 4
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 3</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_3_tabelog (parallel_tabelog_enrichment)</div>
-                <div class="step-sub-title">單步耗時: 2733 ms</div>
-            </div>
-            <span class="step-badge">2733ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2733 ms</span></div></div>
-            
-    <div class="aligned-stores-section">
-        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (4 間):</div>
-        <div class="aligned-stores-grid">
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 WAGYU SUKIYAKI極新宿</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.20 (66 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「【距 新宿車站 步行1分鐘】品嚐A5 和牛 沙朗自助涮鍋及松露蛋拌飯。 我們的店提供每人一鍋的A5 和牛 沙朗肉涮涮鍋，讓您親自體驗烹調的樂趣。新鮮的蔬菜和雞蛋等食材...」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 Momo Paradise 新宿東口店</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.10 (89 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「JR新宿車站東口步行3分鐘 地下鐵丸之內線新宿三丁目車站步行1分鐘 「ビックロ」的後面！「新宿獅子會館」旁邊. 距离新宿三丁目205 米 · 星期一，星期二，星期三，...」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 WAGYU SUKIYAKI 極新宿</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.20 (66 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「【距 新宿車站 步行1分鐘】品嚐A5 和牛 沙朗自助涮鍋及松露蛋拌飯。 我們的店提供每人一鍋的A5 和牛 沙朗肉涮涮鍋，讓您親自體驗烹調的樂趣。新鮮的蔬菜和雞蛋等食材...」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 大衆壽喜燒北斗新宿中央東口店</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.40 (133 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「這個價格實惠！ 位於東京都新宿站中央東口步行4分鐘的大衆すき焼き北斗新宿中央東口店 ，享用和牛涮涮鍋定食（普通）1210日圓。這是一家位於地下有一蘭、二樓有大戶屋的建...」</em></div>
-        </div>
-        </div>
-    </div>
-    
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;stores_count&quot;: 4,
-    &quot;stores_searched&quot;: [
-      {
-        &quot;name&quot;: &quot;Wagyu sukiyaki goku&quot;,
-        &quot;phone&quot;: &quot;03-6457-7234&quot;,
-        &quot;google_rating&quot;: 4.9
-      },
-      {
-        &quot;name&quot;: &quot;Momo Paradise Shinjuku Higashi-guchi&quot;,
-        &quot;phone&quot;: &quot;050-1807-6990&quot;,
-        &quot;google_rating&quot;: 4.9
-      },
-      {
-        &quot;name&quot;: &quot;WAGYU SUKIYAKI 極〜GOKU〜 Shinjuku Kabukicho&quot;,
-        &quot;phone&quot;: &quot;03-6228-0588&quot;,
-        &quot;google_rating&quot;: 4.9
-      },
-      {
-        &quot;name&quot;: &quot;Hokuto – Casual Sukiyaki, Shinjuku East&quot;,
-        &quot;phone&quot;: &quot;03-6274-8778&quot;,
-        &quot;google_rating&quot;: 4.6
-      }
-    ]
-  },
-  &quot;output&quot;: {
-    &quot;aligned_stores&quot;: [
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;WAGYU SUKIYAKI極新宿&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13316287/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 66,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;【距 新宿車站 步行1分鐘】品嚐A5 和牛 沙朗自助涮鍋及松露蛋拌飯。 我們的店提供每人一鍋的A5 和牛 沙朗肉涮涮鍋，讓您親自體驗烹調的樂趣。新鮮的蔬菜和雞蛋等食材經過精心挑選 ...&quot;,
-            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
-            &quot;source&quot;: &quot;tabelog&quot;,
-            &quot;original_text&quot;: &quot;【距 新宿車站 步行1分鐘】品嚐A5 和牛 沙朗自助涮鍋及松露蛋拌飯。 我們的店提供每人一鍋的A5 和牛 沙朗肉涮涮鍋，讓您親自體驗烹調的樂趣。新鮮的蔬菜和雞蛋等食材經過精心挑選 ...&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.2,
-        &quot;supports_paypay&quot;: false
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;Momo Paradise 新宿東口店&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13027260/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 89,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;JR新宿車站東口步行3分鐘 地下鐵丸之內線新宿三丁目車站步行1分鐘 「ビックロ」的後面！「新宿獅子會館」旁邊. 距离新宿三丁目205 米 · 星期一，星期二，星期三，星期四， ...&quot;,
-            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
-            &quot;source&quot;: &quot;tabelog&quot;,
-            &quot;original_text&quot;: &quot;JR新宿車站東口步行3分鐘 地下鐵丸之內線新宿三丁目車站步行1分鐘 「ビックロ」的後面！「新宿獅子會館」旁邊. 距离新宿三丁目205 米 · 星期一，星期二，星期三，星期四， ...&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.1,
-        &quot;supports_paypay&quot;: false
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;WAGYU SUKIYAKI 極新宿&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13316287/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 66,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;【距 新宿車站 步行1分鐘】品嚐A5 和牛 沙朗自助涮鍋及松露蛋拌飯。 我們的店提供每人一鍋的A5 和牛 沙朗肉涮涮鍋，讓您親自體驗烹調的樂趣。新鮮的蔬菜和雞蛋等食材經過精心挑選 ...&quot;,
-            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
-            &quot;source&quot;: &quot;tabelog&quot;,
-            &quot;original_text&quot;: &quot;【距 新宿車站 步行1分鐘】品嚐A5 和牛 沙朗自助涮鍋及松露蛋拌飯。 我們的店提供每人一鍋的A5 和牛 沙朗肉涮涮鍋，讓您親自體驗烹調的樂趣。新鮮的蔬菜和雞蛋等食材經過精心挑選 ...&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.2,
-        &quot;supports_paypay&quot;: false
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;大衆壽喜燒北斗新宿中央東口店&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13302759/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 133,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;這個價格實惠！ 位於東京都新宿站中央東口步行4分鐘的大衆すき焼き北斗新宿中央東口店 ，享用和牛涮涮鍋定食（普通）1210日圓。這是一家位於地下有一蘭、二樓有大戶屋的建築 ...&quot;,
-            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
-            &quot;source&quot;: &quot;tabelog&quot;,
-            &quot;original_text&quot;: &quot;這個價格實惠！ 位於東京都新宿站中央東口步行4分鐘的大衆すき焼き北斗新宿中央東口店 ，享用和牛涮涮鍋定食（普通）1210日圓。這是一家位於地下有一蘭、二樓有大戶屋的建築 ...&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.4,
-        &quot;supports_paypay&quot;: false
-      }
-    ],
-    &quot;enriched_count&quot;: 4
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 4</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_4_synthesis (card_synthesis)</div>
-                <div class="step-sub-title">單步耗時: 2059 ms</div>
-            </div>
-            <span class="step-badge">2059ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">2059 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;cuisine&quot;: &quot;壽喜燒&quot;,
-    &quot;location&quot;: &quot;新宿車站&quot;,
-    &quot;stores_count&quot;: 4
-  },
-  &quot;output&quot;: {
-    &quot;length&quot;: 1178,
-    &quot;card_content&quot;: &quot;🍱 **新宿車站周邊壽喜燒精選推薦**\n\n🍱 **1. 大衆壽喜燒北斗 新宿中央東口店**\n`大衆すき焼き 北斗 新宿中央東口店`\n🚶 **步行距離**：從「新宿車站」步行約 3 分鐘 (224m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.20 (133 則評價) / Google 4.9\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：午餐/晚餐 約 ￥1,200 ~ ￥2,500 (依肉品等級而定)\n📍 **老饕推薦理由 (食べログ 口コミ)**：極致性價比首選！老饕盛讚其「和牛涮涮鍋定食」僅需 1,210 日圓，肉質鮮美且份量實在，是體驗正宗壽喜燒風味最親民的選擇。\n🔗 **店家連結**：[Tabelog](https://tabelog.com/tokyo/A1304/A130401/13302759/)\n\n🍱 **2. WAGYU SUKIYAKI 極 新宿**\n`WAGYU SUKIYAKI 極 新宿`\n🚶 **步行距離**：從「新宿車站」步行約 3 分鐘 (234m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.2 (66 則評價) / Google 4.9\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：午餐/晚餐 約 ￥3,000 ~ ￥5,000 (自助式)\n📍 **老饕推薦理由 (食べログ 口コミ)**：主打「每人一鍋」的 A5 和牛沙朗自助涮鍋，搭配松露蛋拌飯，讓遊客能親自體驗烹調樂趣，肉質等級高且食材新鮮，適合想要大快朵頜的旅客。\n🔗 **店家連結**：[Tabelog](https://tabelog.com/tokyo/A1304/A130401/13316287/)\n\n🍱 **3. Momo Paradise 新宿東口店**\n`Momo Paradise 新宿東口店`\n🚶 **步行距離**：從「新宿車站」步行約 4 分鐘 (243m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.1 (89 則評價) / Google 4.9\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：午餐/晚餐 約 ￥2,000 ~ ￥4,000\n📍 **老饕推薦理由 (食べログ 口コミ)**：位於新宿東口商圈核心，交通便利（近新宿三丁目），是當地人與遊客皆認可的熱門壽喜燒專門店，適合在逛街後快速享用一頓精緻的日式涮涮鍋。\n🔗 **店家連結**：[Tabelog](https://tabelog.com/tokyo/A1304/A130401/13027260/)\n\n💡 特派員提醒：這三家皆以現金支付為主，請務必提前備好日圓現鈔；若想追求極致 CP 值建議選「北斗」，想體驗 A5 和牛自助則選「極」。&quot;
   }
 }</code></pre>
             </details>
