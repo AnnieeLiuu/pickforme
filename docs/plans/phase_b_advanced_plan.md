@@ -118,16 +118,28 @@ USING hnsw (embedding halfvec_cosine_ops);
 
 ---
 
-## 🚀 里程碑 4：生產級容器化與 Cloud Run + GitLab CD 部署
+## 🚀 里程碑 4：生產級容器化與 Cloud Run + 自動化部署 (Cloud Native) [Status: Completed / 已完工]
 
-### 1. 封裝與自動化
-* **Dockerfile**：採 Python 3.11-slim 多階段構建 (Multi-stage build)，映像檔大小壓縮在 150MB 以內。
-* **GitLab CD Pipeline (`.gitlab-ci.yml`)**：
-  * 偵測 `main` 分支推播。
-  * CI 通過後，自動打包映像檔推送至 Google Artifact Registry。
-  * 執行 `gcloud run deploy pickforme` 無中斷滾動更新。
-  * 自動呼叫 Telegram API 更新 Webhook 網址至 Cloud Run 生產域名。
-* **實現成果**：本機電腦全關機，Telegram Bot 24 小時在 Google 雲端隨傳隨到。
+### 1. 痛點與價值
+* **痛點**：本地電腦執行 FastAPI + Cloudflare Tunnel 容易因電腦休眠、斷網或重開機導致服務中斷，無法達成隨身即問即答的真正日本隨身助理體驗。
+* **解法**：全面容器化並上雲至 Google Cloud Run (東京 asia-northeast1 機房)，搭配 Artifact Registry 與自動化部署腳本，達成 0 維護成本、秒級彈性伸縮與 24 小時不中斷高可用架構。
+
+### 2. 模組落地與成果
+* **Dockerfile**：採 Python 3.11-slim 精簡構建，整合 Neon Postgres、pgvector、FastAPI 與 Telegram 執行環境。
+* **Artifact Registry 現代標準**：全面淘汰已廢棄之舊版 `gcr.io`，改用官方標準之 `asia-northeast1-docker.pkg.dev` 儲存庫 (`pickforme-api`)。
+* **自動化部署工具鏈 (`scripts/deploy_cloud_run.sh`)**：
+  * 自動讀取 `.env` 敏感設定與金鑰。
+  * 支援 Google Cloud Build 遠端高效建構與推送。
+  * 自動佈署至 Cloud Run：1Gi 記憶體、1 CPU、0-5 自動伸縮、並行量 80。
+  * 提供 `--setup-webhook` 參數自動註冊最新服務端點至 Telegram。
+* **Telegram Webhook CLI (`scripts/setup_webhook.py`)**：
+  * 支援以 `--url` 快速綁定 Webhook 並註冊 Secret Token。
+  * 提供 `--delete` 快速切換回 Long Polling 或測試模式。
+* **實測上線指標**：
+  * **正式服務端點**：`https://pickforme-api-297554628555.asia-northeast1.run.app`
+  * **健康檢查**：`GET /health` 穩定回傳 `{"status": "ok", "environment": "development"}` (200 OK)。
+  * **Webhook 綁定**：Telegram API `setWebhook` 成功綁定至 `/api/telegram/webhook`，`getWebhookInfo` 顯示 `pending_update_count: 0`、`has_custom_certificate: False` 且連線狀態正常。
+  * **成果**：本地電腦完全休眠或關機，Telegram Bot 依然能於 24 小時內隨傳隨答。
 
 ---
 

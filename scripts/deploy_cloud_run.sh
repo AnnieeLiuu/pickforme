@@ -123,7 +123,17 @@ echo -e "🔹 部署區域 (Region)     : ${YELLOW}${REGION}${NC}"
 echo -e "🔹 服務名稱 (Service)    : ${YELLOW}${SERVICE_NAME}${NC}"
 echo -e "🔹 模擬模式 (Dry Run)    : ${YELLOW}${DRY_RUN}${NC}"
 
-IMAGE_TAG="gcr.io/${PROJECT_ID}/${SERVICE_NAME}:latest"
+# 確保 Artifact Registry 容器存放區存在 (取代已淘汰之 gcr.io)
+REPO_NAME="cloud-run-source-deploy"
+if [ "$DRY_RUN" = false ]; then
+    gcloud artifacts repositories create "${REPO_NAME}" \
+        --repository-format=docker \
+        --location="${REGION}" \
+        --description="Docker repository for Cloud Run deployments" \
+        --quiet 2>/dev/null || true
+fi
+
+IMAGE_TAG="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${SERVICE_NAME}:latest"
 
 # 4. 整理需注入 Cloud Run 的生產環境變數
 ENV_VARS_LIST=()
@@ -144,7 +154,7 @@ if [ ${#ENV_VARS_LIST[@]} -gt 0 ]; then
     ENV_VARS_STR=$(IFS=,; echo "${ENV_VARS_LIST[*]}")
 fi
 
-echo -e "\n${BLUE}📦 步驟 1/3: 建構並推送容器映像檔...${NC}"
+echo -e "\n${BLUE}📦 步驟 1/3: 建構並推送容器映像檔至 Artifact Registry...${NC}"
 BUILD_CMD="gcloud builds submit --tag ${IMAGE_TAG} --project ${PROJECT_ID}"
 echo -e "執行指令: ${YELLOW}${BUILD_CMD}${NC}"
 
