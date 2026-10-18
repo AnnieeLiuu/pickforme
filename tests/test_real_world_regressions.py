@@ -1192,3 +1192,101 @@ def test_case20_google_maps_link_fallback_and_in_place_repair():
         "🔗 [Google Maps 頁面](https://www.google.com/maps/place/?q=place_id:ChIJGS1FyUeNGGAR6WVdJgjYHvU)"
         in template_card
     )
+
+
+@pytest.mark.asyncio
+async def test_case21_no_raw_japanese_review_leak_and_code_block_repair():
+    """Case 21: 日文食評防穿透洩漏與店名代碼塊自動修復回歸測試
+
+    根本原因:
+    1. 當 Tabelog 爬取的 sample_reviews 或 foodie_review_highlight 為純日文時，若因
+       卡片排版微瑕觸發 template fallback，原先代碼未過濾假名字元直接輸出日文短評，
+       導致中文使用者看到生硬日文。
+    2. LLM 在輸出推薦卡片時偶爾在標題行漏掉反引號 (`店名`)，直接被判為致命錯誤並丟棄卡片。
+
+    防禦驗證:
+    1. synthesize_store_recommendation_reason 偵測到日文假名且無繁中翻譯時，
+       強制走結構化老饕中文指標合成，保證理由 100% 為繁體中文且無假名。
+    2. repair_card_in_place 遇到日文短評理由時，外科手術替換為道地繁體中文。
+    3. repair_store_name_code_blocks 能自動為標題行遺漏反引號的候選店名包裹反引號。
+    """
+    from src.agent.pipeline import FoodRecommendationFSM
+    from src.agent.validator import (
+        repair_card_in_place,
+        repair_store_name_code_blocks,
+        validate_card_tiered,
+    )
+    from src.services.review_sanitizer import (
+        contains_japanese_kana,
+        synthesize_store_recommendation_reason,
+    )
+
+    japanese_raw_review = "浅草の町中華を代表する名店で、チャーハンと餃子が絶品でした。スープも濃厚で美味しい！"
+    mock_store_japanese = {
+        "name_ja": "浅草 聚楽",
+        "name": "浅草 聚楽",
+        "tabelog_rating": 3.65,
+        "review_count": 420,
+        "sample_reviews": [{"text": japanese_raw_review, "source": "tabelog"}],
+        "foodie_review_highlight": japanese_raw_review,
+        "foodie_review_source": "tabelog",
+        "walking_desc": "從「淺草站」步行約 3 分鐘",
+        "payment_methods_desc": "現金為主",
+        "address": "東京都台東區淺草1-1-1",
+        "tabelog_url": "https://tabelog.com/tokyo/A1311/A131102/13000000/",
+    }
+
+    # 1. 驗證 synthesize_store_recommendation_reason 絕不穿透日文假名
+    reason, badge = synthesize_store_recommendation_reason(mock_store_japanese, cuisine="中華料理")
+    assert not contains_japanese_kana(reason), f"理由仍含有日文假名: {reason}"
+    assert "Tabelog 評分達 3.65 高分名店" in reason or "中華料理" in reason
+    assert badge in ["食べログ 權威認證", "在地饕客精選", "百名店指標"]
+
+    # 2. 驗證 template fallback 渲染出之卡片理由絕無日文假名
+    fsm = FoodRecommendationFSM()
+    template_card = fsm._render_template_fallback_card([mock_store_japanese], cuisine="中華料理")
+    reason_match = re.search(r"📍 \*\*老饕推薦理由[^\n]*\*\*：([^\n]+)", template_card)
+    assert reason_match is not None
+    extracted_reason = reason_match.group(1)
+    assert not contains_japanese_kana(extracted_reason), f"模板理由穿透了日文: {extracted_reason}"
+
+    # 3. 驗證 repair_card_in_place 能將日文理由外科手術修復為繁體中文
+    card_with_japanese_reason = (
+        "🍱 **精選推薦：淺草商圈美食**\n\n"
+        "🥇 **【1】 `浅草 聚楽`**\n"
+        "🚶 **步行距離**：從「淺草站」步行約 3 分鐘\n"
+        "⭐️ **雙平台評分**：⭐️ Tabelog 3.65 分\n"
+        "💳 **支付方式**：現金為主\n"
+        f"📍 **老饕推薦理由 (食べログ 口コミ)**：{japanese_raw_review}\n"
+        "🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1311/A131102/13000000/)\n"
+    )
+
+    fatal_errs, minor_warns = validate_card_tiered(card_with_japanese_reason, [mock_store_japanese])
+    assert len(fatal_errs) == 0, f"不應產生致命錯誤: {fatal_errs}"
+    assert any("Raw Japanese Leak" in w for w in minor_warns), f"應標記日文洩漏警告: {minor_warns}"
+
+    repaired = repair_card_in_place(card_with_japanese_reason, [mock_store_japanese])
+    repaired_reason_match = re.search(r"📍 \*\*老饕推薦理由[^\n]*\*\*：([^\n]+)", repaired)
+    assert repaired_reason_match is not None
+    assert not contains_japanese_kana(repaired_reason_match.group(1)), "修復後理由仍含有日文"
+
+    # 4. 驗證 repair_store_name_code_blocks 自動包裹缺失之反引號
+    card_missing_code_block = (
+        "🍱 **精選推薦：淺草商圈美食**\n\n"
+        "🥇 **【1】 浅草 聚楽**\n"
+        "🚶 **步行距離**：從「淺草站」步行約 3 分鐘\n"
+        "⭐️ **雙平台評分**：⭐️ Tabelog 3.65 分\n"
+        "💳 **支付方式**：現金為主\n"
+        "📍 **老饕推薦理由**：招牌炒飯粒粒分明，鑊氣十足。\n"
+    )
+    # 修復前會因為缺少反引號被判定致命錯誤
+    fatal_before, _ = validate_card_tiered(card_missing_code_block, [mock_store_japanese])
+    assert any("缺少一鍵複製店名反引號代碼塊" in e for e in fatal_before)
+
+    # 執行自動修復
+    auto_fixed = repair_store_name_code_blocks(card_missing_code_block, [mock_store_japanese])
+    assert "`浅草 聚楽`" in auto_fixed
+
+    # 修復後致命錯誤應被解除
+    fatal_after, _ = validate_card_tiered(auto_fixed, [mock_store_japanese])
+    assert len(fatal_after) == 0, f"修復後仍有致命錯誤: {fatal_after}"

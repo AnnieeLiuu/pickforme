@@ -245,7 +245,7 @@ def validate_card_tiered(
     if not re.search(r"(?:支付方式|信用卡|PayPay|現金|💳)", card_text):
         minor_warnings.append("缺少支付方式標記")
 
-    # 5. 局限：評分套話 (可透過外科手術局部替換為真實短評)
+    # 5. 局限：評分套話或生硬日文評論洩漏 (可透過外科手術局部替換為真實短評)
     reason_lines = re.findall(r"(?:老饕推薦理由|老饕評價與推薦理由|推薦理由)[^\n]*[：:]\s*([^\n]+)", card_text)
     for r_line in reason_lines:
         if re.search(
@@ -255,17 +255,61 @@ def validate_card_tiered(
         ):
             minor_warnings.append("推薦理由中違規出現評分數值客套話 (No-Rating-As-Reason)")
             break
+        if re.search(r"[\u3040-\u309F\u30A0-\u30FF]", r_line):
+            minor_warnings.append("推薦理由中違規出現未翻譯之生硬日文原文 (Raw Japanese Leak)")
+            break
 
     return fatal_errors, minor_warnings
+
+
+def repair_store_name_code_blocks(card_text: str, stores: list[dict[str, Any]]) -> str:
+    """自動修復標題行中缺失的一鍵複製店名反引號代碼塊
+
+    當 LLM 輸出了正確的店家名稱但偶發遺漏反引號時，自動將店名包裹反引號，
+    防止因純排版微瑕觸發整張卡片拋棄 (Format Fallback)。
+    """
+    if not card_text or not stores:
+        return card_text
+
+    # 若已經有反引號且能匹配候選店名，則無需修復
+    existing_cbs = re.findall(r"`([^`\n]+)`", card_text)
+    if existing_cbs:
+        return card_text
+
+    repaired = card_text
+    for s in stores:
+        candidates = [s.get("name_ja"), s.get("name"), s.get("name_en")]
+        for name in candidates:
+            if not name or not isinstance(name, str):
+                continue
+            name_clean = name.strip()
+            if len(name_clean) < 2:
+                continue
+            # 若店名出現在文字中且未被反引號包覆
+            # 優先在標題/序號行尋找 (例如 1. 店名 或 【1】 店名 或 ### 店名)
+            pattern = rf"([#\*【\d\.\s、🥇🥈🥉]+)({re.escape(name_clean)})([】\*]*)"
+            if re.search(pattern, repaired):
+                repaired = re.sub(pattern, r"\1`\2`\3", repaired, count=1)
+                break
+            elif name_clean in repaired:
+                repaired = repaired.replace(name_clean, f"`{name_clean}`", 1)
+                break
+
+    return repaired
 
 
 def repair_card_in_place(card_text: str, stores: list[dict[str, Any]]) -> str:
     """外科手術式局部修復 (In-Place Surgical Repair)
 
     在不破壞 LLM 原生語意與結構的前提下：
-    1. 將評分客套話替換為後端真實提取的口感短評 (foodie_highlight / reviews[0])
+    1. 將評分客套話或日文生硬短評替換為結構化繁中口感短評 (絕無日文假名穿透)
     2. 將偽造的 Google Maps 搜尋 URL 淨化或替換為正規連結
     """
+    from src.services.review_sanitizer import (
+        contains_japanese_kana,
+        synthesize_store_recommendation_reason,
+    )
+
     repaired = card_text
 
     # 1. 偽造 Google 地圖連結外科手術修復
@@ -281,7 +325,7 @@ def repair_card_in_place(card_text: str, stores: list[dict[str, Any]]) -> str:
         repaired,
     )
 
-    # 2. 評分客套話外科手術替換
+    # 2. 評分客套話與日文原文外科手術替換
     lines = repaired.split("\n")
     current_store_idx = 0
     new_lines: list[str] = []
@@ -317,7 +361,7 @@ def repair_card_in_place(card_text: str, stores: list[dict[str, Any]]) -> str:
                 new_lines.append(line)
             continue
 
-        # 檢驗是否為推薦理由行且包含評分客套話
+        # 檢驗是否為推薦理由行且包含評分客套話或日文假名
         is_reason_line = bool(re.search(r"(?:老饕推薦理由|老饕評價與推薦理由|推薦理由)[^\n]*[：:]", line))
         has_boilerplate = bool(
             re.search(
@@ -326,23 +370,17 @@ def repair_card_in_place(card_text: str, stores: list[dict[str, Any]]) -> str:
                 flags=re.IGNORECASE,
             )
         )
+        has_raw_japanese = contains_japanese_kana(line)
 
-        if is_reason_line and has_boilerplate and stores and current_store_idx < len(stores):
+        if is_reason_line and (has_boilerplate or has_raw_japanese) and stores and current_store_idx < len(stores):
             target_store = stores[current_store_idx]
-            # 優先提取真實食評亮點
-            replacement_text = target_store.get("foodie_highlight")
-            if not replacement_text and target_store.get("reviews"):
-                first_rev = target_store["reviews"][0]
-                replacement_text = (
-                    first_rev.get("text") if isinstance(first_rev, dict) else getattr(first_rev, "text", None)
-                )
-
-            if not replacement_text:
+            replacement_text, _ = synthesize_store_recommendation_reason(target_store)
+            if not replacement_text or contains_japanese_kana(replacement_text):
                 replacement_text = "以道地手藝與扎實用料著稱，風味純粹，深獲在地常客好評。"
             else:
                 replacement_text = replacement_text.strip().replace("\n", " ")
-                if len(replacement_text) > 60:
-                    replacement_text = replacement_text[:58] + "..."
+                if len(replacement_text) > 90:
+                    replacement_text = replacement_text[:88] + "..."
 
             # 保留前綴 (例如 "💡 **老饕推薦理由**：")，替換後方內容
             prefix_match = re.match(r"^([^\n]*?[：:])\s*.*$", line)

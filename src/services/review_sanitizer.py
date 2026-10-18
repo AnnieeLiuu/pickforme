@@ -130,40 +130,58 @@ def sanitize_review_snippet(raw_text: Any) -> Optional[str]:
     return result
 
 
+def contains_japanese_kana(text: Any) -> bool:
+    """檢測字串是否包含日文平假名或片假名 (用於防止生硬日文原文洩漏給中文使用者)"""
+    if not isinstance(text, str):
+        return False
+    return bool(re.search(r"[\u3040-\u309F\u30A0-\u30FF]", text))
+
+
 def synthesize_store_recommendation_reason(
     store: dict[str, Any],
     cuisine: Optional[str] = None,
 ) -> tuple[str, str]:
-    """為店家提煉或智慧合成老饕推薦理由 (絕不輸出生硬營業時間)
+    """為店家提煉或智慧合成老饕推薦理由 (絕不輸出生硬營業時間與未翻譯日文原文)
 
     Returns:
         tuple[str, str]: (推薦理由文字, 標籤來源如 '食べログ 口コミ' 或 '老饕指標')
     """
-    # 1. 優先嘗試現有已清洗的語意短評 highlight
-    hl = store.get("foodie_review_highlight")
-    if hl:
+    # 1. 優先嘗試現有已清洗的繁中語意短評 highlight (排除生硬日文假名)
+    hl = (
+        store.get("foodie_review_highlight_zh") or store.get("foodie_review_highlight") or store.get("foodie_highlight")
+    )
+    if hl and not contains_japanese_kana(hl):
         clean_hl = sanitize_review_snippet(hl)
         if clean_hl:
             return clean_hl, "食べログ 口コミ"
 
-    # 2. 嘗試清洗 sample_reviews 候選
-    sample_revs = store.get("sample_reviews") or []
+    # 2. 嘗試清洗 sample_reviews 與 reviews 候選 (若為日文則僅接受已翻譯之繁中欄位)
+    sample_revs = store.get("sample_reviews") or store.get("reviews") or []
     if isinstance(sample_revs, list):
         for r in sample_revs:
             candidate_text = ""
             rev_source = "食べログ 口コミ"
             if isinstance(r, dict):
-                candidate_text = r.get("text") or r.get("original_text") or r.get("zh") or ""
+                # 優先取中文翻譯欄位
+                zh_cand = r.get("zh") or r.get("text_zh")
+                if zh_cand and not contains_japanese_kana(zh_cand):
+                    candidate_text = zh_cand
+                else:
+                    raw_t = r.get("text") or r.get("original_text") or ""
+                    if not contains_japanese_kana(raw_t):
+                        candidate_text = raw_t
                 if r.get("source") != "tabelog":
                     rev_source = "Google 在地評價"
             elif isinstance(r, str):
-                candidate_text = r
+                if not contains_japanese_kana(r):
+                    candidate_text = r
 
-            clean_text = sanitize_review_snippet(candidate_text)
-            if clean_text:
-                return clean_text, rev_source
+            if candidate_text:
+                clean_text = sanitize_review_snippet(candidate_text)
+                if clean_text:
+                    return clean_text, rev_source
 
-    # 3. 若無有效口感短評 (如純營業時間被過濾)，依結構化指標智慧合成推薦理由
+    # 3. 若為純日文無翻譯或無有效口感短評，依結構化指標智慧合成優雅老饕中文推薦理由
     t_rating = store.get("tabelog_rating")
     g_rating = store.get("rating") or store.get("google_rating")
     awards = store.get("awards") or store.get("hyakumeiten") or []

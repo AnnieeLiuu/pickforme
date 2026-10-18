@@ -11,7 +11,11 @@ from uuid import UUID
 
 from src.agent.llm_client import LLMClient
 from src.agent.trace import AgentTraceLogger
-from src.agent.validator import repair_card_in_place, validate_card_tiered
+from src.agent.validator import (
+    repair_card_in_place,
+    repair_store_name_code_blocks,
+    validate_card_tiered,
+)
 from src.db.repositories.restaurant import RestaurantRepository
 from src.db.repositories.session import SessionRepository
 from src.db.repositories.vector import VectorRepository
@@ -1142,6 +1146,9 @@ class FoodRecommendationFSM:
             card_text = content.strip()
             if not card_text:
                 raise ValueError("LLM returned empty card content")
+
+            # 🛡️ 執行店名反引號代碼塊自動修復 (防止純格式小疏失誤殺整張卡片)
+            card_text = repair_store_name_code_blocks(card_text, stores)
 
             # 🛡️ 執行 Scoped Anchor 毫秒級數值防偽校正護欄
             card_text = self._sanitize_card_ratings(card_text, stores)
