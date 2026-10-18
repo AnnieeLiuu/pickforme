@@ -1139,3 +1139,56 @@ def test_case19_accurate_review_attribution_and_no_rating_boilerplate():
     is_valid_good, good_reasons = validate_recommendation_card(good_flavor_card)
     assert is_valid_good is True
     assert len(good_reasons) == 0
+
+
+# ==============================================================================
+# Case 20: Google Maps 店家專屬連結保底與純文字連結自動外科手術修復 (Soshiji Regression)
+# ==============================================================================
+def test_case20_google_maps_link_fallback_and_in_place_repair():
+    """Case 20: 驗證：
+    1. 當店家未匹配到 Tabelog 網址時，保底提供正規 Google Maps 專屬連結 (place_id)。
+    2. LLM 產生之純文字連結 (例如「🔗 **店家連結**：Google Maps 位置」) 能被 repair_card_in_place 自動替換為可點擊超連結。
+    3. Template Fallback Card 在無 Tabelog 網址時，能正確渲染 [Google Maps 頁面](...)。
+    """
+    from src.agent.pipeline import FoodRecommendationFSM
+    from src.agent.validator import repair_card_in_place
+
+    mock_store = {
+        "google_place_id": "ChIJGS1FyUeNGGAR6WVdJgjYHvU",
+        "google_maps_url": "https://www.google.com/maps/place/?q=place_id:ChIJGS1FyUeNGGAR6WVdJgjYHvU",
+        "name_ja": "和牛すき焼 そしじ 上 本郷三丁目店",
+        "name": "和牛すき焼 そしじ 上 本郷三丁目店",
+        "tabelog_url": None,
+        "tabelog_rating": None,
+        "google_rating": 4.6,
+        "user_ratings_total": 61,
+        "address": "東京都文京区本郷５丁目２４−７",
+        "walking_desc": "從「神保町車站」步行約 19 分鐘 (1441m)",
+        "rating_source": "Google",
+    }
+
+    # 1. 驗證 repair_card_in_place 將無連結之純文字修復為 Markdown 超連結
+    unlinked_card = (
+        "🍱 **精選推薦：神保町周邊壽喜燒**\n\n"
+        "🥇 **和牛すき焼 そしじ 上 本郷三丁目店**\n"
+        "`和牛すき焼 そしじ 上 本郷三丁目店`\n"
+        "🚶 **步行距離**：從「神保町車站」步行約 19 分鐘 (1441m)\n"
+        "⭐️ **雙平台評分**：⭐️ Google 4.6 分 (61 則評價) ｜ Tabelog 暫無評分\n"
+        "💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n"
+        "📍 **老饕推薦理由 (Google 在地評價)**：完全個室設計氛圍沉穩，和牛口感極佳。\n"
+        "🔗 **店家連結**：Google Maps 位置\n"
+    )
+
+    repaired = repair_card_in_place(unlinked_card, [mock_store])
+    assert (
+        "🔗 **店家連結**：[Google Maps 頁面](https://www.google.com/maps/place/?q=place_id:ChIJGS1FyUeNGGAR6WVdJgjYHvU)"
+        in repaired
+    )
+
+    # 2. 驗證 Template Fallback Card 正常產生 Google Maps 連結
+    fsm = FoodRecommendationFSM()
+    template_card = fsm._render_template_fallback_card([mock_store], cuisine="壽喜燒")
+    assert (
+        "🔗 [Google Maps 頁面](https://www.google.com/maps/place/?q=place_id:ChIJGS1FyUeNGGAR6WVdJgjYHvU)"
+        in template_card
+    )

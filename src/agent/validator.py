@@ -298,6 +298,25 @@ def repair_card_in_place(card_text: str, stores: list[dict[str, Any]]) -> str:
                     current_store_idx = idx
                     break
 
+        # 檢驗是否為店家連結行但未帶有合法 Markdown 超連結
+        is_link_line = bool(re.search(r"🔗[^\n]*?(?:店家連結|連結)[^\n]*[：:]", line))
+        has_markdown_url = bool(re.search(r"\[[^\]]+\]\(https?://[^\)]+\)", line))
+
+        if is_link_line and not has_markdown_url and stores and current_store_idx < len(stores):
+            target_store = stores[current_store_idx]
+            t_url = target_store.get("tabelog_url")
+            place_id = target_store.get("google_place_id") or target_store.get("id")
+            g_url = target_store.get("google_maps_url") or (
+                f"https://www.google.com/maps/place/?q=place_id:{place_id}" if place_id else None
+            )
+            if t_url:
+                new_lines.append(f"🔗 **店家連結**：[Tabelog 頁面]({t_url})")
+            elif g_url:
+                new_lines.append(f"🔗 **店家連結**：[Google Maps 頁面]({g_url})")
+            else:
+                new_lines.append(line)
+            continue
+
         # 檢驗是否為推薦理由行且包含評分客套話
         is_reason_line = bool(re.search(r"(?:老饕推薦理由|老饕評價與推薦理由|推薦理由)[^\n]*[：:]", line))
         has_boilerplate = bool(

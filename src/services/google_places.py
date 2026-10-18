@@ -43,6 +43,7 @@ class GooglePlacesClient:
                 "places.formattedAddress,"
                 "places.regularOpeningHours,"
                 "places.paymentOptions,"
+                "places.googleMapsUri,"
                 "places.reviews"
             ),
             "X-Goog-LanguageCode": "ja",
@@ -100,6 +101,7 @@ class GooglePlacesClient:
                 "places.formattedAddress,"
                 "places.regularOpeningHours,"
                 "places.paymentOptions,"
+                "places.googleMapsUri,"
                 "places.reviews"
             ),
             "X-Goog-LanguageCode": "ja",
@@ -227,8 +229,14 @@ class GooglePlacesClient:
         accepts_cash_only = payment_options.get("acceptsCashOnly")
         accepts_nfc = payment_options.get("acceptsNfc")
 
+        place_id = item.get("id", "")
+        google_maps_url = item.get("googleMapsUri") or (
+            f"https://www.google.com/maps/place/?q=place_id:{place_id}" if place_id else None
+        )
+
         return {
-            "google_place_id": item.get("id", ""),
+            "google_place_id": place_id,
+            "google_maps_url": google_maps_url,
             "name": name_text,
             "language_code": language_code,
             "phone": phone,

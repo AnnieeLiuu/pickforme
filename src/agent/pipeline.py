@@ -61,7 +61,7 @@ RECOMMENDATION_CARD_SYSTEM_PROMPT = """你是一位專業、熱情的日本美�
    - 🏆 **獲獎/支付**：若有「百名店/Award」或支援「PayPay / 信用卡」請重點標註。
    - 💰 **預算區間**：午餐/晚餐預算。
    - 📍 **簡短特色與老饕推薦理由**：招牌菜色與口感層次（1~2 句）。
-   - 🔗 **店家連結**：附上提供的真實 Tabelog 或 Google 地圖頁面連結。
+   - 🔗 **店家連結**：附上提供的真實連結 Markdown（例如：[Tabelog 頁面](真實網址) 或 [Google Maps 頁面](真實網址)），務必輸出 Markdown 超連結語法，不可僅輸出無超連結之純文字。
 3. **特派員提醒與收斂引導（極簡凝練，嚴格限 1 ~ 2 句話）**：
    - 請在卡片末尾以「💡 特派員提醒：...」簡短作結。
    - 誠實範圍引導：若推薦店家僅有 1 ~ 2 家，請誠實說明（例如提醒目前此範圍內僅有該名店，若想探索更多可建議擴大範圍至鄰近商圈）。
@@ -606,10 +606,15 @@ class FoodRecommendationFSM:
             pass
 
         fallback_reviews = place.get("reviews") or []
+        place_id = place.get("google_place_id") or place.get("id")
+        fallback_maps_url = place.get("google_maps_url") or (
+            f"https://www.google.com/maps/place/?q=place_id:{place_id}" if place_id else None
+        )
         return {
             **place,
             "restaurant_id": str(fallback_id) if fallback_id else None,
             "tabelog_url": None,
+            "google_maps_url": fallback_maps_url,
             "name_ja": store_name,
             "tabelog_rating": None,
             "review_count": place.get("user_ratings_total"),
@@ -953,6 +958,12 @@ class FoodRecommendationFSM:
                 lines.append(f"📍 **地址**：{s.get('address')}")
             if s.get("tabelog_url"):
                 lines.append(f"🔗 [食べログ詳細頁面]({s.get('tabelog_url')})")
+            elif s.get("google_maps_url") or s.get("google_place_id"):
+                g_url = (
+                    s.get("google_maps_url")
+                    or f"https://www.google.com/maps/place/?q=place_id:{s.get('google_place_id')}"
+                )
+                lines.append(f"🔗 [Google Maps 頁面]({g_url})")
             # 老饕短評 (透過 ReviewSanitizer 淨化雜訊並智慧合成，絕不輸出生硬營業時間/交通資訊)
             rev_txt, rev_badge = synthesize_store_recommendation_reason(s, cuisine=cuisine)
             lines.append(f"📍 **老饕推薦理由 ({rev_badge})**：{rev_txt}")
@@ -1071,6 +1082,15 @@ class FoodRecommendationFSM:
                 accepts_cash_only=s.get("accepts_cash_only"),
                 accepts_nfc=s.get("accepts_nfc"),
             )
+            t_url = s.get("tabelog_url")
+            g_url = s.get("google_maps_url") or (
+                f"https://www.google.com/maps/place/?q=place_id:{s.get('google_place_id')}"
+                if s.get("google_place_id")
+                else None
+            )
+            store_link = t_url or g_url
+            link_src = "Tabelog" if t_url else "Google Maps"
+
             prompt_content += (
                 f"\n店家 {idx} (老饕排名：{rank_badge})：\n"
                 f"- 排名徽章: {rank_badge}\n"
@@ -1085,7 +1105,7 @@ class FoodRecommendationFSM:
                 f"- 支付方式：{pay_desc}\n"
                 f"- PayPay支援：{s.get('supports_paypay')}\n"
                 f"- 地址：{s.get('address')}\n"
-                f"- Tabelog網址：{s.get('tabelog_url')}\n"
+                f"- 店家專屬連結 ({link_src})：{store_link}\n"
             )
             # 帶入食評亮點與明確標示來源 (Tabelog 口コミ / Google 評價 / 特派員推薦)
             review_text = s.get("foodie_review_highlight")
