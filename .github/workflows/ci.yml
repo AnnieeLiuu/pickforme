@@ -15,6 +15,9 @@ concurrency:
   group: "pages"
   cancel-in-progress: false
 
+env:
+  PYTHONPATH: "."
+
 jobs:
   test:
     name: Code Quality & Tests
