@@ -210,6 +210,8 @@ class FoodRecommendationFSM:
         self.trace_logger = trace_logger or AgentTraceLogger()
         self.vector_repo = vector_repo or VectorRepository()
         self.embedding_service = embedding_service or EmbeddingService()
+        self._last_state_4_model: Optional[str] = None
+        self._last_state_4_tokens: int = 0
 
     def _sanitize_history_for_intent(
         self, conversation_history: Optional[list[dict[str, str]]]
@@ -1143,6 +1145,8 @@ class FoodRecommendationFSM:
 
         try:
             content, model, tokens = await self.llm_client.call_text(messages)
+            self._last_state_4_model = model
+            self._last_state_4_tokens = tokens
             card_text = content.strip()
             if not card_text:
                 raise ValueError("LLM returned empty card content")
@@ -1160,6 +1164,8 @@ class FoodRecommendationFSM:
                     f"[CardGuardrail] Fatal violation detected ({', '.join(fatal_errors)}). "
                     f"Falling back to deterministic template card."
                 )
+                self._last_state_4_model = "template_fallback"
+                self._last_state_4_tokens = 0
                 fallback_card = self._render_template_fallback_card(stores, cuisine, is_format_fallback=True)
                 latency = int((time.time() - t0) * 1000)
                 await self.trace_logger.log_step(
@@ -1189,6 +1195,8 @@ class FoodRecommendationFSM:
             return card_text
         except Exception as e:
             logger.error(f"State 4 LLM card synthesis failed: {e}. Activating template fallback...")
+            self._last_state_4_model = "template_fallback"
+            self._last_state_4_tokens = 0
             fallback_card = self._render_template_fallback_card(stores, cuisine)
             latency = int((time.time() - t0) * 1000)
             await self.trace_logger.log_step(
@@ -1250,7 +1258,9 @@ class FoodRecommendationFSM:
 
         try:
             t0 = time.time()
-            reply, _, _ = await self.llm_client.call_text(messages)
+            reply, model, tokens = await self.llm_client.call_text(messages)
+            self._last_state_4_model = model
+            self._last_state_4_tokens = tokens
             ans = reply.strip()
             latency = int((time.time() - t0) * 1000)
             await self.trace_logger.log_step(
@@ -1321,7 +1331,11 @@ class FoodRecommendationFSM:
             # 分支 C: 追問上一輪名單
             if intent == "follow_up":
                 answer = await self.execute_follow_up(chat_id, parsed, user_message)
-                await self.trace_logger.finish_run(status="completed")
+                await self.trace_logger.finish_run(
+                    status="completed",
+                    model_used=self._last_state_4_model,
+                    total_tokens=self._last_state_4_tokens,
+                )
                 return answer
 
             # 分支 D: 正式美食推薦 (search / more)
@@ -1395,7 +1409,11 @@ class FoodRecommendationFSM:
                 except Exception as e:
                     logger.warning(f"Could not persist recommended stores to session: {e}")
 
-            await self.trace_logger.finish_run(status="completed")
+            await self.trace_logger.finish_run(
+                status="completed",
+                model_used=self._last_state_4_model,
+                total_tokens=self._last_state_4_tokens,
+            )
             return final_card
 
         except Exception as e:
