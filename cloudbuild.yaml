@@ -1,11 +1,11 @@
 steps:
   # 1. 建構 Docker 容器映像檔
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/pickforme-api:$COMMIT_SHA', '.']
+    args: ['build', '-t', 'asia-northeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/pickforme-api:$COMMIT_SHA', '.']
 
-  # 2. 推送映像檔至 Container Registry
+  # 2. 推送映像檔至 Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/pickforme-api:$COMMIT_SHA']
+    args: ['push', 'asia-northeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/pickforme-api:$COMMIT_SHA']
 
   # 3. 自動更新部署至 Cloud Run (自動套用現有環境變數與 no-cpu-throttling)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -15,7 +15,7 @@ steps:
       - 'deploy'
       - 'pickforme-api'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/pickforme-api:$COMMIT_SHA'
+      - 'asia-northeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/pickforme-api:$COMMIT_SHA'
       - '--region'
       - 'asia-northeast1'
       - '--platform'
@@ -26,7 +26,7 @@ steps:
       - '300s'
 
 images:
-  - 'gcr.io/$PROJECT_ID/pickforme-api:$COMMIT_SHA'
+  - 'asia-northeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/pickforme-api:$COMMIT_SHA'
 
 options:
   logging: CLOUD_LOGGING_ONLY
