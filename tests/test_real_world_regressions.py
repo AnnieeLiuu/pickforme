@@ -1290,3 +1290,79 @@ async def test_case21_no_raw_japanese_review_leak_and_code_block_repair():
     # 修復後致命錯誤應被解除
     fatal_after, _ = validate_card_tiered(auto_fixed, [mock_store_japanese])
     assert len(fatal_after) == 0, f"修復後仍有致命錯誤: {fatal_after}"
+
+
+@pytest.mark.asyncio
+async def test_case22_internal_diagnostics_and_max_tokens_guardrail():
+    """Case 22: 內部安全診斷端點與 Groq OTPM 1000 Token 防禦回歸測試
+
+    根本原因:
+    1. 當 Cloud Run / Docker 發生底層網路連線異常 (如 429 或重試) 時，
+       在 GCP Organization Policy 封鎖匯出 Service Account Key 的情境下，
+       AI 與開發者無法透過外部 MCP 取得底層日誌。
+    2. LLM Client 未帶入 max_tokens 參數，導致 Groq 雲端以預設最大輸出計算，
+       估算 token 達 1180 超過免費用戶每分鐘 1000 output token 限制，觸發 429。
+
+    防禦驗證:
+    1. InMemoryLogBuffer 自動攔截 WARNING/ERROR 日誌，且 /internal/diagnostics/logs
+       受到 TELEGRAM_WEBHOOK_SECRET 嚴格防護，非授權存取立即回傳 403。
+    2. _call_openai_compatible_api 預設帶入 max_tokens: 800，徹底根除 Groq 429。
+    """
+    import logging
+    from unittest.mock import AsyncMock, patch
+
+    from fastapi.testclient import TestClient
+    from src.agent.llm_client import LLMClient
+    from src.config import settings
+    from src.main import app
+    from src.services.diagnostics import InMemoryLogBuffer
+
+    # 1. 驗證 InMemoryLogBuffer 正常收集與過濾
+    test_buffer = InMemoryLogBuffer(maxlen=10)
+    test_logger = logging.getLogger("test_diag")
+    test_logger.addHandler(test_buffer)
+
+    test_logger.info("Normal info message")
+    test_logger.warning("Groq API 429 rate limit detected")
+    test_logger.error("Connection pool dropped")
+
+    logs = test_buffer.get_logs(limit=10, min_level="WARNING")
+    assert len(logs) == 2
+    assert logs[0]["message"] == "Connection pool dropped"
+    assert logs[1]["message"] == "Groq API 429 rate limit detected"
+
+    # 2. 驗證 /internal/diagnostics/logs 端點安全防護
+    client = TestClient(app)
+
+    # (a) 未帶 secret 或 secret 錯誤 ➡️ 403 Forbidden
+    resp_unauth = client.get("/internal/diagnostics/logs?secret=wrong_secret")
+    assert resp_unauth.status_code == 403
+    assert "Forbidden" in resp_unauth.text
+
+    # (b) 帶正確 secret ➡️ 200 OK
+    resp_auth = client.get(f"/internal/diagnostics/logs?secret={settings.TELEGRAM_WEBHOOK_SECRET}")
+    assert resp_auth.status_code == 200
+    data = resp_auth.json()
+    assert data["status"] == "ok"
+    assert "logs" in data
+
+    # 3. 驗證 LLM Client 帶入 max_tokens 防禦
+    llm = LLMClient()
+    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "choices": [{"message": {"content": "ok"}}],
+            "usage": {"total_tokens": 10},
+        }
+        mock_post.return_value = mock_resp
+
+        await llm._call_openai_compatible_api(
+            url="https://api.groq.com/openai/v1/chat/completions",
+            api_key="dummy_key",
+            model="qwen/qwen3.8-27b",
+            messages=[{"role": "user", "content": "hi"}],
+        )
+
+        sent_json = mock_post.call_args.kwargs.get("json", {})
+        assert sent_json.get("max_tokens") == 800, f"max_tokens 應為 800: {sent_json}"

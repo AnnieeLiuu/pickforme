@@ -58,6 +58,7 @@ class LLMClient:
             "model": model,
             "messages": cleaned_messages,
             "temperature": 0.2,
+            "max_tokens": 800,
         }
         if response_format:
             body["response_format"] = response_format

@@ -29,3 +29,7 @@ Thumbs.db
 data/cold_archive/**/*.parquet
 data/cold_archive/*.parquet
 
+# Playwright MCP 臨時日誌
+.playwright-mcp/
+
+

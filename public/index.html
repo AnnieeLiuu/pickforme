@@ -3362,6 +3362,362 @@
                 </thead>
                 <tbody>
                     
+            <tr class="live-row" onclick="toggleCaseDetails('live-af3b5f32-06f6-4b8a-a183-24b93fd7c7a5')">
+                <td><code>af3b5f32</code></td>
+                <td><span class="cat-pill">Live Telegram</span></td>
+                <td class="query-col">神保町車站 飯糰</td>
+                <td class="text-center"><code>N/A</code></td>
+                <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
+                <td class="text-right latency-text">12,642 ms</td>
+            </tr>
+            <tr id="case-live-af3b5f32-06f6-4b8a-a183-24b93fd7c7a5" class="stepper-drawer" style="display: none;">
+                <td colspan="6">
+                    <div class="stepper-container">
+                        <div class="drawer-header">
+                            <h4>⚡ 真實線上問答執行軌跡 (Run ID: af3b5f32-06f6-4b8a-a183-24b93fd7c7a5 | 提問時間: 2026-10-23T14:51:52.242954+00:00)</h4>
+                        </div>
+                        <div class="steps-flow">
+                            
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 1</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_1_intent (intent_parser)</div>
+                <div class="step-sub-title">單步耗時: 328 ms</div>
+            </div>
+            <span class="step-badge">328ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">328 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;message&quot;: &quot;神保町車站 飯糰&quot;
+  },
+  &quot;output&quot;: {
+    &quot;intent&quot;: &quot;search&quot;,
+    &quot;cuisine&quot;: &quot;飯糰&quot;,
+    &quot;location&quot;: &quot;神保町車站&quot;,
+    &quot;modifier&quot;: null,
+    &quot;question&quot;: null,
+    &quot;target_index&quot;: null
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 2</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_2_places (search_nearby_ladder)</div>
+                <div class="step-sub-title">單步耗時: 342 ms</div>
+            </div>
+            <span class="step-badge">342ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">342 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;lat&quot;: 35.696966,
+    &quot;lng&quot;: 139.7562635,
+    &quot;keyword&quot;: &quot;飯糰&quot;,
+    &quot;excluded_count&quot;: 0
+  },
+  &quot;output&quot;: {
+    &quot;count&quot;: 6
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 3</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_3_tabelog (parallel_tabelog_enrichment)</div>
+                <div class="step-sub-title">單步耗時: 5753 ms</div>
+            </div>
+            <span class="step-badge">5753ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">5753 ms</span></div></div>
+            
+    <div class="aligned-stores-section">
+        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (3 間):</div>
+        <div class="aligned-stores-grid">
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 台湾豆乳大王</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.40 (228 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「台湾豆乳大王 (九段下/台湾料理)への 口コミ です。日本最大級のグルメサイト「食べログ」では、 台湾豆乳大王 の 口コミ 259件を掲載中。」</em></div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 十穀和長</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.30 (86 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「懐に少し余裕がある日の昼食として、かなりの頻度で利用している 十穀和長 。 こちらでは、ボリュームのあるおにぎりにおかず、さらに豚汁まで付けても1,000円きっかり。」</em></div>
+        </div>
+        
+        <div class="store-mini-card">
+            <div class="store-mini-header">
+                <span class="store-name">🍱 らいす倶楽部</span>
+                
+            </div>
+            <div class="store-mini-meta">
+                <span class="meta-tag rating-tag">⭐️ Tabelog 3.10 (31 則)</span>
+                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
+                <span class="meta-tag pay-tag">💳 現金為主</span>
+            </div>
+            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「死ぬ前に3つだけ食べて良いよ、って言われたら、 らいす倶楽部 さんのおにぎりと唐揚げ、博多加布里のマルタ活魚さんの味噌汁をお願いしようと、常々思っています。」</em></div>
+        </div>
+        </div>
+    </div>
+    
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;stores_count&quot;: 6,
+    &quot;stores_searched&quot;: [
+      {
+        &quot;name&quot;: &quot;らいす倶楽部&quot;,
+        &quot;phone&quot;: &quot;&quot;,
+        &quot;google_rating&quot;: 4.7
+      },
+      {
+        &quot;name&quot;: &quot;十穀和長&quot;,
+        &quot;phone&quot;: &quot;03-3292-1059&quot;,
+        &quot;google_rating&quot;: 4.5
+      },
+      {
+        &quot;name&quot;: &quot;出汁と米 天むす宮&quot;,
+        &quot;phone&quot;: &quot;080-6609-8495&quot;,
+        &quot;google_rating&quot;: 4.9
+      },
+      {
+        &quot;name&quot;: &quot;おむすび権米衛 本郷三丁目店&quot;,
+        &quot;phone&quot;: &quot;03-3814-2311&quot;,
+        &quot;google_rating&quot;: 4
+      },
+      {
+        &quot;name&quot;: &quot;台湾豆乳大王&quot;,
+        &quot;phone&quot;: &quot;03-6268-9757&quot;,
+        &quot;google_rating&quot;: 3.7
+      },
+      {
+        &quot;name&quot;: &quot;ほんのり屋×marukome エキュート秋葉原店&quot;,
+        &quot;phone&quot;: &quot;090-1798-2396&quot;,
+        &quot;google_rating&quot;: 3.9
+      }
+    ]
+  },
+  &quot;output&quot;: {
+    &quot;aligned_stores&quot;: [
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;台湾豆乳大王&quot;,
+        &quot;rank_badge&quot;: &quot;🥇&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1310/A131003/13246735/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 228,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;台湾豆乳大王 (九段下/台湾料理)への 口コミ です。日本最大級のグルメサイト「食べログ」では、 台湾豆乳大王 の 口コミ 259件を掲載中。&quot;,
+            &quot;title&quot;: &quot;口コミ一覧 :台湾豆乳大王- 九段下/台湾料理 [食べログ]&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;台湾豆乳大王 (九段下/台湾料理)への 口コミ です。日本最大級のグルメサイト「食べログ」では、 台湾豆乳大王 の 口コミ 259件を掲載中。&quot;
+          },
+          {
+            &quot;text&quot;: &quot;台湾豆乳大王 (九段下/台湾料理)への 口コミ です。日本最大級のグルメサイト「食べログ」では、 台湾豆乳大王 の 口コミ 259件を掲載中。&quot;,
+            &quot;title&quot;: &quot;口コミ一覧 :台湾豆乳大王- 九段下/台湾料理 [食べログ]&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;台湾豆乳大王 (九段下/台湾料理)への 口コミ です。日本最大級のグルメサイト「食べログ」では、 台湾豆乳大王 の 口コミ 259件を掲載中。&quot;
+          },
+          {
+            &quot;text&quot;: &quot;台湾豆乳大王 . 九段下駅/台湾料理､ 居酒屋､ カフェ. クニーガの 口コミ 詳細. クニーガ（20）の 口コミ . Dinner2.5. 詳細. 料理・味1.5; サービス3.0; 雰囲気3.0; CP2.0 ...&quot;,
+            &quot;title&quot;: &quot;『正直がっかりでした』by クニーガ :台湾豆乳大王- 食べログ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;台湾豆乳大王 . 九段下駅/台湾料理､ 居酒屋､ カフェ. クニーガの 口コミ 詳細. クニーガ（20）の 口コミ . Dinner2.5. 詳細. 料理・味1.5; サービス3.0; 雰囲気3.0; CP2.0 ...&quot;
+          },
+          {
+            &quot;text&quot;: &quot;台湾豆乳大王 . 九段下駅/台湾料理､ 居酒屋､ カフェ. クニーガの 口コミ 詳細. クニーガ（20）の 口コミ . Dinner2.5. 詳細. 料理・味1.5; サービス3.0; 雰囲気3.0; CP2.0 ...&quot;,
+            &quot;title&quot;: &quot;『正直がっかりでした』by クニーガ :台湾豆乳大王- 食べログ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;台湾豆乳大王 . 九段下駅/台湾料理､ 居酒屋､ カフェ. クニーガの 口コミ 詳細. クニーガ（20）の 口コミ . Dinner2.5. 詳細. 料理・味1.5; サービス3.0; 雰囲気3.0; CP2.0 ...&quot;
+          },
+          {
+            &quot;text&quot;: &quot;台湾豆乳大王 . 九段下駅/台湾料理､ 居酒屋､ カフェ. shinn679の 口コミ 詳細. shinn679（3426）の 口コミ · 認証済. Dinner3.8. ￥2,000～￥2,999/1人. 詳細. 料理・味3.8 ...&quot;,
+            &quot;title&quot;: &quot;『勢いいっぱい食べてしまいました。』by shinn679 - 食べログ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;台湾豆乳大王 . 九段下駅/台湾料理､ 居酒屋､ カフェ. shinn679の 口コミ 詳細. shinn679（3426）の 口コミ · 認証済. Dinner3.8. ￥2,000～￥2,999/1人. 詳細. 料理・味3.8 ...&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.4,
+        &quot;supports_paypay&quot;: null
+      },
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;十穀和長&quot;,
+        &quot;rank_badge&quot;: &quot;🥈&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1310/A131002/13087977/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 86,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;懐に少し余裕がある日の昼食として、かなりの頻度で利用している 十穀和長 。 こちらでは、ボリュームのあるおにぎりにおかず、さらに豚汁まで付けても1,000円きっかり。&quot;,
+            &quot;title&quot;: &quot;十穀和長（ジュッコクワチョウ） - 小川町/おにぎり [食べログ]&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;懐に少し余裕がある日の昼食として、かなりの頻度で利用している 十穀和長 。 こちらでは、ボリュームのあるおにぎりにおかず、さらに豚汁まで付けても1,000円きっかり。&quot;
+          },
+          {
+            &quot;text&quot;: &quot;懐に少し余裕がある日の昼食として、かなりの頻度で利用している 十穀和長 。 こちらでは、ボリュームのあるおにぎりにおかず、さらに豚汁まで付けても1,000円きっかり。&quot;,
+            &quot;title&quot;: &quot;十穀和長（ジュッコクワチョウ） - 小川町/おにぎり [食べログ]&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;懐に少し余裕がある日の昼食として、かなりの頻度で利用している 十穀和長 。 こちらでは、ボリュームのあるおにぎりにおかず、さらに豚汁まで付けても1,000円きっかり。&quot;
+          },
+          {
+            &quot;text&quot;: &quot;十穀和長 (小川町/おにぎり)への大食い大熊猫さんの 口コミ です。&quot;,
+            &quot;title&quot;: &quot;小川町/おにぎり - 『だいぶ安定してきたかな』by 大食い大熊猫&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;十穀和長 (小川町/おにぎり)への大食い大熊猫さんの 口コミ です。&quot;
+          },
+          {
+            &quot;text&quot;: &quot;十穀和長 (小川町/おにぎり)への大食い大熊猫さんの 口コミ です。&quot;,
+            &quot;title&quot;: &quot;小川町/おにぎり - 『だいぶ安定してきたかな』by 大食い大熊猫&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;十穀和長 (小川町/おにぎり)への大食い大熊猫さんの 口コミ です。&quot;
+          },
+          {
+            &quot;text&quot;: &quot;口コミ · タイトルなし · 「小川町 十穀和長 」こだわりの十穀米でヘルシーにおいしく結んだ、コスパ高きランチセット600円 · 長らくお世話になってます.&quot;,
+            &quot;title&quot;: &quot;十穀和長（ジュッコクワチョウ） - 小川町/おにぎり - 食べログ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;口コミ · タイトルなし · 「小川町 十穀和長 」こだわりの十穀米でヘルシーにおいしく結んだ、コスパ高きランチセット600円 · 長らくお世話になってます.&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.3,
+        &quot;supports_paypay&quot;: null
+      },
+      {
+        &quot;awards&quot;: [],
+        &quot;name_ja&quot;: &quot;らいす倶楽部&quot;,
+        &quot;rank_badge&quot;: &quot;🥉&quot;,
+        &quot;price_lunch&quot;: null,
+        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1310/A131003/13105058/&quot;,
+        &quot;credit_cards&quot;: [],
+        &quot;price_dinner&quot;: null,
+        &quot;review_count&quot;: 31,
+        &quot;rating_source&quot;: &quot;Tabelog&quot;,
+        &quot;sample_reviews&quot;: [
+          {
+            &quot;text&quot;: &quot;死ぬ前に3つだけ食べて良いよ、って言われたら、 らいす倶楽部 さんのおにぎりと唐揚げ、博多加布里のマルタ活魚さんの味噌汁をお願いしようと、常々思っています。&quot;,
+            &quot;title&quot;: &quot;らいす倶楽部- 神保町/おにぎり - 食べログ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;死ぬ前に3つだけ食べて良いよ、って言われたら、 らいす倶楽部 さんのおにぎりと唐揚げ、博多加布里のマルタ活魚さんの味噌汁をお願いしようと、常々思っています。&quot;
+          },
+          {
+            &quot;text&quot;: &quot;死ぬ前に3つだけ食べて良いよ、って言われたら、 らいす倶楽部 さんのおにぎりと唐揚げ、博多加布里のマルタ活魚さんの味噌汁をお願いしようと、常々思っています。&quot;,
+            &quot;title&quot;: &quot;らいす倶楽部- 神保町/おにぎり - 食べログ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;死ぬ前に3つだけ食べて良いよ、って言われたら、 らいす倶楽部 さんのおにぎりと唐揚げ、博多加布里のマルタ活魚さんの味噌汁をお願いしようと、常々思っています。&quot;
+          },
+          {
+            &quot;text&quot;: &quot;shu.to. ... 美味い米、美味い海苔に定評のある、 らいす倶楽部 さん。お米屋さんのやってるおにぎり屋さんだけあり、米が美味い。固めの海苔も良い。具はシャケとシュウマイを ...&quot;,
+            &quot;title&quot;: &quot;口コミ一覧 :らいす倶楽部- 神保町 おにぎり - 食べログ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;shu.to. ... 美味い米、美味い海苔に定評のある、 らいす倶楽部 さん。お米屋さんのやってるおにぎり屋さんだけあり、米が美味い。固めの海苔も良い。具はシャケとシュウマイを ...&quot;
+          },
+          {
+            &quot;text&quot;: &quot;shu.to. ... 美味い米、美味い海苔に定評のある、 らいす倶楽部 さん。お米屋さんのやってるおにぎり屋さんだけあり、米が美味い。固めの海苔も良い。具はシャケとシュウマイを ...&quot;,
+            &quot;title&quot;: &quot;口コミ一覧 :らいす倶楽部- 神保町 おにぎり - 食べログ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;shu.to. ... 美味い米、美味い海苔に定評のある、 らいす倶楽部 さん。お米屋さんのやってるおにぎり屋さんだけあり、米が美味い。固めの海苔も良い。具はシャケとシュウマイを ...&quot;
+          },
+          {
+            &quot;text&quot;: &quot;口コミ . 寒い朝にはおみおつけ！ らいす倶楽部 ＠錦華通りにて お赤飯、煎り豆腐、おみおつけ 寒い朝には蕪、ワカメ、油揚げが入った 熱々おみおつけがイイですね！ #錦華 ...&quot;,
+            &quot;title&quot;: &quot;らいす倶楽部- 神保町/おにぎり - 食べログ&quot;,
+            &quot;source&quot;: &quot;tabelog&quot;,
+            &quot;original_text&quot;: &quot;口コミ . 寒い朝にはおみおつけ！ らいす倶楽部 ＠錦華通りにて お赤飯、煎り豆腐、おみおつけ 寒い朝には蕪、ワカメ、油揚げが入った 熱々おみおつけがイイですね！ #錦華 ...&quot;
+          }
+        ],
+        &quot;tabelog_rating&quot;: 3.1,
+        &quot;supports_paypay&quot;: null
+      }
+    ],
+    &quot;selected_count&quot;: 3
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+<div class='flow-arrow'>↓</div>
+
+    <div class="pipeline-step-card">
+        <div class="step-header">
+            <div class="step-num-badge">Step 4</div>
+            <div class="step-titles">
+                <div class="step-main-title">state_4_synthesis (card_synthesis)</div>
+                <div class="step-sub-title">單步耗時: 1955 ms</div>
+            </div>
+            <span class="step-badge">1955ms</span>
+        </div>
+        <div class="step-body">
+            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">1955 ms</span></div></div>
+            
+            <details class="raw-details">
+                <summary>檢視原始 Payload JSON</summary>
+                <pre class="raw-pre"><code>{
+  &quot;input&quot;: {
+    &quot;cuisine&quot;: &quot;飯糰&quot;,
+    &quot;location&quot;: &quot;神保町車站&quot;,
+    &quot;stores_count&quot;: 3
+  },
+  &quot;output&quot;: {
+    &quot;length&quot;: 1039,
+    &quot;card_content&quot;: &quot;🍱 **神保町車站周邊精選飯糰推薦**\n\n🥇 **十穀和長**\n`十穀和長`\n🚶 **步行距離**：從「神保町車站」步行約 10 分鐘 (723m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.40 (86 則評價) / Google 3.7\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：約 ￥1,000 左右 (含飯糰、配菜與豚汁)\n📍 **老饕推薦理由 (食べログ 口コミ)**：老饕盛讚其飯糰份量飽足，搭配小菜與熱騰騰的豚汁，整體套餐價格僅需 1,000 日圓整，是神保町周邊極具性價比的午餐首選。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1310/A131002/13087977/)\n\n🥈 **らいす倶楽部**\n`らいす倶楽部`\n🚶 **步行距離**：從「神保町車站」步行約 4 分鐘 (289m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.1 (31 則評價) / Google 4.7\n💳 **支付方式**：現金為主 (建議備足日圓現鈔)\n💰 **預算區間**：未提供具體數據\n📍 **老饕推薦理由 (食べログ 口コミ)**：被老饕譽為「死前必吃」的經典組合，其招牌飯糰與炸雞口感層次豐富，搭配味噌湯是該店最令人難忘的風味體驗。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1310/A131003/13105058/)\n\n🥉 **台湾豆乳大王**\n`台湾豆乳大王`\n🚶 **步行距離**：從「神保町車站」步行約 4 分鐘 (279m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.4 (228 則評價) / Google 3.7\n💳 **支付方式**：可使用 信用卡 / 電子支付\n💰 **預算區間**：未提供具體數據\n📍 **老饕推薦理由 (食べログ 口コミ)**：以台灣豆乳料理為特色，雖非傳統日式飯糰專賣，但在地評價中常提及其實惠與獨特的豆乳風味，適合想嘗試不同風味或需要刷卡支付的遊客。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1310/A131003/13246735/)\n\n💡 特派員提醒：神保町周邊的純飯糰專賣店選擇較少，若對傳統日式飯糰有更高期待，建議擴大範圍至鄰近的「神田」或「秋葉原」商圈探索更多選擇。&quot;
+  }
+}</code></pre>
+            </details>
+        </div>
+    </div>
+    
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            
+
             <tr class="live-row" onclick="toggleCaseDetails('live-d2189f5f-a6a0-4e79-b106-bcfc0f447b5e')">
                 <td><code>d2189f5f</code></td>
                 <td><span class="cat-pill">Live Telegram</span></td>
@@ -7825,295 +8181,6 @@
   &quot;output&quot;: {
     &quot;length&quot;: 1221,
     &quot;card_content&quot;: &quot;🍱 **新宿車站周邊｜抹茶拿鐵精選推薦**\n\n🥇 **AfterAllCoffee**\n`AfterAllCoffee`\n🚶 **步行距離**：從「新宿車站」步行約 9 分鐘 (687m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.6 (477則評價) / Google 4.7\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n💰 **預算區間**：咖啡類約 ￥500~￥800 (參考價)\n📍 **老饕推薦理由 (食べログ 口コミ)**：位於西新宿的隱世咖啡名店，以極致細膩的咖啡萃取聞名。雖然主打咖啡，但其對液體質感的掌控力讓其拿鐵與抹茶飲品同樣具備高級口感，是追求極致風味層次的老饕首選。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1304/A130401/13273581/)\n\n🥈 **Ciao 橋 Coffee**\n`Ciao 橋 Coffee`\n🚶 **步行距離**：從「新宿車站」步行約 10 分鐘 (730m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.4 (96則評價) / Google 4.6\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n💰 **預算區間**：咖啡類約 ￥500~￥900 (參考價)\n📍 **老饕推薦理由 (食べログ 口コミ)**：由拉花藝術世界冠軍主理，2025年6月新開幕的話題店。除了視覺系拉花極具震撼力，其咖啡與抹茶飲品的平衡度極佳，適合喜歡打卡與體驗頂尖手藝的遊客。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1304/A130403/13310959/)\n\n🥉 **抹ChomachoMATCHA CAFE**\n`抹ChomachoMATCHA CAFE`\n🚶 **步行距離**：從「新宿車站」步行約 10 分鐘 (787m)\n⭐️ **雙平台評分**：⭐️ Tabelog 3.1 (11則評價) / Google 4.6\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n💰 **預算區間**：抹茶類約 ￥600~￥1,000 (參考價)\n📍 **老饕推薦理由 (食べログ 口コミ)**：店名即點出「抹茶」主題，位於新宿御苑前附近的巷弄中。專注於抹茶專品，提供純粹且高濃度的抹茶體驗，是專門尋找「抹茶拿鐵」而非綜合咖啡店的最佳選擇。\n🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1304/A130401/13297317/)\n\n💡 特派員提醒：這三家店均**僅收現金**，請務必提前備好日圓現鈔；若追求極致風味選 AfterAll，喜歡視覺系與新開話題店選 Ciao 橋，想專注純抹茶體驗則選抹Chomacho。&quot;
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-                        </div>
-                    </div>
-                </td>
-            </tr>
-            
-
-            <tr class="live-row" onclick="toggleCaseDetails('live-6893f8ad-bde4-431d-bcd6-5a105b93d3d4')">
-                <td><code>6893f8ad</code></td>
-                <td><span class="cat-pill">Live Telegram</span></td>
-                <td class="query-col">可以接受距離遠一點的走路15分鐘內都可以</td>
-                <td class="text-center"><code>N/A</code></td>
-                <td class="text-center"><span class="pill pill-green">SUCCESS</span></td>
-                <td class="text-right latency-text">10,211 ms</td>
-            </tr>
-            <tr id="case-live-6893f8ad-bde4-431d-bcd6-5a105b93d3d4" class="stepper-drawer" style="display: none;">
-                <td colspan="6">
-                    <div class="stepper-container">
-                        <div class="drawer-header">
-                            <h4>⚡ 真實線上問答執行軌跡 (Run ID: 6893f8ad-bde4-431d-bcd6-5a105b93d3d4 | 提問時間: 2026-10-11T10:02:42.915864+00:00)</h4>
-                        </div>
-                        <div class="steps-flow">
-                            
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 1</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_1_intent (intent_parser)</div>
-                <div class="step-sub-title">單步耗時: 377 ms</div>
-            </div>
-            <span class="step-badge">377ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_1_intent</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>intent_parser</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">377 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;message&quot;: &quot;可以接受距離遠一點的走路15分鐘內都可以&quot;
-  },
-  &quot;output&quot;: {
-    &quot;intent&quot;: &quot;more&quot;,
-    &quot;cuisine&quot;: &quot;壽喜燒&quot;,
-    &quot;location&quot;: &quot;新宿車站&quot;,
-    &quot;modifier&quot;: &quot;走路15分鐘內&quot;,
-    &quot;question&quot;: null,
-    &quot;target_index&quot;: null
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 2</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_2_places (search_nearby_ladder)</div>
-                <div class="step-sub-title">單步耗時: 463 ms</div>
-            </div>
-            <span class="step-badge">463ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_2_places</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>search_nearby_ladder</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">463 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;lat&quot;: 35.6896067,
-    &quot;lng&quot;: 139.7005713,
-    &quot;keyword&quot;: &quot;壽喜燒 走路15分鐘內&quot;,
-    &quot;excluded_count&quot;: 3
-  },
-  &quot;output&quot;: {
-    &quot;count&quot;: 6
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 3</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_3_tabelog (parallel_tabelog_enrichment)</div>
-                <div class="step-sub-title">單步耗時: 3905 ms</div>
-            </div>
-            <span class="step-badge">3905ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_3_tabelog</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>parallel_tabelog_enrichment</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">3905 ms</span></div></div>
-            
-    <div class="aligned-stores-section">
-        <div class="aligned-stores-title">📋 Tabelog 雙平台實體對齊店家詳情 (3 間):</div>
-        <div class="aligned-stores-grid">
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 海底撈火鍋新宿店</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.50 (2,310 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「位於歌舞伎町的第二東亞會館大樓6樓，是一家來自中國的火鍋店。 - 地點- 從西武新宿站步行1分鐘從JR新宿站東口步行4分鐘 離... ... 【新宿】用自己喜好的醬料...」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 新宿燒肉牛舌之檸檬總本店</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.50 (1,536 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「從新宿站西口步行6分鐘 從大江戶線新宿西口站（D5出口）步行2分鐘 從西武新宿站步行5分鐘. 距离西武新宿200 米 · 星期一，星期二，星期三，星期四，星期日. 1...」</em></div>
-        </div>
-        
-        <div class="store-mini-card">
-            <div class="store-mini-header">
-                <span class="store-name">🍱 一蘭新宿歌舞伎町店</span>
-                
-            </div>
-            <div class="store-mini-meta">
-                <span class="meta-tag rating-tag">⭐️ Tabelog 3.10 (281 則)</span>
-                <span class="meta-tag budget-tag">💰 午 — / 晚 —</span>
-                <span class="meta-tag pay-tag">💳 現金為主</span>
-            </div>
-            <div class="review-snippet"><span class="rev-source">食べログ 口コミ</span> 💬 <em>「一蘭 新宿歌舞伎町店 (新宿西口/ラーメン) 営業時間 24時間営業 ※営業時間は変更になる場合がございます …」</em></div>
-        </div>
-        </div>
-    </div>
-    
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;stores_count&quot;: 6,
-    &quot;stores_searched&quot;: [
-      {
-        &quot;name&quot;: &quot;Haidilao Shinjuku Branch&quot;,
-        &quot;phone&quot;: &quot;03-6278-9799&quot;,
-        &quot;google_rating&quot;: 4.7
-      },
-      {
-        &quot;name&quot;: &quot;Gyu Tongue Lemon Shinjuku&quot;,
-        &quot;phone&quot;: &quot;03-6279-3997&quot;,
-        &quot;google_rating&quot;: 4.7
-      },
-      {
-        &quot;name&quot;: &quot;ICHIRAN Shinjuku Kabukicho&quot;,
-        &quot;phone&quot;: &quot;050-3733-3393&quot;,
-        &quot;google_rating&quot;: 4.4
-      },
-      {
-        &quot;name&quot;: &quot;Shinjuku Golden-Gai&quot;,
-        &quot;phone&quot;: &quot;03-3209-6418&quot;,
-        &quot;google_rating&quot;: 4.3
-      },
-      {
-        &quot;name&quot;: &quot;Hotel Gracery Shinjuku&quot;,
-        &quot;phone&quot;: &quot;03-6833-1111&quot;,
-        &quot;google_rating&quot;: 4.3
-      },
-      {
-        &quot;name&quot;: &quot;ICHIRAN Shinjuku Station Central East Exit&quot;,
-        &quot;phone&quot;: &quot;050-1808-2529&quot;,
-        &quot;google_rating&quot;: 4.3
-      }
-    ]
-  },
-  &quot;output&quot;: {
-    &quot;aligned_stores&quot;: [
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;海底撈火鍋新宿店&quot;,
-        &quot;rank_badge&quot;: &quot;🥇&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13213528/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 2310,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;位於歌舞伎町的第二東亞會館大樓6樓，是一家來自中國的火鍋店。 - 地點- 從西武新宿站步行1分鐘從JR新宿站東口步行4分鐘 離... ... 【新宿】用自己喜好的醬料品嚐絕品火鍋！在 ...&quot;,
-            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
-            &quot;source&quot;: &quot;tabelog&quot;,
-            &quot;original_text&quot;: &quot;位於歌舞伎町的第二東亞會館大樓6樓，是一家來自中國的火鍋店。 - 地點- 從西武新宿站步行1分鐘從JR新宿站東口步行4分鐘 離... ... 【新宿】用自己喜好的醬料品嚐絕品火鍋！在 ...&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.5,
-        &quot;supports_paypay&quot;: false
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;新宿燒肉牛舌之檸檬總本店&quot;,
-        &quot;rank_badge&quot;: &quot;🥈&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13264721/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 1536,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;從新宿站西口步行6分鐘 從大江戶線新宿西口站（D5出口）步行2分鐘 從西武新宿站步行5分鐘. 距离西武新宿200 米 · 星期一，星期二，星期三，星期四，星期日. 11:30 - 15:00 ...&quot;,
-            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
-            &quot;source&quot;: &quot;tabelog&quot;,
-            &quot;original_text&quot;: &quot;從新宿站西口步行6分鐘 從大江戶線新宿西口站（D5出口）步行2分鐘 從西武新宿站步行5分鐘. 距离西武新宿200 米 · 星期一，星期二，星期三，星期四，星期日. 11:30 - 15:00 ...&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.5,
-        &quot;supports_paypay&quot;: false
-      },
-      {
-        &quot;awards&quot;: [],
-        &quot;name_ja&quot;: &quot;一蘭新宿歌舞伎町店&quot;,
-        &quot;rank_badge&quot;: &quot;🥉&quot;,
-        &quot;price_lunch&quot;: null,
-        &quot;tabelog_url&quot;: &quot;https://tabelog.com/tokyo/A1304/A130401/13194434/&quot;,
-        &quot;credit_cards&quot;: [],
-        &quot;price_dinner&quot;: null,
-        &quot;review_count&quot;: 281,
-        &quot;rating_source&quot;: &quot;Tabelog&quot;,
-        &quot;sample_reviews&quot;: [
-          {
-            &quot;text&quot;: &quot;一蘭 新宿歌舞伎町店 (新宿西口/ラーメン) 営業時間 24時間営業 ※営業時間は変更になる場合がございます …&quot;,
-            &quot;title&quot;: &quot;食べログ 評判・口コミ&quot;,
-            &quot;source&quot;: &quot;tabelog&quot;,
-            &quot;original_text&quot;: &quot;一蘭 新宿歌舞伎町店 (新宿西口/ラーメン) 営業時間 24時間営業 ※営業時間は変更になる場合がございます …&quot;
-          }
-        ],
-        &quot;tabelog_rating&quot;: 3.1,
-        &quot;supports_paypay&quot;: false
-      }
-    ],
-    &quot;selected_count&quot;: 3
-  }
-}</code></pre>
-            </details>
-        </div>
-    </div>
-    
-<div class='flow-arrow'>↓</div>
-
-    <div class="pipeline-step-card">
-        <div class="step-header">
-            <div class="step-num-badge">Step 4</div>
-            <div class="step-titles">
-                <div class="step-main-title">state_4_synthesis (card_synthesis_format_fallback)</div>
-                <div class="step-sub-title">單步耗時: 885 ms</div>
-            </div>
-            <span class="step-badge">885ms</span>
-        </div>
-        <div class="step-body">
-            <div class="kv-grid"><div class="kv-item"><span class="kv-key">執行動作 (Action):</span><span class="kv-val"><code>state_4_synthesis</code></span></div><div class="kv-item"><span class="kv-key">調用工具 (Tool):</span><span class="kv-val"><code>card_synthesis_format_fallback</code></span></div><div class="kv-item"><span class="kv-key">單步耗時:</span><span class="kv-val">885 ms</span></div></div>
-            
-            <details class="raw-details">
-                <summary>檢視原始 Payload JSON</summary>
-                <pre class="raw-pre"><code>{
-  &quot;input&quot;: {
-    &quot;cuisine&quot;: &quot;壽喜燒 走路15分鐘內&quot;,
-    &quot;stores_count&quot;: 3,
-    &quot;invalid_reasons&quot;: [
-      &quot;缺少一鍵複製店名反引號代碼塊 (`店名`)&quot;,
-      &quot;缺少步行距離標記 (🚶 **步行距離**)&quot;,
-      &quot;缺少評分資訊標記 (⭐️ **雙平台評分**)&quot;,
-      &quot;缺少支付方式標記 (💳 **支付方式**)&quot;
-    ]
-  },
-  &quot;output&quot;: {
-    &quot;length&quot;: 1189,
-    &quot;card_content&quot;: &quot;🍱 **已為您精選「壽喜燒 走路15分鐘內」指標推薦餐廳如下：**\n\n### 🥇 精選推薦 1：`海底撈火鍋新宿店`\n🚶 **步行距離**：從「新宿車站」步行約 8 分鐘 (629m)\n⭐️ **Tabelog 評分**：3.50 分 (2310 則評價)\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n📍 **地址**：Japan, 〒160-0021 Tokyo, Shinjuku City, Kabukichō, 1-chōme−21−１ 第二東亜会館ビル 6F\n🔗 [食べログ詳細頁面](https://tabelog.com/tokyo/A1304/A130401/13213528/)\n📍 **老饕推薦理由 (食べログ 口コミ)**：位於歌舞伎町的第二東亞會館大樓6樓，是一家來自中國的火鍋店。 - 地點- 從西武新宿站步行1分鐘從JR新宿站東口步行4分鐘 離... ... 【新宿】用自己喜好的醬料品嚐絕品火鍋！在 ...\n\n### 🥈 精選推薦 2：`新宿燒肉牛舌之檸檬總本店`\n🚶 **步行距離**：從「新宿車站」步行約 10 分鐘 (765m)\n⭐️ **Tabelog 評分**：3.50 分 (1536 則評價)\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n📍 **地址**：Japan, 〒160-0023 Tokyo, Shinjuku City, Nishishinjuku, 7-chōme−16−１２ YSビル B1F\n🔗 [食べログ詳細頁面](https://tabelog.com/tokyo/A1304/A130401/13264721/)\n📍 **老饕推薦理由 (食べログ 口コミ)**：從新宿站西口步行6分鐘 從大江戶線新宿西口站（D5出口）步行2分鐘 從西武新宿站步行5分鐘. 距离西武新宿200 米 · 星期一，星期二，星期三，星期四，星期日. 11:30 - 15:00 ...\n\n### 🥉 精選推薦 3：`一蘭新宿歌舞伎町店`\n🚶 **步行距離**：從「新宿車站」步行約 7 分鐘 (536m)\n⭐️ **Tabelog 評分**：3.10 分 (281 則評價)\n💳 **支付方式**：現金為主 (不支援信用卡/行動支付，請備足現鈔)\n📍 **地址**：1-chōme-17-10 Kabukichō, Shinjuku City, Tokyo 160-0021, Japan\n🔗 [食べログ詳細頁面](https://tabelog.com/tokyo/A1304/A130401/13194434/)\n📍 **老饕推薦理由 (食べログ 口コミ)**：一蘭 新宿歌舞伎町店 (新宿西口/ラーメン) 営業時間 24時間営業 ※営業時間は変更になる場合がございます …&quot;
   }
 }</code></pre>
             </details>

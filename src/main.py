@@ -2,22 +2,25 @@ import asyncio
 import logging
 import sys
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator
+from typing import Any, AsyncGenerator, Optional
 
 if sys.platform == "win32":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 
 from src.bot.webhook import router as telegram_router
 from src.config import settings
 from src.db.connection import close_db_pool, get_db_pool
+from src.services.diagnostics import log_buffer
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
+# 掛載記憶體日誌緩衝區至根 logger
+logging.getLogger().addHandler(log_buffer)
 logger = logging.getLogger(__name__)
 
 
@@ -80,6 +83,24 @@ async def trigger_archive(
         delete_after_archive=not keep_hot,
     )
     return result
+
+
+@app.get("/internal/diagnostics/logs")
+async def get_internal_diagnostics_logs(
+    secret: Optional[str] = None,
+    limit: int = 50,
+    min_level: str = "WARNING",
+) -> dict[str, Any]:
+    """安全內部診斷端點：查詢容器最近的警告與錯誤日誌 (需驗證 TELEGRAM_WEBHOOK_SECRET)"""
+    if not secret or secret != settings.TELEGRAM_WEBHOOK_SECRET:
+        raise HTTPException(status_code=403, detail="Forbidden: Invalid diagnostic secret")
+    logs = log_buffer.get_logs(limit=limit, min_level=min_level)
+    return {
+        "status": "ok",
+        "total": len(logs),
+        "environment": settings.ENVIRONMENT,
+        "logs": logs,
+    }
 
 
 @app.get("/eval", response_class=HTMLResponse)

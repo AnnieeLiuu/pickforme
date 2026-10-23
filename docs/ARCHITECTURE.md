@@ -189,6 +189,8 @@ flowchart TD
   - 於 `tests/test_pipeline.py` 建立自動化合約測試，驗證 System Prompt 定義的排版格式與 Guardrail 錨點 100% 同步；任何提示詞變更若破壞了護欄合約，CI 立即報警阻擋合併。
 - **即時監控：DevOps 遠端健康度巡檢 (`src/agent/devops.py`)**：
   - 於系統指標與 Telegram `@debug` 指令中整合「護欄對齊狀態」掃描，隨時可一鍵秒級檢核。
+- **安全內部日誌診斷端點 (`/internal/diagnostics/logs`)**：
+  - 以 `InMemoryLogBuffer` 環狀佇列攔截最新 WARNING 與 ERROR 日誌，結合 `TELEGRAM_WEBHOOK_SECRET` 密鑰授權，提供免 GCP Key 的即時容器除錯能力 (`scripts/fetch_live_logs.py`)。
 
 ### F. 工程維護品質與軟體最佳實踐 (Engineering & Maintainability Practices)
 - **品質防線與 CI 守門 (Code Quality Gates)**：
