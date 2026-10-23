@@ -82,7 +82,7 @@ graph TD
         S3 --> HotDB[("Neon Postgres 熱層: 快取/餐廳/對話歷史")]
         S3 --> VectorDB[("pgvector: halfvec(768) 評論語意索引")]
         FSM -->|OTel 格式 Trace| HotDB
-        HotDB -.->|背景歸檔 (Parquet)| ColdStorage[("本機/GCS 冷層: Parquet 壓縮檔")]
+        HotDB -.->|"背景歸檔 (Parquet)"| ColdStorage[("本機/GCS 冷層: Parquet 壓縮檔")]
         ColdStorage --> DuckDBEngine["🦆 DuckDB OLAP 分析引擎 (analyze_traces.py)"]
     end
 
