@@ -17,6 +17,7 @@ concurrency:
 
 env:
   PYTHONPATH: "."
+  TELEGRAM_WEBHOOK_SECRET: "ci_dummy_secret"
 
 jobs:
   test:

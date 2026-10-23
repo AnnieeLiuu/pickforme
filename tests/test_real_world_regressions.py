@@ -1333,18 +1333,18 @@ async def test_case22_internal_diagnostics_and_max_tokens_guardrail():
 
     # 2. 驗證 /internal/diagnostics/logs 端點安全防護
     client = TestClient(app)
+    with patch.object(settings, "TELEGRAM_WEBHOOK_SECRET", "test_secret_123"):
+        # (a) 未帶 secret 或 secret 錯誤 ➡️ 403 Forbidden
+        resp_unauth = client.get("/internal/diagnostics/logs?secret=wrong_secret")
+        assert resp_unauth.status_code == 403
+        assert "Forbidden" in resp_unauth.text
 
-    # (a) 未帶 secret 或 secret 錯誤 ➡️ 403 Forbidden
-    resp_unauth = client.get("/internal/diagnostics/logs?secret=wrong_secret")
-    assert resp_unauth.status_code == 403
-    assert "Forbidden" in resp_unauth.text
-
-    # (b) 帶正確 secret ➡️ 200 OK
-    resp_auth = client.get(f"/internal/diagnostics/logs?secret={settings.TELEGRAM_WEBHOOK_SECRET}")
-    assert resp_auth.status_code == 200
-    data = resp_auth.json()
-    assert data["status"] == "ok"
-    assert "logs" in data
+        # (b) 帶正確 secret ➡️ 200 OK
+        resp_auth = client.get("/internal/diagnostics/logs?secret=test_secret_123")
+        assert resp_auth.status_code == 200
+        data = resp_auth.json()
+        assert data["status"] == "ok"
+        assert "logs" in data
 
     # 3. 驗證 LLM Client 帶入 max_tokens 防禦
     llm = LLMClient()
