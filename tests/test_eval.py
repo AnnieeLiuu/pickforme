@@ -61,3 +61,13 @@ def test_reporter_generation(tmp_path: Path):
     content = out.read_text(encoding="utf-8")
     assert "PickForMe 4-Tier LLMOps" in content
     assert "eval_test" in content
+
+
+def test_reporter_template_decoupling():
+    """測試模板已正確抽離至 templates/river_dashboard.html 且保留常數向後相容"""
+    from src.eval.reporter import BASE_DASHBOARD_TEMPLATE, TEMPLATE_PATH
+
+    assert TEMPLATE_PATH.exists(), f"模板檔案應存在於: {TEMPLATE_PATH}"
+    assert TEMPLATE_PATH.name == "river_dashboard.html"
+    assert BASE_DASHBOARD_TEMPLATE.strip().startswith("<style>")
+    assert "river-node" in BASE_DASHBOARD_TEMPLATE
