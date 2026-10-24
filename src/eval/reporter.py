@@ -62,7 +62,7 @@ def generate_markdown_report(summary: EvalSummary) -> str:
 
 
 # 🌟 全景河流圖 HTML 核心模板 (3-Pane Clean Light Slate Dashboard)
-BASE_DASHBOARD_TEMPLATE = """<style>
+BASE_DASHBOARD_TEMPLATE = r"""<style>
 /* 🌟 全域清爽現代淺色主題 (Apple / Stripe / Linear Clean Light Style) */
 html, body, #frame-content, #frame-header, .header, header {
   background: #f8fafc !important;
@@ -166,6 +166,14 @@ html, body, #frame-content, #frame-header, .header, header {
   background: #eff6ff;
   color: #1d4ed8;
   border: 1px solid #bfdbfe;
+}
+
+/* 🌟 高亮選中審計之節點 */
+.river-node.node-selected-highlight {
+  border-color: #d97706 !important;
+  box-shadow: 0 0 0 3px #f59e0b, 0 6px 20px rgba(245, 158, 11, 0.35) !important;
+  transform: translateY(-2px);
+  z-index: 10;
 }
 
 /* ⚪ 未走過節點 (Bypassed / Blueprint)：
@@ -528,23 +536,23 @@ html, body, #frame-content, #frame-header, .header, header {
         </div>
 
         <!-- Case 4: 新宿 燒肉 (擴圈 1800m 救援) -->
-        <div class="history-item" id="hist-case_rescue" onclick="switchCase('case_search')">
+        <div class="history-item" id="hist-case_expand" onclick="switchCase('case_expand')">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
             <span style="font-size: 10px; background: #fffbeb; color: #d97706; font-weight: 700; padding: 1px 5px; border-radius: 3px;">1800m 擴圈</span>
             <span style="font-size: 10px; color: #94a3b8;">13:50:41</span>
           </div>
           <div class="hist-title" style="font-size: 12px; font-weight: 600; color: #0f172a; margin-bottom: 2px;">🥩 新宿站 炭火燒肉</div>
-          <div style="font-size: 10px; color: #64748b;">800m僅1家 ➔ 啟動擴圈救回 · ⏱️ 1,820ms</div>
+          <div style="font-size: 10px; color: #64748b;">800m僅1家 ➔ 1800m 5家去重聯集 · ⏱️ 1,820ms</div>
         </div>
 
-        <!-- Case 5: 銀座 壽司 (7天快取 100% 命中) -->
-        <div class="history-item" id="hist-case_cache" onclick="switchCase('case_search')">
+        <!-- Case 5: 銀座 壽司 (區域預熱池秒出) -->
+        <div class="history-item" id="hist-case_prewarm" onclick="switchCase('case_prewarm')">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-            <span style="font-size: 10px; background: #ecfdf5; color: #059669; font-weight: 700; padding: 1px 5px; border-radius: 3px;">快取 100%</span>
+            <span style="font-size: 10px; background: #ecfdf5; color: #059669; font-weight: 700; padding: 1px 5px; border-radius: 3px;">預熱池秒出</span>
             <span style="font-size: 10px; color: #94a3b8;">13:30:10</span>
           </div>
           <div class="hist-title" style="font-size: 12px; font-weight: 600; color: #0f172a; margin-bottom: 2px;">🍣 銀座 高級江戶前壽司</div>
-          <div style="font-size: 10px; color: #64748b;">4家全部快取秒出 · ⏱️ 640ms</div>
+          <div style="font-size: 10px; color: #64748b;">預熱池 8 家 0ms 秒出 · ⏱️ 640ms</div>
         </div>
 
         <!-- Case 6: 澀谷 咖啡廳 -->
@@ -592,12 +600,12 @@ html, body, #frame-content, #frame-header, .header, header {
 
       <!-- 左側截流浮動膠囊標籤 -->
       <div id="badge-bypass-noloc-floating" style="position: absolute; display: none; z-index: 3; background: #eff6ff; border: 1.5px solid #93c5fd; color: #1d4ed8; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 20px; box-shadow: 0 2px 8px rgba(37,99,235,0.12); white-space: nowrap; pointer-events: none; transform: translateY(-50%);">
-        ⚡ 缺地點引導直達最後答案 (45ms 省搜尋)
+        ⚡ 缺地點引導直達 · 0ms 截流防呆免發 Places 費用
       </div>
 
       <!-- 右側追問浮動膠囊標籤 -->
       <div id="badge-bypass-floating" style="position: absolute; display: none; z-index: 3; background: #eff6ff; border: 1.5px solid #93c5fd; color: #1d4ed8; font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 20px; box-shadow: 0 2px 8px rgba(37,99,235,0.12); white-space: nowrap; pointer-events: none; transform: translateY(-50%);">
-        ⚡ 追問直達最後答案 (Bypass 0 外部消耗)
+        ⚡ 追問直達 · 陣列索引 [1] 映射為神保町おにぎり (Session 直答 0 外部消耗)
       </div>
 
       <div style="display: flex; flex-direction: column; align-items: center; gap: 0; position: relative;">
@@ -730,8 +738,26 @@ html, body, #frame-content, #frame-header, .header, header {
         <!-- ================= LAYER 2 ================= -->
         <div class="layer-section-title">Layer 2 · 智慧階梯搜尋與老饕潛力預篩</div>
 
-        <div class="stream-container">
-          <div class="stream-line-v stream-active" id="stream-layer-2"></div>
+        <div class="stream-container" style="height: 28px; position: relative;">
+          <div class="stream-line-v stream-active" id="stream-layer-2" style="height: 28px;"></div>
+          <div style="position: absolute; background: #ffffff; border: 1px solid #cbd5e1; color: #1d4ed8; font-size: 8px; font-weight: 700; padding: 1px 7px; border-radius: 8px; z-index: 2;">
+            🧭 座標錨定 · Place ID 黑名單排除 ➔ 查驗預熱池
+          </div>
+        </div>
+
+        <!-- ♨️ 區域預熱池查驗節點 -->
+        <div id="node-prewarm-check" onclick="clickNode('prewarm_check')" class="river-node node-active flow-database" style="width: 380px;">
+          <div class="node-status-flag" id="flag-prewarm-check">✓ 預熱優先查驗</div>
+          <div class="node-layer-tag">PREWARM POOL CHECK · NEON DB</div>
+          <div class="node-title">♨️ 區域預熱池查驗 (Neon prewarm_jobs)</div>
+          <div class="node-badge" id="badge-prewarm-check">神保町未命中 ➔ 准予進入 Places API 檢索</div>
+        </div>
+
+        <div class="stream-container" style="height: 28px; position: relative;">
+          <div class="stream-line-v stream-active" id="stream-prewarm-to-places" style="height: 28px;"></div>
+          <div id="badge-prewarm-condition" style="position: absolute; background: #ffffff; border: 1px solid #cbd5e1; color: #64748b; font-size: 8px; font-weight: 700; padding: 1px 7px; border-radius: 8px; z-index: 2;">
+            ⚪ 預熱未命中 (Cache Miss) ➔ 啟動 Places 800m 階梯搜尋
+          </div>
         </div>
 
         <!-- 階梯搜尋 (800m 命中 ➔ 1800m 擴圈備用) -->
@@ -740,18 +766,18 @@ html, body, #frame-content, #frame-header, .header, header {
             <div class="node-status-flag" id="flag-state-2">✓ 本次已執行</div>
             <div class="node-layer-tag">PLACES API (JA)</div>
             <div class="node-title">🗺️ Places 800m 首輪檢索</div>
-            <div class="node-badge">命中 5 家 (中止擴圈)</div>
+            <div class="node-badge" id="badge-state-2">命中 5 家 (中止擴圈)</div>
           </div>
 
-          <div style="display: flex; flex-direction: column; align-items: center; width: 44px;">
-            <div style="font-size: 8px; color: #94a3b8; white-space: nowrap; margin-bottom: 2px;">不足3家</div>
-            <div style="width: 100%; height: 2px; border-top: 2px dashed #cbd5e1;"></div>
+          <div style="display: flex; flex-direction: column; align-items: center; width: 68px;" id="capsule-rescue-bridge">
+            <div id="text-rescue-condition" style="font-size: 8px; color: #94a3b8; white-space: nowrap; margin-bottom: 2px; font-weight: 700;">不足3家 ➔ 擴圈</div>
+            <div id="line-rescue-bridge" style="width: 100%; height: 2px; border-top: 2px dashed #cbd5e1;"></div>
           </div>
 
           <div id="node-state-2-rescue" onclick="clickNode('state_2_rescue')" class="river-node node-inactive flow-process" style="width: 110px; text-align: center; padding: 10px 8px;">
             <div class="node-status-flag" id="flag-state-2-rescue" style="justify-content: center;">⚪ 候選足略過</div>
             <div class="node-title" style="font-size: 11px;">🔄 1800m 擴圈</div>
-            <div class="node-desc">備用保底</div>
+            <div class="node-desc" id="badge-state-2-rescue">備用保底</div>
           </div>
         </div>
 
@@ -786,7 +812,7 @@ html, body, #frame-content, #frame-header, .header, header {
         <div class="stream-container" style="height: 28px; position: relative;">
           <div class="stream-line-v stream-active" id="stream-cache-to-grounding" style="height: 28px;"></div>
           <div style="position: absolute; background: #ffffff; border: 1px solid #cbd5e1; color: #64748b; font-size: 8.5px; font-weight: 700; padding: 1px 7px; border-radius: 8px; z-index: 2;">
-            ⚪ 未命中快取 (Cache Miss) ➔ 聯網即時補齊
+            ⚪ 75% 快取命中 (3/4) · 1 家未命中 ➔ Yahoo Grounding 即時聯網補齊
           </div>
         </div>
 
@@ -802,7 +828,7 @@ html, body, #frame-content, #frame-header, .header, header {
         <div class="stream-container" style="height: 28px; position: relative;">
           <div class="stream-line-v stream-active" id="stream-grounding-to-geo" style="height: 28px;"></div>
           <div style="position: absolute; background: #ffffff; border: 1px solid #cbd5e1; color: #2563eb; font-size: 8.5px; font-weight: 700; padding: 1px 7px; border-radius: 8px; z-index: 2;">
-            🎯 候選名單就緒 ➔ 進入實體防偽漏斗
+            🎯 候選名單就緒 ➔ 都道府縣行政區一票否決 (杜絕同名跨縣漂移)
           </div>
         </div>
 
@@ -818,7 +844,7 @@ html, body, #frame-content, #frame-header, .header, header {
         <div class="stream-container" style="height: 28px; position: relative;">
           <div class="stream-line-v stream-active" id="stream-geo-to-resolver" style="height: 28px;"></div>
           <div style="position: absolute; background: #ffffff; border: 1px solid #cbd5e1; color: #059669; font-size: 8.5px; font-weight: 700; padding: 1px 7px; border-radius: 8px; z-index: 2;">
-            ✓ 同行政區放行 ➔ 檢驗市話吻合
+            ✓ 100% 東京都放行 ➔ 市話 Level 1 0ms 吻合秒通 (節省 Micro-LLM 仲裁)
           </div>
         </div>
 
@@ -834,7 +860,7 @@ html, body, #frame-content, #frame-header, .header, header {
         <div class="stream-container" style="height: 28px; position: relative;">
           <div class="stream-line-v stream-active" id="stream-db-cache" style="height: 28px;"></div>
           <div style="position: absolute; background: #ffffff; border: 1px solid #cbd5e1; color: #7e22ce; font-size: 8.5px; font-weight: 700; padding: 1px 7px; border-radius: 8px; z-index: 2;">
-            💾 實體精確對齊 ➔ 寫入快取庫持久化
+            💾 實體精確對齊 ➔ 批次落庫 tabelog_cache (7天 TTL 免爬取)
           </div>
         </div>
 
@@ -849,8 +875,11 @@ html, body, #frame-content, #frame-header, .header, header {
         <!-- ================= LAYER 4 ================= -->
         <div class="layer-section-title">Layer 4 · 老饕食評 100% 覆蓋與 pgvector 語意重排</div>
 
-        <div class="stream-container">
-          <div class="stream-line-v stream-active" id="stream-layer-4"></div>
+        <div class="stream-container" style="height: 28px; position: relative;">
+          <div class="stream-line-v stream-active" id="stream-layer-4" style="height: 28px;"></div>
+          <div style="position: absolute; background: #ffffff; border: 1px solid #cbd5e1; color: #dc2626; font-size: 8px; font-weight: 700; padding: 1px 7px; border-radius: 8px; z-index: 2;">
+            🔥 Tabelog 口コミ 100% 覆蓋 Google 評論 · 杜絕業配刷評
+          </div>
         </div>
 
         <!-- 食評抓取 ＆ 覆寫 Google 評論 -->
@@ -861,8 +890,11 @@ html, body, #frame-content, #frame-header, .header, header {
           <div class="node-badge">抓取老饕評論 · 標記 source=tabelog · 杜絕業配</div>
         </div>
 
-        <div class="stream-container">
-          <div class="stream-line-v stream-active" id="stream-vector"></div>
+        <div class="stream-container" style="height: 28px; position: relative;">
+          <div class="stream-line-v stream-active" id="stream-vector" style="height: 28px;"></div>
+          <div style="position: absolute; background: #ffffff; border: 1px solid #cbd5e1; color: #2563eb; font-size: 8px; font-weight: 700; padding: 1px 7px; border-radius: 8px; z-index: 2;">
+            📐 768-dim 向量空間 · Cosine 餘弦相似度口感優選重排
+          </div>
         </div>
 
         <!-- pgvector 餘弦相似度重排 -->
@@ -876,8 +908,11 @@ html, body, #frame-content, #frame-header, .header, header {
         <!-- ================= LAYER 5 ================= -->
         <div class="layer-section-title">Layer 5 · 執行期防偽熔斷護欄與 Telegram 推播</div>
 
-        <div class="stream-container">
-          <div class="stream-line-v stream-active" id="stream-layer-5"></div>
+        <div class="stream-container" style="height: 28px; position: relative;">
+          <div class="stream-line-v stream-active" id="stream-layer-5" style="height: 28px;"></div>
+          <div style="position: absolute; background: #ffffff; border: 1px solid #cbd5e1; color: #047857; font-size: 8px; font-weight: 700; padding: 1px 7px; border-radius: 8px; z-index: 2;">
+            🔒 評分/店名雙向約束 · 嚴格阻斷幻覺竄改
+          </div>
         </div>
 
         <!-- 護欄雙重校驗 -->
@@ -909,19 +944,22 @@ html, body, #frame-content, #frame-header, .header, header {
           <div class="node-badge" style="background: #f3e8ff; color: #7e22ce; border: 1px solid #d8b4fe;">保存本輪 3 家候選供追問 · 記錄 1,242ms E2E 鏈路日誌</div>
         </div>
 
-        <div class="stream-container">
-          <div class="stream-line-v stream-active" id="stream-final"></div>
+        <div class="stream-container" style="height: 28px; position: relative;">
+          <div class="stream-line-v stream-active" id="stream-final" style="height: 28px;"></div>
+          <div style="position: absolute; background: #ffffff; border: 1px solid #cbd5e1; color: #2563eb; font-size: 8px; font-weight: 700; padding: 1px 7px; border-radius: 8px; z-index: 2;">
+            📱 雙重護欄審核放行 ➔ 推播 Telegram 旅人手機端 (排版即時渲染)
+          </div>
         </div>
 
         <!-- 終點推播節點：在河流圖最末端直接展開「卡片上面寫了甚麼」！ -->
         <div id="node-telegram-out" onclick="clickNode('telegram_out')" class="river-node node-active" style="width: 440px; text-align: left; padding: 14px 16px; margin-bottom: 80px; border-radius: 12px; background: #ffffff; position: relative;">
           <!-- ⚡ 左側缺地點旁道匯流入此處 -->
           <div id="badge-bypass-noloc-join" style="position: absolute; left: 14px; top: -11px; background: #eff6ff; border: 1.5px solid #2563eb; color: #1d4ed8; font-size: 9.5px; font-weight: 800; padding: 2px 9px; border-radius: 10px; box-shadow: 0 2px 6px rgba(37,99,235,0.12); display: none;">
-            ⚡ 缺地點引導直達此處交付
+            ⚡ 缺地點引導直達此處交付 · 耗時 285ms 零外部消耗
           </div>
           <!-- ⚡ 追問旁道匯流入此處 -->
           <div id="badge-bypass-join" style="position: absolute; right: 14px; top: -11px; background: #eff6ff; border: 1.5px solid #2563eb; color: #1d4ed8; font-size: 9.5px; font-weight: 800; padding: 2px 9px; border-radius: 10px; box-shadow: 0 2px 6px rgba(37,99,235,0.12); display: none;">
-            ⚡ 追問旁道直達此處交付
+            ⚡ 追問直達此處交付 · 陣列索引 [1] 營業時間 190ms 秒出
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
             <div class="node-layer-tag">DELIVERY & SLA TERMINUS</div>
@@ -964,8 +1002,44 @@ html, body, #frame-content, #frame-header, .header, header {
         調用 Groq qwen3.8-27b 解析結構化 JSON，解耦地點、料理核心詞與風格修飾詞。
       </div>
 
-      <!-- 💬 旅人手機端真實推播視圖 (Telegram Message Result，讓答案清晰立即可見！) -->
-      <div id="box-telegram-preview" style="margin-bottom: 14px; background: #f0f7ff; border: 1.5px solid #93c5fd; border-radius: 10px; padding: 12px 14px; box-shadow: 0 2px 6px rgba(37,99,235,0.06);">
+      <!-- ⚡ 關鍵架構決策 ＆ 因果解讀（置頂！第一眼讀懂技術亮點） -->
+      <div id="detail-action-container" style="background: #fffbeb; border: 1.5px solid #fde68a; border-left: 5px solid #d97706; padding: 12px 14px; border-radius: 8px; font-size: 11.5px; line-height: 1.6; color: #78350f; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(217,119,6,0.08);">
+        <div style="font-weight: 800; color: #b45309; margin-bottom: 4px; display: flex; align-items: center; gap: 5px;">
+          <span>💡 關鍵架構決策 ＆ 因果解讀：</span>
+        </div>
+        <div id="detail-action-note">
+          意圖為 search 且具有目標地標 ➔ <strong>決定「繼續往下」進入 Google Places 階梯搜尋</strong>；本次不需調用需要地點之截流引導。
+        </div>
+      </div>
+
+      <!-- Input -->
+      <div style="margin-bottom: 10px;">
+        <div style="font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 4px; display: flex; justify-content: space-between;">
+          <span>📥 節點輸入 (Input Payload)</span>
+          <span style="font-size: 10px; color: #94a3b8;">JSON</span>
+        </div>
+        <pre id="detail-input" style="background: #f8fafc; border: 1px solid #e2e8f0; color: #0f172a; padding: 8px 10px; border-radius: 6px; font-size: 11px; overflow-x: auto; margin: 0; line-height: 1.45; max-height: 100px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">{
+  "user_query": "神保町車站 飯糰",
+  "chat_id": 1202194852
+}</pre>
+      </div>
+
+      <!-- Output -->
+      <div style="margin-bottom: 14px;">
+        <div style="font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 4px; display: flex; justify-content: space-between;">
+          <span>📤 節點輸出 (Output Payload)</span>
+          <span style="font-size: 10px; color: #94a3b8;">JSON</span>
+        </div>
+        <pre id="detail-output" style="background: #f8fafc; border: 1px solid #e2e8f0; color: #059669; padding: 8px 10px; border-radius: 6px; font-size: 11px; overflow-x: auto; margin: 0; line-height: 1.45; max-height: 110px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">{
+  "intent": "search",
+  "location": "神保町",
+  "cuisine": "飯糰",
+  "modifier": null
+}</pre>
+      </div>
+
+      <!-- 💬 旅人手機端真實推播視圖 (Telegram Message Result，僅在推播節點展示) -->
+      <div id="box-telegram-preview" style="margin-bottom: 14px; background: #f0f7ff; border: 1.5px solid #93c5fd; border-radius: 10px; padding: 12px 14px; box-shadow: 0 2px 6px rgba(37,99,235,0.06); display: none;">
         <div style="font-size: 11px; font-weight: 800; color: #1e40af; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
           <span style="display: flex; align-items: center; gap: 5px;">
             <span style="font-size: 14px;">📱</span>
@@ -983,40 +1057,6 @@ html, body, #frame-content, #frame-header, .header, header {
             <span id="detail-telegram-time" style="font-size: 10px; color: #94a3b8;">12:45 PM</span>
             <span style="font-size: 10px; color: #3b82f6;">✓✓</span>
           </div>
-        </div>
-      </div>
-
-      <!-- Input -->
-      <div style="margin-bottom: 10px;">
-        <div style="font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 4px; display: flex; justify-content: space-between;">
-          <span>📥 節點輸入 (Input Payload)</span>
-          <span style="font-size: 10px; color: #94a3b8;">JSON</span>
-        </div>
-        <pre id="detail-input" style="background: #f8fafc; border: 1px solid #e2e8f0; color: #0f172a; padding: 8px 10px; border-radius: 6px; font-size: 11px; overflow-x: auto; margin: 0; line-height: 1.45; max-height: 100px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">{
-  "user_query": "神保町車站 飯糰",
-  "chat_id": 1202194852
-}</pre>
-      </div>
-
-      <!-- Output -->
-      <div style="margin-bottom: 12px;">
-        <div style="font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 4px; display: flex; justify-content: space-between;">
-          <span>📤 節點輸出 (Output Payload)</span>
-          <span style="font-size: 10px; color: #94a3b8;">JSON</span>
-        </div>
-        <pre id="detail-output" style="background: #f8fafc; border: 1px solid #e2e8f0; color: #059669; padding: 8px 10px; border-radius: 6px; font-size: 11px; overflow-x: auto; margin: 0; line-height: 1.45; max-height: 110px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">{
-  "intent": "search",
-  "location": "神保町",
-  "cuisine": "飯糰",
-  "modifier": null
-}</pre>
-      </div>
-
-      <!-- 關鍵決策與資料存取 -->
-      <div style="background: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #d97706; padding: 10px 12px; border-radius: 8px; font-size: 11px; line-height: 1.55; color: #78350f;">
-        <div style="font-weight: 800; color: #b45309; margin-bottom: 3px;">⚡ 關鍵決策 ＆ 資料庫/快取動作：</div>
-        <div id="detail-action-note">
-          意圖為 search 且具有目標地標 ➔ <strong>決定「繼續往下」進入 Google Places 階梯搜尋</strong>；本次不需調用需要地點之截流引導。
         </div>
       </div>
       <!-- 🌟 底部滾動安全留白 (避免被瀏覽器或工作列遮擋) -->
@@ -1377,7 +1417,392 @@ const auditDatabase = {
 💡 今日特色：現做明太子飯糰與鮭魚飯糰供應充足，目前無公休回報。
 
 （若需查詢其他推薦店家或重新搜尋，請隨時告訴我！）`
+  },
+  case_expand: {
+    user_input: {
+      title: "💬 Telegram 使用者問句輸入",
+      latency: "0 ms",
+      desc: "旅人發送新宿炭火燒肉找店需求，觸發半徑擴圈保底情境。",
+      input: { "message": "新宿站 炭火燒肉", "chat_id": 1202194852, "timestamp": "2026-10-24T13:50:41+09:00" },
+      output: { "status": "RECEIVED", "session_id": 1202194852 },
+      action: "收到找店問句，建立本輪 Trace Run 追蹤。"
+    },
+    state_1: {
+      title: "🧠 State 1: Micro-LLM 結構化意圖抽取",
+      latency: "260 ms",
+      desc: "調用 Groq qwen3.8-27b 解析結構化意圖 JSON，解耦地點「新宿」、料理核心詞「燒肉」與修飾詞「炭火」。",
+      input: { "message": "新宿站 炭火燒肉" },
+      output: { "intent": "search", "location": "新宿", "cuisine": "燒肉", "modifier": "炭火", "confidence": 0.99 },
+      action: "💡 判定成功：intent == 'search' 且具備目標地標「新宿」 ➔ 准予放行，進入深度檢索流水線！"
+    },
+    prewarm_check: {
+      title: "♨️ 區域預熱池查驗 (Prewarm Pool Cache)",
+      latency: "10 ms",
+      desc: "優先查驗 Neon DB prewarm_jobs 是否已存在新宿炭火燒肉之預熱餐廳池。",
+      input: { "area_name": "新宿", "cuisine": "燒肉", "cache_pool": "neon_prewarm_stores" },
+      output: { "status": "CACHE_MISS", "prewarmed_count": 0, "action": "PROCEED_TO_PLACES_API" },
+      action: "💡 決策原因：特定修飾詞「炭火」不在通用預熱池 ➔ 放行 Places 800m 階梯檢索。"
+    },
+    coords: {
+      title: "🧭 座標錨定 (Google Geocoding) ＆ 歷史黑名單排除",
+      latency: "85 ms",
+      desc: "將地標「新宿」解析為 WGS84 座標，並排除已看過的歷史店家。",
+      input: { "query": "新宿站", "user_history_exclude_ids": [] },
+      output: { "lat": 35.6909, "lng": 139.7003, "excluded_count": 0 },
+      action: "取得高精度座標 (35.6909, 139.7003)，排除已看過店家 0 家。"
+    },
+    state_2: {
+      title: "🗺️ Places 800m 首輪檢索 (候選不足)",
+      latency: "340 ms",
+      desc: "首輪 800m 徒步圈僅命中 1 家炭火燒肉，未達 3 家保底門檻，系統自動觸發 1800m 擴圈救援！",
+      input: { "lat": 35.6909, "lng": 139.7003, "radius": 800, "keyword": "炭火焼肉" },
+      output: { "raw_places_count": 1, "status": "HIT_INSUFFICIENT", "expand_needed": true },
+      action: "⚠️ 觸發保底：首輪 800m 僅 1 家 ➔ 決定「啟動 1800m 擴圈檢索」並執行去重聯集！"
+    },
+    state_2_rescue: {
+      title: "🔄 1800m 擴圈保底檢索 (去重聯集成功！)",
+      latency: "410 ms",
+      desc: "以 1800m 擴圈搜尋補足 5 家名店，並透過 Place ID 集合運算執行【800m 1家 + 1800m 5家 去重聯集】，成功為老饕集結 6 家候選！",
+      input: { "lat": 35.6909, "lng": 139.7003, "radius": 1800, "keyword": "炭火焼肉", "initial_ids": ["ChIJ_x1..."] },
+      output: { "new_candidates": 5, "union_total": 6, "duplicates_purged": 0 },
+      action: "💡 關鍵架構決策：執行【800m 1家 + 1800m 5家 去重聯集】➔ 總候選達 6 家 (>= 3 家標準)，成功化解荒漠危機！"
+    },
+    prefilter: {
+      title: "🎯 0ms 老饕潛力預篩 (Heuristic Prefilter)",
+      latency: "2 ms",
+      desc: "從 6 家候選中排除連鎖牛角，以 Google 3.5+ 保底防誤殺新宿職人老店，選出 Top 4 種子 + 2 備選進入 Tabelog 口コミ漏斗。",
+      input: { "raw_candidates": 6 },
+      output: { "seed_tier1": 4, "rescue_tier2": 1, "filtered_out": 1 },
+      action: "排除 1 家連鎖快餐，選拔 4 家老饕潛力名店進入後續 Tabelog 評分核驗！"
+    },
+    cache_check: {
+      title: "🗄️ Neon DB 7天快取查驗",
+      latency: "14 ms",
+      desc: "優先在 Neon PostgreSQL tabelog_cache 查詢候選店家之快取紀錄。",
+      input: { "candidates": ["長春館", "新宿柳苑", "炭火焼肉一牛", "牛の達人"] },
+      output: { "hit_count": 2, "miss_count": 2, "hit_rate": "50%" },
+      action: "2 家名店 0ms 快取秒出，剩餘 2 家進入 Yahoo Grounding 實時補齊。"
+    },
+    grounding: {
+      title: "⚡ Yahoo Grounding 實時檢索",
+      latency: "490 ms",
+      desc: "透過 Yahoo Web Grounding 取得未命中快取店家之正確 Tabelog 網址與日文市話。",
+      input: { "target": "炭火焼肉一牛", "prefecture": "東京都" },
+      output: { "grounded_url": "https://tabelog.com/tokyo/A1304/A130401/13190888/", "phone": "03-5330-xxxx" },
+      action: "成功取得 Tabelog 網址與店家市內電話。"
+    },
+    geo_veto: {
+      title: "🛡️ 都道府縣一票否決 (Geo-Veto Guard)",
+      latency: "1 ms",
+      desc: "核驗 Google Places 都道府縣與 Tabelog 候選店家地址，杜絕跨縣市同名漂移。",
+      input: { "places_prefecture": "東京都", "tabelog_prefectures": ["東京都", "東京都", "東京都", "東京都"] },
+      output: { "passed_count": 4, "vetoed_count": 0, "status": "ALL_MATCHED" },
+      action: "4 家店家均在東京都，無地理漂移風險，全員放行。"
+    },
+    resolver: {
+      title: "📞 本地市話 Level 1 吻合 (Fast-Path Pass)",
+      latency: "0 ms",
+      desc: "比對 Google 與 Tabelog 登記之市內電話號碼，完全一致時 0ms 快速放行。",
+      input: { "phone_pairs": [["03-3352-5342", "03-3352-5342"], ["03-5330-1129", "03-5330-1129"]] },
+      output: { "fast_pass_count": 4, "llm_fallback_needed": 0 },
+      action: "4 家市話 100% 吻合直通，0ms 秒通免呼叫 Micro-LLM 仲裁。"
+    },
+    db_cache_write: {
+      title: "💾 批次落庫 Neon DB 快取庫",
+      latency: "40 ms",
+      desc: "將本次新爬取的 Tabelog 口コミ評分、預算寫入 tabelog_cache 表，並落庫 restaurants 實體。",
+      input: { "operation": "UPSERT BATCH", "records_count": 2 },
+      output: { "status": "COMMITTED", "ttl_days": 7 },
+      action: "Neon Postgres 寫入成功，未來 7 天內旅人查詢相同燒肉直接 0ms 快取命中。"
+    },
+    review_coverage: {
+      title: "🔥 Tabelog 口コミ 100% 覆蓋 (Review Precedence)",
+      latency: "310 ms",
+      desc: "爬取職人老店真實日文口コミ，嚴格以 Tabelog 口コミ取代 Google 評論，標記 source=tabelog。",
+      input: { "targets": 4, "coverage_policy": "STRICT_TABELOG_OVERRULE" },
+      output: { "covered_shops": 4, "coverage_rate": "100%", "source_lineage": "tabelog" },
+      action: "全數取得老饕日文評語，抹除 Google 觀光客業配雜訊。"
+    },
+    vector_rag: {
+      title: "📐 pgvector 餘弦相似度口感優選重排",
+      latency: "60 ms",
+      desc: "以 768-dim 嵌入向量比對「炭火 香氣 熟成黑毛和牛」，自 4 家候選挑出 Top 3 老饕精選。",
+      input: { "preference_vector": "炭火 香氣 熟成牛肉", "dimension": 768 },
+      output: { "top_ranked": ["長春館", "新宿柳苑", "炭火焼肉一牛"] },
+      action: "精準命中「炭火直烤」高分名店，完成老饕口感排序。"
+    },
+    scoped_anchor: {
+      title: "🔒 執行期雙向防偽護欄 (Scoped Anchor)",
+      latency: "2 ms",
+      desc: "嚴格校對合成卡片之評分與店名，必須 100% 存在於 Tabelog 上游名單中。",
+      input: { "card_stores": ["長春館", "新宿柳苑", "炭火焼肉一牛"] },
+      output: { "tamper_detected": false, "hallucinated_stores": [] },
+      action: "防偽校驗 100% 通過，零幻覺、零評分竄改。"
+    },
+    validator: {
+      title: "🛡️ validator.py 禁令與排版掃描",
+      latency: "1 ms",
+      desc: "掃描禁令違規（套話、Markdown 連結格式、單擊複製格式）。",
+      input: { "banned_patterns_check": true, "one_tap_copy_check": true },
+      output: { "violations": [], "passed": true },
+      action: "排版完全符合 Telegram 標準，准予推播！"
+    },
+    db_session_write: {
+      title: "💾 寫入 chat_sessions 記憶庫 ＆ agent_runs 追蹤",
+      latency: "35 ms",
+      desc: "將推薦之 3 家炭火燒肉寫入 chat_sessions 供後續追問，並記錄 1,820ms 鏈路日誌。",
+      input: { "session_id": 1202194852, "stores_count": 3 },
+      output: { "session_saved": true, "run_logged": true },
+      action: "落庫成功，完整保留對話記憶以支援後續「第二家今天有開嗎？」追問。"
+    },
+    telegram_out: {
+      title: "📱 成功推播 Telegram 旅人手機端",
+      latency: "30 ms",
+      desc: "完成端到端鏈路，將新宿炭火燒肉老饕卡片推播至旅人手機。",
+      telegram_preview: `🍱 炭火香氣撲鼻！為您精選新宿站徒步圈 3 家老饕燒肉名店：
+
+1. \`長春館\`（3.68 ★ / 2,150 則評論）
+💰 預算：夜 ¥5,000-¥7,999 / 晝 ¥1,000-¥1,999
+💡 特色：新宿半世紀老店！純木炭火直烤，秘傳醬汁醃漬牛小排與橫膈膜肉汁噴發！
+💳 支付：PayPay ✓ / 信用卡 ✓
+📍 距離：新宿三丁目站徒步 2 分（新宿站 8 分）
+
+2. \`新宿柳苑\`（3.65 ★ / 1,420 則評論）
+💰 預算：夜 ¥8,000-¥9,999
+💡 特色：A5 黑毛和牛厚切特選牛舌，炭火鎖住濃郁肉汁，老饕常客指名名店！
+💳 支付：信用卡 ✓
+📍 距離：西武新宿站徒步 3 分
+
+3. \`炭火焼肉一牛\`（3.58 ★ / 680 則評論）
+💰 預算：夜 ¥6,000-¥7,999
+💡 特色：一頭牛完整熟成購入，炭火現切極上里肌，性價比極高！
+💳 支付：PayPay ✓ / 信用卡 ✓
+📍 距離：新宿站西口徒步 5 分
+
+（點擊店名即可一鍵複製，隨時可追問營業時間或預約方式！）`,
+      input: { "chat_id": 1202194852, "stores_count": 3 },
+      output: { "status": "DELIVERED", "total_e2e_time": "1,820 ms" },
+      action: "旅人順利收到推薦，1800m 擴圈保底成功救回！"
+    },
+    final_response: `🍱 炭火香氣撲鼻！為您精選新宿站徒步圈 3 家老饕燒肉名店：
+
+1. \`長春館\`（3.68 ★ / 2,150 則評論）
+💰 預算：夜 ¥5,000-¥7,999 / 晝 ¥1,000-¥1,999
+💡 特色：新宿半世紀老店！純木炭火直烤，秘傳醬汁醃漬牛小排與橫膈膜肉汁噴發！
+💳 支付：PayPay ✓ / 信用卡 ✓
+📍 距離：新宿三丁目站徒步 2 分（新宿站 8 分）
+
+2. \`新宿柳苑\`（3.65 ★ / 1,420 則評論）
+💰 預算：夜 ¥8,000-¥9,999
+💡 特色：A5 黑毛和牛厚切特選牛舌，炭火鎖住濃郁肉汁，老饕常客指名名店！
+💳 支付：信用卡 ✓
+📍 距離：西武新宿站徒步 3 分
+
+3. \`炭火焼肉一牛\`（3.58 ★ / 680 則評論）
+💰 預算：夜 ¥6,000-¥7,999
+💡 特色：一頭牛完整熟成購入，炭火現切極上里肌，性價比極高！
+💳 支付：PayPay ✓ / 信用卡 ✓
+📍 距離：新宿站西口徒步 5 分
+
+（點擊店名即可一鍵複製，隨時可追問營業時間或預約方式！）`
+  },
+  case_prewarm: {
+    user_input: {
+      title: "💬 Telegram 使用者問句輸入",
+      latency: "0 ms",
+      desc: "旅人發送銀座高級江戶前壽司找店需求，觸發預熱池秒出情境。",
+      input: { "message": "銀座 高級江戶前壽司", "chat_id": 1202194852, "timestamp": "2026-10-24T13:30:10+09:00" },
+      output: { "status": "RECEIVED", "session_id": 1202194852 },
+      action: "收到找店問句，建立本輪 Trace Run 追蹤。"
+    },
+    state_1: {
+      title: "🧠 State 1: Micro-LLM 結構化意圖抽取",
+      latency: "240 ms",
+      desc: "調用 Groq qwen3.8-27b 解析結構化意圖 JSON，解耦地點「銀座」、料理「壽司」與風格「高級江戶前」。",
+      input: { "message": "銀座 高級江戶前壽司" },
+      output: { "intent": "search", "location": "銀座", "cuisine": "壽司", "modifier": "高級江戶前", "confidence": 0.99 },
+      action: "💡 判定成功：intent == 'search' 且具備目標地標「銀座」 ➔ 准予放行，優先查驗預熱池！"
+    },
+    prewarm_check: {
+      title: "♨️ 區域預熱池查驗 (0ms 極速命中！)",
+      latency: "8 ms",
+      desc: "Neon DB prewarm_jobs 已常駐維護銀座熱門商圈餐廳池，直接自本地預熱池提取 8 家老饕壽司候選。",
+      input: { "area_name": "銀座", "cache_pool": "neon_prewarm_stores" },
+      output: { "status": "CACHE_HIT", "prewarmed_count": 8, "action": "FAST_PATH_BYPASS_PLACES" },
+      action: "💡 關鍵架構決策：銀座為已排程預熱之黃金商圈 ➔ 0ms 本地命中 8 家名店，直接跳過外部 Places API 搜尋，節省 100% GCP 費用與 400ms 網路延遲！"
+    },
+    coords: {
+      title: "🧭 座標錨定 (預熱庫自帶座標)",
+      latency: "0 ms",
+      desc: "預熱資料庫已內建 WGS84 座標 (35.6712, 139.7665)，免調用 Google Geocoding。",
+      input: { "source": "neon_prewarm_stores" },
+      output: { "lat": 35.6712, "lng": 139.7665, "status": "PRELOADED" },
+      action: "座標自帶，零外部 API 呼叫。"
+    },
+    state_2: {
+      title: "🗺️ Places 800m 檢索 (預熱秒出免搜尋)",
+      latency: "0 ms (預熱免搜)",
+      desc: "本地預熱池已備齊 8 家候選，自動略過外部 Places API 檢索，保護 GCP 預算。",
+      input: { "status": "SKIPPED_BY_PREWARM" },
+      output: { "action": "USE_PREWARMED_POOL", "count": 8 },
+      action: "節省 1 次 Google Places API 呼叫，直接進入預篩。"
+    },
+    state_2_rescue: {
+      title: "🔄 1800m 擴圈檢索 (本次略過)",
+      latency: "0 ms (略過)",
+      desc: "預熱庫已提供 8 家足額候選，無需擴圈。",
+      input: { "status": "SKIPPED" },
+      output: { "action": "NO_OP" },
+      action: "候選充足，無需擴圈。"
+    },
+    prefilter: {
+      title: "🎯 0ms 老饕潛力預篩 (Heuristic Prefilter)",
+      latency: "2 ms",
+      desc: "自 8 家預熱庫壽司名店中，挑選出最頂級之 Top 4 江戶前職人名店進入後續評判。",
+      input: { "raw_candidates": 8 },
+      output: { "seed_tier1": 4, "rescue_tier2": 2, "filtered_out": 2 },
+      action: "排除觀光連鎖，精選 4 家江戶前頂級職人壽司店！"
+    },
+    cache_check: {
+      title: "🗄️ Neon DB 7天快取查驗 (100% 命中！)",
+      latency: "6 ms",
+      desc: "預熱庫所有名店均已具有最新 Tabelog 口コミ評分快取，0ms 全員秒出免爬取！",
+      input: { "candidates": ["銀座九兵衛", "すきやばし次郎", "鮨あらい", "銀座鮨かねさか"] },
+      output: { "hit_count": 4, "miss_count": 0, "hit_rate": "100%" },
+      action: "4 家名店全部快取命中！免聯網爬蟲，節省 100% 爬取時間與外部消耗！"
+    },
+    grounding: {
+      title: "⚡ Yahoo Grounding 實時檢索 (本次略過)",
+      latency: "0 ms (略過)",
+      desc: "快取 100% 命中，無需發起即時搜尋。",
+      input: { "status": "SKIPPED_CACHE_FULL_HIT" },
+      output: { "action": "NO_OP" },
+      action: "零外部網路搜尋耗時。"
+    },
+    geo_veto: {
+      title: "🛡️ 都道府縣一票否決 (Geo-Veto Guard)",
+      latency: "1 ms",
+      desc: "核驗都道府縣一致性。",
+      input: { "places_prefecture": "東京都", "tabelog_prefectures": ["東京都", "東京都", "東京都", "東京都"] },
+      output: { "passed_count": 4, "vetoed_count": 0, "status": "ALL_MATCHED" },
+      action: "全員東京都銀座，100% 放行。"
+    },
+    resolver: {
+      title: "📞 本地市話 Level 1 吻合 (Fast-Path Pass)",
+      latency: "0 ms",
+      desc: "市話號碼 100% 吻合直通，0ms 秒通。",
+      input: { "phone_pairs": [["03-3571-6523", "03-3571-6523"], ["03-3535-3600", "03-3535-3600"]] },
+      output: { "fast_pass_count": 4, "llm_fallback_needed": 0 },
+      action: "市話秒通，節省 Micro-LLM 呼叫。"
+    },
+    db_cache_write: {
+      title: "💾 快取庫查驗 (已最新免寫入)",
+      latency: "0 ms",
+      desc: "快取庫仍在 7 天有效 TTL 內，無需重複落庫。",
+      input: { "status": "VALID_TTL" },
+      output: { "action": "NO_WRITE_NEEDED" },
+      action: "保持現有快取。"
+    },
+    review_coverage: {
+      title: "🔥 Tabelog 口コミ 100% 覆蓋 (Review Precedence)",
+      latency: "10 ms",
+      desc: "提取已沉澱之頂級食評（赤醋溫飯、野生黑鮪大腹、天然明蝦），標記 source=tabelog。",
+      input: { "targets": 4, "coverage_policy": "STRICT_TABELOG_OVERRULE" },
+      output: { "covered_shops": 4, "coverage_rate": "100%", "source_lineage": "tabelog" },
+      action: "老饕頂級評論已就緒，杜絕業配雜訊。"
+    },
+    vector_rag: {
+      title: "📐 pgvector 餘弦相似度口感優選重排",
+      latency: "45 ms",
+      desc: "以 768-dim 向量比對「江戶前 傳統赤醋飯 野生黑鮪魚」，挑出 Top 3 殿堂級壽司名店。",
+      input: { "preference_vector": "江戶前 赤醋飯 黑鮪魚", "dimension": 768 },
+      output: { "top_ranked": ["銀座九兵衛", "すきやばし次郎", "鮨あらい"] },
+      action: "完成頂級口感排序。"
+    },
+    scoped_anchor: {
+      title: "🔒 執行期雙向防偽護欄 (Scoped Anchor)",
+      latency: "2 ms",
+      desc: "嚴格校對評分與店名雙向防偽。",
+      input: { "card_stores": ["銀座九兵衛", "すきやばし次郎", "鮨あらい"] },
+      output: { "tamper_detected": false, "hallucinated_stores": [] },
+      action: "防偽通過，零幻覺。"
+    },
+    validator: {
+      title: "🛡️ validator.py 禁令與排版掃描",
+      latency: "1 ms",
+      desc: "排版與禁令檢測放行。",
+      input: { "banned_patterns_check": true, "one_tap_copy_check": true },
+      output: { "violations": [], "passed": true },
+      action: "排版放行。"
+    },
+    db_session_write: {
+      title: "💾 寫入 chat_sessions 記憶庫 ＆ agent_runs 追蹤",
+      latency: "25 ms",
+      desc: "保存推薦名單並記錄 640ms 極速鏈路日誌。",
+      input: { "session_id": 1202194852, "stores_count": 3 },
+      output: { "session_saved": true, "run_logged": true },
+      action: "對話記憶保存完畢。"
+    },
+    telegram_out: {
+      title: "📱 成功推播 Telegram 旅人手機端",
+      latency: "20 ms",
+      desc: "推播銀座頂級壽司推薦卡片至旅人手機。",
+      telegram_preview: `🍱 江戶前職人魂！為您精選銀座 3 家殿堂級壽司名店：
+
+1. \`銀座九兵衛 本店\`（3.82 ★ / 3,450 則評論）
+💰 預算：夜 ¥20,000-¥29,999 / 晝 ¥10,000-¥14,999
+💡 特色：創業九十年傳奇老店！發明軍艦卷的殿堂名門，海膽與漬鮪魚極致濃郁！
+💳 支付：信用卡 ✓
+📍 距離：銀座站徒步 5 分（新橋站 4 分）
+
+2. \`すきやばし次郎\`（3.95 ★ / 2,890 則評論）
+💰 預算：夜 ¥30,000+
+💡 特色：壽司之神握壽司傳奇，傳統赤醋飯與當日築地直送極品野生黑鮪魚完美契合！
+💳 支付：信用卡 ✓
+📍 距離：銀座站 C6 出口直通地下
+
+3. \`鮨あらい\`（4.32 ★ / 1,220 則評論）
+💰 預算：夜 ¥30,000+ / 晝 ¥20,000-¥29,999
+💡 特色：Tabelog 壽司金獎！赤醋飯與白醋飯雙軌交替，鮪魚多層次熟成驚豔！
+💳 支付：信用卡 ✓
+📍 距離：銀座站徒步 4 分
+
+（點擊店名即可一鍵複製，隨時可追問營業時間或預約方式！）`,
+      input: { "chat_id": 1202194852, "stores_count": 3 },
+      output: { "status": "DELIVERED", "total_e2e_time": "640 ms" },
+      action: "旅人順利收到推薦，預熱池 0ms 秒出省下大量延遲與外部 API 費用！"
+    },
+    final_response: `🍱 江戶前職人魂！為您精選銀座 3 家殿堂級壽司名店：
+
+1. \`銀座九兵衛 本店\`（3.82 ★ / 3,450 則評論）
+💰 預算：夜 ¥20,000-¥29,999 / 晝 ¥10,000-¥14,999
+💡 特色：創業九十年傳奇老店！發明軍艦卷的殿堂名門，海膽與漬鮪魚極致濃郁！
+💳 支付：信用卡 ✓
+📍 距離：銀座站徒步 5 分（新橋站 4 分）
+
+2. \`すきやばし次郎\`（3.95 ★ / 2,890 則評論）
+💰 預算：夜 ¥30,000+
+💡 特色：壽司之神握壽司傳奇，傳統赤醋飯與當日築地直送極品野生黑鮪魚完美契合！
+💳 支付：信用卡 ✓
+📍 距離：銀座站 C6 出口直通地下
+
+3. \`鮨あらい\`（4.32 ★ / 1,220 則評論）
+💰 預算：夜 ¥30,000+ / 晝 ¥20,000-¥29,999
+💡 特色：Tabelog 壽司金獎！赤醋飯與白醋飯雙軌交替，鮪魚多層次熟成驚豔！
+💳 支付：信用卡 ✓
+📍 距離：銀座站徒步 4 分
+
+（點擊店名即可一鍵複製，隨時可追問營業時間或預約方式！）`
   }
+};
+
+// 🎯 智慧亮點自適應對焦矩陣 (切換案例時，右側審計抽屜自動鎖定該案例最具代表性之核心決策節點)
+const caseHighlightNodes = {
+  case_search: 'state_2',          // 800m 階梯搜尋首輪命中
+  case_no_loc: 'branch_no_loc',    // 缺乏地標截流引導
+  case_followup: 'branch_followup',// Session 索引追問解答
+  case_expand: 'state_2_rescue',   // 1800m 擴圈保底 (去重聯集)
+  case_prewarm: 'prewarm_check'    // 預熱池 0ms 命中
 };
 
 function switchCase(caseKey) {
@@ -1495,6 +1920,14 @@ function switchCase(caseKey) {
     updateNode('node-branch-no-loc', false);
     updateNode('node-branch-followup', false);
 
+    // 狀態復原
+    if (document.getElementById('badge-state-2')) document.getElementById('badge-state-2').innerText = '命中 5 家 (中止擴圈)';
+    if (document.getElementById('badge-state-2-rescue')) document.getElementById('badge-state-2-rescue').innerText = '備用保底';
+    if (document.getElementById('text-rescue-condition')) document.getElementById('text-rescue-condition').innerText = '不足3家 ➔ 擴圈';
+    if (document.getElementById('line-rescue-bridge')) document.getElementById('line-rescue-bridge').style.borderTop = '2px dashed #cbd5e1';
+    if (document.getElementById('badge-prewarm-check')) document.getElementById('badge-prewarm-check').innerText = '神保町未命中 ➔ 准予進入 Places API 檢索';
+    if (document.getElementById('badge-prewarm-condition')) document.getElementById('badge-prewarm-condition').innerText = '⚪ 預熱未命中 (Cache Miss) ➔ 啟動 Places 800m 階梯搜尋';
+
     // 💡 標註為什麼選擇這條路徑的判定原因
     setDecisionBadges('main');
 
@@ -1514,7 +1947,8 @@ function switchCase(caseKey) {
     // 關閉左右兩側旁道流光（走中間主幹線）
     setBypassState('none');
 
-    clickNode('telegram_out');
+    const targetNode = caseHighlightNodes[caseKey] || 'state_2';
+    clickNode(targetNode);
   } else if (caseKey === 'case_no_loc') {
     document.getElementById('badge-user-input').innerText = '「我想吃拉麵」';
     document.getElementById('badge-state-1').innerText = 'intent: need_location | location: null | cuisine: 拉麵';
@@ -1555,7 +1989,8 @@ function switchCase(caseKey) {
     document.getElementById('river-card-text').innerText = auditDatabase.case_no_loc.final_response;
     document.getElementById('badge-river-bottom-latency').innerText = '⏱️ E2E: 285ms (截流直出)';
 
-    clickNode('branch_no_loc');
+    const targetNode = caseHighlightNodes[caseKey] || 'branch_no_loc';
+    clickNode(targetNode);
   } else if (caseKey === 'case_followup') {
     document.getElementById('badge-user-input').innerText = '「第二家今天有開嗎？」';
     document.getElementById('badge-state-1').innerText = 'intent: follow_up | target_index: 2 | query: opening_hours';
@@ -1596,7 +2031,98 @@ function switchCase(caseKey) {
     document.getElementById('river-card-text').innerText = auditDatabase.case_followup.final_response;
     document.getElementById('badge-river-bottom-latency').innerText = '⏱️ E2E: 190ms (Session 旁道直達)';
 
-    clickNode('branch_followup');
+    const targetNode = caseHighlightNodes[caseKey] || 'branch_followup';
+    clickNode(targetNode);
+  } else if (caseKey === 'case_expand') {
+    document.getElementById('badge-user-input').innerText = '「新宿站 炭火燒肉」';
+    document.getElementById('badge-state-1').innerText = 'intent: search | location: 新宿 | cuisine: 燒肉 (炭火)';
+
+    updateNode('node-user-input', true);
+    updateStream('stream-1', true);
+    updateNode('node-state-1', true);
+
+    // 主幹線走過，且 1800m 擴圈節點亦走過
+    allMainNodes.forEach(id => updateNode(id, true));
+    allMainStreams.forEach(id => updateStream(id, true));
+    updateNode('node-state-2-rescue', true);
+    updateNode('node-branch-no-loc', false);
+    updateNode('node-branch-followup', false);
+
+    // 擴圈專屬標籤更新
+    if (document.getElementById('badge-state-2')) document.getElementById('badge-state-2').innerText = '800m 僅命中 1 家 (啟動擴圈)';
+    if (document.getElementById('badge-state-2-rescue')) document.getElementById('badge-state-2-rescue').innerText = '1800m 補足 5 家 · 總計 6 家';
+    if (document.getElementById('text-rescue-condition')) document.getElementById('text-rescue-condition').innerText = '🔄 擴圈保底 · 800m 1家 + 1800m 5家 去重聯集';
+    if (document.getElementById('line-rescue-bridge')) document.getElementById('line-rescue-bridge').style.borderTop = '2px solid #2563eb';
+    if (document.getElementById('badge-prewarm-check')) document.getElementById('badge-prewarm-check').innerText = '新宿炭火燒肉未命中 ➔ 准予進入 Places API 檢索';
+    if (document.getElementById('badge-prewarm-condition')) document.getElementById('badge-prewarm-condition').innerText = '⚪ 預熱未命中 (Cache Miss) ➔ 啟動 Places 800m 階梯搜尋';
+
+    setDecisionBadges('main');
+    const bMain = document.getElementById('badge-route-reason-main');
+    if (bMain) bMain.innerHTML = '✅ 命中決策: 搜尋「新宿 炭火燒肉」➔ 首輪 800m 僅 1 家，啟動 1800m 擴圈保底去重聯集';
+
+    // SVG 線路走主幹
+    document.getElementById('svg-stream-main').setAttribute('stroke', '#2563eb');
+    document.getElementById('svg-stream-main').setAttribute('stroke-dasharray', '6 4');
+    document.getElementById('svg-stream-main').classList.add('svg-flow-active');
+    document.getElementById('svg-stream-no-loc').setAttribute('stroke', '#94a3b8');
+    document.getElementById('svg-stream-no-loc').classList.remove('svg-flow-active');
+    document.getElementById('svg-stream-followup').setAttribute('stroke', '#94a3b8');
+    document.getElementById('svg-stream-followup').classList.remove('svg-flow-active');
+
+    // 河流圖底部大卡片內容
+    document.getElementById('river-card-text').innerText = auditDatabase.case_expand.telegram_out.telegram_preview;
+    document.getElementById('badge-river-bottom-latency').innerText = '⏱️ E2E: 1,820ms (含擴圈聯集)';
+
+    setBypassState('none');
+
+    const targetNode = caseHighlightNodes[caseKey] || 'state_2_rescue';
+    clickNode(targetNode);
+  } else if (caseKey === 'case_prewarm') {
+    document.getElementById('badge-user-input').innerText = '「銀座 高級江戶前壽司」';
+    document.getElementById('badge-state-1').innerText = 'intent: search | location: 銀座 | cuisine: 壽司 (高級江戶前)';
+
+    updateNode('node-user-input', true);
+    updateStream('stream-1', true);
+    updateNode('node-state-1', true);
+
+    // 主幹線走過，但 Places 與 Grounding 略過
+    allMainNodes.forEach(id => updateNode(id, true));
+    allMainStreams.forEach(id => updateStream(id, true));
+    updateNode('node-state-2-rescue', false);
+    updateNode('node-grounding', false);
+    updateStream('stream-cache-to-grounding', false);
+    updateNode('node-branch-no-loc', false);
+    updateNode('node-branch-followup', false);
+
+    // 預熱專屬標籤更新
+    if (document.getElementById('badge-prewarm-check')) document.getElementById('badge-prewarm-check').innerText = '⚡ 銀座預熱池 8 家 0ms 秒出 · 免 Places API';
+    if (document.getElementById('badge-prewarm-condition')) document.getElementById('badge-prewarm-condition').innerText = '⚡ 預熱池 100% 命中 ➔ 0ms 直達預篩，省下 Places 費用';
+    if (document.getElementById('badge-state-2')) document.getElementById('badge-state-2').innerText = '預熱庫已覆蓋 (免外部搜尋)';
+    if (document.getElementById('badge-state-2-rescue')) document.getElementById('badge-state-2-rescue').innerText = '候選充足略過';
+    if (document.getElementById('text-rescue-condition')) document.getElementById('text-rescue-condition').innerText = '不足3家 ➔ 擴圈';
+    if (document.getElementById('line-rescue-bridge')) document.getElementById('line-rescue-bridge').style.borderTop = '2px dashed #cbd5e1';
+
+    setDecisionBadges('main');
+    const bMain = document.getElementById('badge-route-reason-main');
+    if (bMain) bMain.innerHTML = '✅ 命中決策: 地標為熱門商圈「銀座」➔ 優先查驗 Neon 預熱池，0ms 極速命中 8 家名店！';
+
+    // SVG 線路走主幹
+    document.getElementById('svg-stream-main').setAttribute('stroke', '#2563eb');
+    document.getElementById('svg-stream-main').setAttribute('stroke-dasharray', '6 4');
+    document.getElementById('svg-stream-main').classList.add('svg-flow-active');
+    document.getElementById('svg-stream-no-loc').setAttribute('stroke', '#94a3b8');
+    document.getElementById('svg-stream-no-loc').classList.remove('svg-flow-active');
+    document.getElementById('svg-stream-followup').setAttribute('stroke', '#94a3b8');
+    document.getElementById('svg-stream-followup').classList.remove('svg-flow-active');
+
+    // 河流圖底部大卡片內容
+    document.getElementById('river-card-text').innerText = auditDatabase.case_prewarm.telegram_out.telegram_preview;
+    document.getElementById('badge-river-bottom-latency').innerText = '⏱️ E2E: 640ms (預熱池秒出)';
+
+    setBypassState('none');
+
+    const targetNode = caseHighlightNodes[caseKey] || 'prewarm_check';
+    clickNode(targetNode);
   }
   setTimeout(updateBypassLine, 30);
 }
@@ -1742,8 +2268,10 @@ function updateBypassLine() {
   }
 }
 
-// 確保 case_search 的 final_response 一致
+// 確保各案例的 final_response 一致
 auditDatabase.case_search.final_response = auditDatabase.case_search.telegram_out.telegram_preview;
+if (auditDatabase.case_expand) auditDatabase.case_expand.final_response = auditDatabase.case_expand.telegram_out.telegram_preview;
+if (auditDatabase.case_prewarm) auditDatabase.case_prewarm.final_response = auditDatabase.case_prewarm.telegram_out.telegram_preview;
 
 function clickNode(nodeKey) {
   const caseData = auditDatabase[currentCaseKey];
@@ -1756,6 +2284,16 @@ function clickNode(nodeKey) {
   document.getElementById('detail-input').innerText = JSON.stringify(node.input, null, 2);
   document.getElementById('detail-output').innerText = JSON.stringify(node.output, null, 2);
   document.getElementById('detail-action-note').innerHTML = node.action;
+
+  // 🌟 高亮選中的節點 (自適應精確外框 + 發光效果)
+  document.querySelectorAll('.river-node').forEach(el => el.classList.remove('node-selected-highlight'));
+  const targetId = 'node-' + nodeKey.replace(/_/g, '-');
+  const clickedEl = document.getElementById(targetId);
+  if (clickedEl) clickedEl.classList.add('node-selected-highlight');
+
+  // 🌟 抽屜自動滾動至頂部，確保第一時間看見置頂的「💡 關鍵架構決策 ＆ 因果解讀」
+  const drawer = document.getElementById('node-inspector-drawer');
+  if (drawer) drawer.scrollTop = 0;
 
   // 💬 旅人端推播卡片預覽：僅在點擊最終推播交付節點 (telegram_out) 時才顯示，其他中段節點隱藏以保持聚焦
   const previewBox = document.getElementById('box-telegram-preview');
