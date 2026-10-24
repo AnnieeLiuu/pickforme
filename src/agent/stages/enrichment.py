@@ -189,7 +189,7 @@ async def enrich_single_place(
         if is_fresh:
             rid = cached.get("id")
             if rid and place.get("reviews"):
-                asyncio.create_task(index_store_reviews(fsm, rid, place["reviews"]))
+                asyncio.create_task(fsm._index_store_reviews(rid, place["reviews"]))
             pay_cards = cached.get("credit_cards")
             pay_desc = format_payment_methods(
                 supports_paypay=cached.get("supports_paypay"),
@@ -328,7 +328,7 @@ async def enrich_single_place(
                     match_method=match_res.get("match_method", "rule_high"),
                 )
                 if saved_id and chosen_reviews:
-                    asyncio.create_task(index_store_reviews(fsm, saved_id, chosen_reviews))
+                    asyncio.create_task(fsm._index_store_reviews(saved_id, chosen_reviews))
             except Exception as e:
                 logger.warning(f"Failed to upsert tabelog cache: {e}")
 
@@ -356,7 +356,7 @@ async def enrich_single_place(
     try:
         fallback_id = await fsm.restaurant_repo.save_restaurant_with_tabelog(google_store=place)
         if fallback_id and place.get("reviews"):
-            asyncio.create_task(index_store_reviews(fsm, fallback_id, place["reviews"]))
+            asyncio.create_task(fsm._index_store_reviews(fallback_id, place["reviews"]))
     except Exception:
         pass
 
@@ -489,7 +489,7 @@ async def execute_state_3_parallel_tabelog(
     tier2_places = places[4:6]
 
     # 1. Tier 1 平行查驗 (前 4 家高潛力種子)
-    tier1_tasks = [enrich_single_place(fsm, p, area_hint=area_hint) for p in tier1_places]
+    tier1_tasks = [fsm._enrich_single_place(p, area_hint=area_hint) for p in tier1_places]
     tier1_results = await asyncio.gather(*tier1_tasks)
 
     # 2. 品質門檻檢驗：若已有 >= 2 家達到 Tabelog 高分名店標準 (tabelog_rating >= 3.45 或百名店)
@@ -508,14 +508,14 @@ async def execute_state_3_parallel_tabelog(
         logger.info(
             f"Tier 1 high-score stores count is {high_score_count} (<2). Triggering Tier 2 adaptive rescue for {len(tier2_places)} stores."
         )
-        tier2_tasks = [enrich_single_place(fsm, p, area_hint=area_hint) for p in tier2_places]
+        tier2_tasks = [fsm._enrich_single_place(p, area_hint=area_hint) for p in tier2_places]
         tier2_results = await asyncio.gather(*tier2_tasks)
         final_enriched.extend(tier2_results)
     else:
         logger.info(f"Tier 1 high-score count={high_score_count}. Early stopping satisfied, skipping Tier 2.")
 
     # 4. 老饕綜合加權重排，精選 Top 3
-    top_stores = rank_and_select_top_stores(final_enriched, top_k=3)
+    top_stores = fsm.rank_and_select_top_stores(final_enriched, top_k=3)
 
     # 5. 為最終入選的 Top 店家平行豐富定向老饕食評 (Tabelog 口コミ絕對優先合約)
     async def _enrich_foodie_reviews(store: dict[str, Any]) -> None:
@@ -544,7 +544,7 @@ async def execute_state_3_parallel_tabelog(
                 store["foodie_review_source"] = "tabelog"
                 rid = store.get("restaurant_id")
                 if rid:
-                    asyncio.create_task(index_store_reviews(fsm, rid, tabelog_revs))
+                    asyncio.create_task(fsm._index_store_reviews(rid, tabelog_revs))
                 return
 
         existing_revs = store.get("sample_reviews") or []

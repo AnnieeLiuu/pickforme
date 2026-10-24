@@ -168,7 +168,7 @@ async def execute_state_2_places_ladder(
                 break
 
     # Google 端老饕潛力預篩：挑選最具 Tabelog 高分潛力的種子店家 (前 4 筆主選 + 2 筆備選)
-    final_candidates = prefilter_potential_foodie_places(candidates, max_seeds=max_candidates)
+    final_candidates = fsm._prefilter_potential_foodie_places(candidates, max_seeds=max_candidates)
     latency = int((time.time() - t0) * 1000)
 
     await fsm.trace_logger.log_step(
