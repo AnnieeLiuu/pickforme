@@ -32,4 +32,7 @@ data/cold_archive/*.parquet
 # Playwright MCP 臨時日誌
 .playwright-mcp/
 
+# Superpowers 臨時原型沙盒與伴隨伺服器
+.superpowers/
+
 
