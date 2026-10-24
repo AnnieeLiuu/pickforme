@@ -4,7 +4,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-green.svg)](https://fastapi.tiangolo.com/)
 [![Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Type Checked](https://img.shields.io/badge/mypy-checked-blue.svg)](http://mypy-lang.org/)
-[![Tests](https://img.shields.io/badge/pytest-73%20passed-success.svg)](https://docs.pytest.org/)
+[![Tests](https://img.shields.io/badge/pytest-129%20passed-success.svg)](https://docs.pytest.org/)
 
 > **專案定位**：專為日本旅遊打造的高效能智慧美食 Agent 系統。解決遊客外出時「距離近、評分高、有開門、在地評價真實」的痛點。結合 Google Places API、Tabelog 爬蟲與實體比對器、Neon Serverless Postgres 以及 Telegram Bot 介面。
 
@@ -101,8 +101,11 @@ PickForMe/
 │   └── prompts/            # Agent System Prompt 與比對提示詞
 ├── docs/
 │   ├── ARCHITECTURE.md     # 系統主架構圖與 Neon DB Schema DDL
+│   ├── OBSERVABILITY_DESIGN_SYSTEM.md # 全鏈路可觀測性設計憲章與全景河流圖視覺規範
+│   ├── SOP_ROOT_CAUSE_DEBUGGING.md   # 全景河流圖、6維個案盤點矩陣與根因排查SOP
 │   ├── tabelog_structure.md# Tabelog DOM 解析規則與 CSS 選擇器
 │   └── plans/              # 各階段實作計畫書與進度
+├── public/                 # GitLab/GitHub Pages 全景河流圖展示看板 (index.html)
 ├── scripts/
 │   ├── agent_bridge_server.py # IDE Agent 遠端協同橋接伺服器
 │   ├── analyze_traces.py      # DuckDB OLAP 分析與 Pipeline 深潛報表
@@ -110,21 +113,25 @@ PickForMe/
 │   ├── seed_prewarm_jobs.py   # 日本熱門景點預熱腳本
 │   └── setup_webhook.py       # Telegram Webhook 註冊工具
 ├── src/
-│   ├── agent/              # Agent 核心
+│   ├── agent/              # Agent 核心 (Pipeline FSM, LLM Client, Guardrails)
 │   │   ├── pipeline.py     # 4 階段 FSM 狀態機 (FoodRecommendationFSM)
 │   │   ├── llm_client.py   # 統一多模型 LLM 客戶端 (Groq/Gemini/Ollama)
 │   │   ├── core.py         # AgentEngine Facade 對外入口
-│   │   ├── guardrail.py    # 確定性數值護欄
+│   │   ├── guardrail.py    # 確定性數值護欄 (Scoped Anchor)
+│   │   ├── validator.py    # 執行期輸出格式防偽護欄
 │   │   ├── devops.py       # DevOps 遠端診斷 Subagent
 │   │   ├── tools.py        # 工具註冊與執行輔助
 │   │   └── trace.py        # OTel 格式 Trace 紀錄器
 │   ├── bot/                # Telegram Webhook 與訊息處理
 │   ├── db/                 # Neon Postgres 倉儲層 (Session, Restaurant, Vector, Prewarm)
+│   ├── eval/               # LLMOps 評測與全景河流圖可觀測性看板編譯核心
+│   │   ├── reporter.py     # 3-Pane 全景河流圖 HTML 報告生成器
+│   │   └── runner.py       # 離線 4-Tier 黃金題庫評測執行器
 │   ├── services/           # 外部服務 (Google Places, Tabelog, Embedding, Entity Resolver)
 │   ├── worker/             # 本機非同步預熱 Worker (SKIP LOCKED 佇列)
 │   ├── config.py           # Pydantic Settings 環境設定
 │   └── main.py             # FastAPI 啟動入口
-├── tests/                  # 71 項單元與整合測試 (Mock 驅動，CI 100% 通過)
+├── tests/                  # 129 項單元、整合與黃金回歸測試 (Mock 驅動，CI 100% 通過)
 └── pyproject.toml          # Ruff, Mypy 與專案相依設定
 ```
 

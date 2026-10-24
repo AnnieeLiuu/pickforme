@@ -14,9 +14,9 @@
 
 ## ⚡ 延遲基準統計 (Latency Benchmark)
 
-- **平均延遲 (Average Latency)**：`0.1 ms`
+- **平均延遲 (Average Latency)**：`0.0 ms`
 - **P50 延遲**：`0.0 ms`
-- **P90 延遲**：`1.0 ms`
+- **P90 延遲**：`0.0 ms`
 
 ## 📋 測試案例執行矩陣 (Cases Execution Matrix)
 
@@ -24,7 +24,7 @@
 | :---: | :--- | :--- | :---: | :---: | :---: | :---: |
 | `eval_001` | `typo_colloquial` | 新宿歌舞妓町有啥開很晚的拉麵，不要太油 | ✅ | ✅ | ✅ | 0ms |
 | `eval_002` | `multi_landmark` | 想要在橫濱棒球場或橫濱車站附近的壽喜燒 | ✅ | ✅ | ✅ | 0ms |
-| `eval_003` | `taste_rag` | 池袋 想要麵條偏硬有嚼勁的拉麵 | ✅ | ✅ | ✅ | 1ms |
+| `eval_003` | `taste_rag` | 池袋 想要麵條偏硬有嚼勁的拉麵 | ✅ | ✅ | ✅ | 0ms |
 | `eval_004` | `multi_turn_more` | 還有更多推薦嗎？ | ✅ | ✅ | ✅ | 0ms |
 | `eval_005` | `multi_turn_more` | 我想找更在地的老店 | ✅ | ✅ | ✅ | 0ms |
 | `eval_006` | `follow_up` | 第2家今天有開嗎？ | ✅ | ✅ | ✅ | 0ms |
@@ -36,7 +36,7 @@
 | `eval_012` | `typo_colloquial` | 原宿竹下通排隊人氣可麗餅 | ✅ | ✅ | ✅ | 0ms |
 | `eval_013` | `multi_turn_more` | 有沒有更便宜一點的？ | ✅ | ✅ | ✅ | 0ms |
 | `eval_014` | `chitchat` | 明天東京會下雨嗎？ | ✅ | ✅ | ✅ | 0ms |
-| `eval_015` | `multi_landmark` | 秋葉原跟御茶之水中間有名的日式咖哩 | ✅ | ✅ | ✅ | 1ms |
+| `eval_015` | `multi_landmark` | 秋葉原跟御茶之水中間有名的日式咖哩 | ✅ | ✅ | ✅ | 0ms |
 | `eval_016` | `taste_rag` | 新宿 想要牛舌厚切多汁的炭火燒肉 | ✅ | ✅ | ✅ | 0ms |
 | `eval_017` | `follow_up` | 第3家可以線上訂位或打電話預約嗎？ | ✅ | ✅ | ✅ | 0ms |
 | `eval_018` | `typo_colloquial` | 秋葉 一個人也能吃的燒肉定食 | ✅ | ✅ | ✅ | 0ms |
