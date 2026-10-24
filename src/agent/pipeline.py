@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import math
 import re
 import time
 from datetime import datetime, timezone
@@ -19,6 +18,13 @@ from src.agent.stages.intent import (
 from src.agent.stages.intent import (
     execute_state_1_intent as stage_execute_state_1_intent,
 )
+from src.agent.stages.places_search import (
+    execute_state_2_places_ladder as stage_execute_state_2_places_ladder,
+)
+from src.agent.stages.places_search import (
+    prefilter_potential_foodie_places,
+    resolve_search_constraints,
+)
 from src.agent.trace import AgentTraceLogger
 from src.agent.validator import (
     repair_card_in_place,
@@ -29,7 +35,7 @@ from src.db.repositories.restaurant import RestaurantRepository
 from src.db.repositories.session import SessionRepository
 from src.db.repositories.vector import VectorRepository
 from src.services.embedding import EmbeddingService
-from src.services.entity_resolver import EntityResolver, calculate_distance_meters
+from src.services.entity_resolver import EntityResolver
 from src.services.google_places import GooglePlacesClient
 from src.services.review_sanitizer import synthesize_store_recommendation_reason
 from src.services.tabelog_scraper import TabelogScraper
@@ -129,61 +135,6 @@ def format_payment_methods(
     return "現金為主 (建議備足日圓現鈔)"
 
 
-def resolve_search_constraints(
-    cuisine: str,
-    modifier: Optional[str] = None,
-) -> tuple[str, list[int], Optional[str]]:
-    """解析並分離料理名稱、風格修飾語與物理距離約束 (非 Hardcode，杜絕 Places 搜尋脫靶)
-
-    Returns:
-        tuple[str, list[int], Optional[str]]:
-            - clean_keyword: 純淨之 Google Places 檢索關鍵字 (例: "壽喜燒")
-            - radii_ladder: 物理階梯半徑清單 (例: 15分鐘步行 -> [1200, 1700, 2500])
-            - style_tag: 僅供卡片或語意重排之風格標籤 (例: "老店", "平價")
-    """
-    clean_cuisine = (cuisine or "熱門美食").strip()
-
-    # 1. 偵測並移除誤混入 cuisine 的空間詞
-    clean_cuisine = re.sub(r"(?:走路|步行|走)?\s*\d{1,2}\s*(?:分鐘|min|mins)[^\s]*", "", clean_cuisine).strip()
-    clean_cuisine = re.sub(r"(?:遠一點|近一點|大圈一點|附近)", "", clean_cuisine).strip()
-    if not clean_cuisine:
-        clean_cuisine = "熱門美食"
-
-    radii_ladder = [800, 1200, 1800]
-    style_tag: Optional[str] = None
-
-    if not modifier:
-        return clean_cuisine, radii_ladder, None
-
-    mod = modifier.strip()
-
-    # 2. 物理空間約束：提取具體分鐘數 (以日本 80m/min 步行標準換算)
-    walk_match = re.search(r"(?:走路|步行|走)?\s*(\d{1,2})\s*(?:分鐘|min|mins)", mod)
-    if walk_match:
-        mins = int(walk_match.group(1))
-        # 換算為公尺，例如 15 分鐘 -> 1200m
-        base_r = max(800, min(2500, mins * 80))
-        radii_ladder = [base_r, min(2500, base_r + 500), 2500]
-    elif any(kw in mod for kw in ["遠一點", "大圈一點", "距離遠", "擴大", "遠些"]):
-        radii_ladder = [1200, 1800, 2500]
-    elif any(kw in mod for kw in ["近一點", "最近", "附近", "腳程短", "不想走"]):
-        radii_ladder = [500, 800, 1200]
-
-    # 3. 剝離空間詞，檢驗是否有實質風格/口味詞 (如 "老店", "平價", "清淡", "濃郁")
-    rem_style = re.sub(r"(?:走路|步行|走)?\s*\d{1,2}\s*(?:分鐘|min|mins)[^\s]*", "", mod)
-    rem_style = re.sub(
-        r"(?:可以接受|距離|遠一點|近一點|大圈一點|擴大|以內|內都可以|都可以|附近|能接受)", "", rem_style
-    ).strip()
-
-    clean_keyword = clean_cuisine
-    if rem_style and len(rem_style) >= 2:
-        style_tag = rem_style
-        # 只有實質風格詞才安全疊加到 keyword
-        clean_keyword = f"{clean_cuisine} {rem_style}"
-
-    return clean_keyword, radii_ladder, style_tag
-
-
 class FoodRecommendationFSM:
     """確定性 4 階段有限狀態機 (Deterministic 4-Stage FSM Pipeline)"""
 
@@ -232,29 +183,8 @@ class FoodRecommendationFSM:
         places: list[dict[str, Any]],
         max_seeds: int = 6,
     ) -> list[dict[str, Any]]:
-        """Google 端老饕潛力智慧預篩 (Smart Pre-filtering)
-
-        依評分、評論數合理性與距離，在 0ms 內預篩出最具備 Tabelog 高分潛力的種子店家
-        """
-        if not places:
-            return []
-
-        def calc_pre_score(p: dict[str, Any]) -> float:
-            g_rating = float(p.get("rating") or p.get("google_rating") or 3.5)
-            rev_count = int(p.get("userRatingCount") or p.get("review_count") or 10)
-            dist_m = float(p.get("distance_meters") or 500)
-
-            # Google 評分權重
-            rating_score = g_rating * 0.6
-            # 評論數對數平滑 (上限 0.9，防大眾網紅店刷量)
-            rev_score = min(math.log10(max(1, rev_count)) * 0.3, 0.9)
-            # 距離懲罰：800m 內無扣分，超過 800m 每 500m 扣 0.1
-            dist_penalty = max(0.0, (dist_m - 800) / 500 * 0.1) if dist_m > 800 else 0.0
-
-            return rating_score + rev_score - dist_penalty
-
-        sorted_places = sorted(places, key=calc_pre_score, reverse=True)
-        return sorted_places[:max_seeds]
+        """Google 端老饕潛力智慧預篩 (委派至 stages.places_search)"""
+        return prefilter_potential_foodie_places(places, max_seeds=max_seeds)
 
     async def execute_state_2_places_ladder(
         self,
@@ -266,74 +196,17 @@ class FoodRecommendationFSM:
         max_candidates: int = 6,
         custom_radii: Optional[list[int]] = None,
     ) -> list[dict[str, Any]]:
-        """State 2: Google Places 智慧階梯檢索 (800m ➔ 1200m ➔ 1800m ➔ 2500m 擴圈保底) + 潛力預篩"""
-        t0 = time.time()
-        candidates: list[dict[str, Any]] = []
-        origin_prefix = f"從「{origin_name}」" if origin_name else "從「您目前位置」"
-        exclude_set = set(exclude_place_ids or set())
-
-        radii = custom_radii or [800, 1200, 1800]
-        for r in radii:
-            raw_places = await self.places_client.search_nearby(lat=lat, lng=lng, radius=r, keyword=keyword)
-            # 過濾重複與已看過店家
-            existing_ids = {c["google_place_id"] for c in candidates}
-            for p in raw_places:
-                pid = p.get("google_place_id")
-                if pid and pid not in existing_ids and pid not in exclude_set:
-                    p_lat = p.get("lat")
-                    p_lng = p.get("lng")
-                    if p_lat and p_lng:
-                        dist_m = int(calculate_distance_meters(lat, lng, p_lat, p_lng))
-                        walk_mins = max(1, math.ceil(dist_m / 80))
-                        p["distance_meters"] = dist_m
-                        p["walk_time_minutes"] = walk_mins
-                        p["origin_name"] = origin_name or "您目前位置"
-                        p["walking_desc"] = f"{origin_prefix}步行約 {walk_mins} 分鐘 ({dist_m}m)"
-                    candidates.append(p)
-                    existing_ids.add(pid)
-
-            if len(candidates) >= 3:
-                break
-
-        # 自適應擴圈：若在 1800m 內候選店少於 3 家，自動向外擴圈至 2500m 保底
-        if len(candidates) < 3:
-            raw_places = await self.places_client.search_nearby(lat=lat, lng=lng, radius=2500, keyword=keyword)
-            existing_ids = {c["google_place_id"] for c in candidates}
-            for p in raw_places:
-                pid = p.get("google_place_id")
-                if pid and pid not in existing_ids and pid not in exclude_set:
-                    p_lat = p.get("lat")
-                    p_lng = p.get("lng")
-                    if p_lat and p_lng:
-                        dist_m = int(calculate_distance_meters(lat, lng, p_lat, p_lng))
-                        walk_mins = max(1, math.ceil(dist_m / 80))
-                        p["distance_meters"] = dist_m
-                        p["walk_time_minutes"] = walk_mins
-                        p["origin_name"] = origin_name or "您目前位置"
-                        p["walking_desc"] = f"{origin_prefix}步行約 {walk_mins} 分鐘 ({dist_m}m)"
-                        p["radius_expanded"] = True
-                    candidates.append(p)
-                    existing_ids.add(pid)
-                if len(candidates) >= 3:
-                    break
-
-        # Google 端老饕潛力預篩：挑選最具 Tabelog 高分潛力的種子店家 (前 4 筆主選 + 2 筆備選)
-        final_candidates = self._prefilter_potential_foodie_places(candidates, max_seeds=max_candidates)
-        latency = int((time.time() - t0) * 1000)
-
-        await self.trace_logger.log_step(
-            action_type="state_2_places",
-            tool_name="search_nearby_ladder",
-            tool_input={
-                "lat": lat,
-                "lng": lng,
-                "keyword": keyword,
-                "excluded_count": len(exclude_set),
-            },
-            tool_output={"count": len(final_candidates)},
-            latency_ms=latency,
+        """State 2: Google Places 智慧階梯檢索 (委派至 stages.places_search)"""
+        return await stage_execute_state_2_places_ladder(
+            self,
+            lat,
+            lng,
+            keyword,
+            origin_name=origin_name,
+            exclude_place_ids=exclude_place_ids,
+            max_candidates=max_candidates,
+            custom_radii=custom_radii,
         )
-        return final_candidates
 
     async def _enrich_single_place(self, place: dict[str, Any], area_hint: Optional[str] = None) -> dict[str, Any]:
         """對單一店家補全 Tabelog 評分 (優先 Neon DB 快取，未命中則爬蟲+Resolver)"""
