@@ -195,8 +195,11 @@ flowchart TD
 ### F. 工程維護品質與軟體最佳實踐 (Engineering & Maintainability Practices)
 - **品質防線與 CI 守門 (Code Quality Gates)**：
   - **靜態檢查與型別標註**：全面採用 `ruff` (代碼規範/格式化) 與 `mypy` (Python 3.11 嚴格型別校驗)，確保程式碼可讀性與型別安全。
-  - **自動化測試與覆蓋率**：建立 129 項覆蓋核心邏輯之單元、合約與黃金回歸測試 (`tests/test_real_world_regressions.py`)，整合 `pytest-cov` Cobertura XML 報告與 GitLab CI/CD Pipeline (`.gitlab-ci.yml`)，未通過品質關卡禁止合併主線。
-  - **全鏈路可觀測性看板 (Observability Pages & Design System)**：由 `src/eval/reporter.py` 驅動生成現代 3-Pane 滿版全景河流圖看板 (`public/index.html`)，依循 [`docs/OBSERVABILITY_DESIGN_SYSTEM.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/OBSERVABILITY_DESIGN_SYSTEM.md) 之 Draw.io 5 大語意形狀規範，達成 0 原始碼閱讀下的端到端即時架構透視。
+  - **自動化測試與覆蓋率**：建立 131 項覆蓋核心邏輯之單元、合約與黃金回歸測試 (`tests/test_real_world_regressions.py`)，整合 `pytest-cov` Cobertura XML 報告與 GitLab CI/CD Pipeline (`.gitlab-ci.yml`)，未通過品質關卡禁止合併主線。
+  - **全鏈路可觀測性看板 (Observability Pages & Design System)**：由 `src/eval/reporter.py` 載入獨立 HTML 模板 (`src/eval/templates/river_dashboard.html`) 生成現代 3-Pane 滿版全景河流圖看板 (`public/index.html`)，依循 [`docs/OBSERVABILITY_DESIGN_SYSTEM.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/OBSERVABILITY_DESIGN_SYSTEM.md) 之 Draw.io 5 大語意形狀規範，達成 0 原始碼閱讀下的端到端即時架構透視。
+- **高內聚低耦合架構解耦 (Modular FSM & Facade Orchestrator)**：
+  - **狀態機管線解耦 (`src/agent/stages/`)**：徹底根除單一巨大檔案 (God File)，`FoodRecommendationFSM` (`src/agent/pipeline.py`, ~330 行) 作為 Facade 調度器，將四大階段完全拆解至獨立子模組：`stages/intent.py` (意圖與多輪追問)、`stages/places_search.py` (階梯擴圈與預篩)、`stages/enrichment.py` (Tabelog 雙平台並行補全與老饕重排)、`stages/synthesis.py` (卡片合成與 Scoped Anchor 護欄)。
+  - **前後端表現層分離 (`src/eval/templates/`)**：將 2,200+ 行之互動式 Dashboard HTML/CSS/JS 抽離至獨立模板檔，評估腳本僅專注於資料計算與填充，落實關注點分離 (Separation of Concerns)。
 - **資安防護與存取控制 (Security & Access Control)**：
   - **Telegram Webhook Secret Token 驗證**：要求驗證 `X-Telegram-Bot-Api-Secret-Token` 標頭，防止惡意流量觸發 Cloud Run。
   - **白名單過濾**：以 `TELEGRAM_ALLOWED_USER_ID` 限制存取權限。

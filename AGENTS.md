@@ -8,7 +8,7 @@ Welcome to **PickForMe** — a high-performance Japan Food AI Agent system built
 
 - **`src/main.py`**: FastAPI entrypoint with health check & `/webhook/telegram` endpoints.
 - **`src/bot/handlers.py`**: Telegram Webhook update handler with whitelist check, status streaming, and Markdown format (`parse_mode="Markdown"`).
-- **`src/agent/pipeline.py`**: Deterministic 4-Stage FSM Pipeline (`FoodRecommendationFSM`) executing intent extraction, ladder Places search, parallel Tabelog enrichment, and template fallback card synthesis.
+- **`src/agent/pipeline.py` & `src/agent/stages/`**: Deterministic 4-Stage FSM Orchestrator (`FoodRecommendationFSM`) delegating to `intent`, `places_search`, `enrichment`, and `synthesis` stages.
 - **`src/agent/llm_client.py`**: Multi-provider LLM client with dynamic failover (`LLM_PRIMARY_PROVIDER`: Groq primary ➡️ Gemini 3.8 Flash ➡️ Ollama local fallback), 429 Retry-After backoff, `call_text`, and `call_structured_json`.
 - **`src/agent/core.py`**: Clean Facade interface delegating incoming requests to `FoodRecommendationFSM`.
 - **`src/agent/tools.py`**: Agent tool helper and schema definitions (`geocode_location`, `search_nearby`, `get_tabelog_info`).
