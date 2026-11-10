@@ -5,6 +5,7 @@ import re
 from typing import Any, Optional
 
 import httpx
+from pydantic import BaseModel, ValidationError
 from src.config import settings
 
 logger = logging.getLogger(__name__)
@@ -194,42 +195,65 @@ class LLMClient:
     async def call_structured_json(
         self,
         messages: list[dict[str, Any]],
+        schema: Optional[type[BaseModel]] = None,
+        max_retries: int = 1,
     ) -> tuple[dict[str, Any], str, int]:
-        """結構化 JSON 輸出呼叫 (保證解析為 dict，回傳 parsed_json, model_used, tokens)"""
-        try:
-            # 優先嘗試強制 JSON 物件模式 (OpenAI/Groq compatible)
-            content, model, tokens = await self.call_text(messages, response_format={"type": "json_object"})
-        except Exception:
-            # 若後端模型不支援 response_format 參數，降級為純文字解析
-            content, model, tokens = await self.call_text(messages, response_format=None)
+        """結構化 JSON 輸出呼叫 (支援 Pydantic Schema 驗證與 Self-Correction 自癒重試，回傳 parsed_json, model_used, tokens)"""
+        working_messages = [dict(m) for m in messages]
+        total_tokens = 0
+        model = "unknown"
 
-        # 嘗試從內容中解析 JSON (容許 Markdown ```json ``` 包覆)
-        cleaned = content.strip()
-        if "```" in cleaned:
-            # 提取 code block 內的內容
-            parts = cleaned.split("```")
-            for part in parts:
-                part = part.strip()
-                if part.startswith("json"):
-                    part = part[4:].strip()
-                if part.startswith("{") and part.endswith("}"):
-                    cleaned = part
-                    break
+        for attempt in range(max_retries + 1):
+            try:
+                # 優先嘗試強制 JSON 物件模式 (OpenAI/Groq compatible)
+                content, model, tokens = await self.call_text(working_messages, response_format={"type": "json_object"})
+            except Exception:
+                # 若後端模型不支援 response_format 參數，降級為純文字解析
+                content, model, tokens = await self.call_text(working_messages, response_format=None)
 
-        # 搜尋最外層的 { }
-        start = cleaned.find("{")
-        end = cleaned.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            cleaned = cleaned[start : end + 1]
+            total_tokens += tokens
 
-        try:
-            data = json.loads(cleaned)
-            if isinstance(data, dict):
-                return data, model, tokens
-        except json.JSONDecodeError as e:
-            logger.warning(f"Could not parse LLM JSON response: {e}. Content: {content[:200]}")
+            # 嘗試從內容中解析 JSON (容許 Markdown ```json ``` 包覆)
+            cleaned = content.strip()
+            if "```" in cleaned:
+                # 提取 code block 內的內容
+                parts = cleaned.split("```")
+                for part in parts:
+                    part = part.strip()
+                    if part.startswith("json"):
+                        part = part[4:].strip()
+                    if part.startswith("{") and part.endswith("}"):
+                        cleaned = part
+                        break
 
-        # 若解析失敗，判定是否為純問候/打招呼（Chitchat）
+            # 搜尋最外層的 { }
+            start = cleaned.find("{")
+            end = cleaned.rfind("}")
+            if start != -1 and end != -1 and end > start:
+                cleaned = cleaned[start : end + 1]
+
+            try:
+                data = json.loads(cleaned)
+                if not isinstance(data, dict):
+                    raise ValueError("Parsed JSON is not an object/dict")
+                if schema is not None:
+                    validated = schema.model_validate(data)
+                    return validated.model_dump(), model, total_tokens
+                return data, model, total_tokens
+            except (json.JSONDecodeError, ValidationError, ValueError) as err:
+                logger.warning(
+                    f"LLM JSON/Schema validation failed (attempt {attempt + 1}/{max_retries + 1}): {err}. Content: {content[:200]}"
+                )
+                if attempt < max_retries:
+                    working_messages.append({"role": "assistant", "content": content})
+                    working_messages.append(
+                        {
+                            "role": "user",
+                            "content": f"Your previous output failed schema/JSON validation: {err}. Please output valid JSON matching the schema.",
+                        }
+                    )
+
+        # 若解析或驗證全數失敗，判定是否為純問候/打招呼（Chitchat）
         # 反向原則：在日本美食導航 Bot 中，除純打招呼/禮貌問候外，任何實質文字輸入一律安全保底為 search，絕不窮舉食物名稱
         last_user_msg = ""
         for m in reversed(messages):
@@ -246,8 +270,8 @@ class LLMClient:
         )
         if is_pure_greeting:
             logger.info("JSON 解析失敗，使用者為純問候語，安全降級為 chitchat 意圖")
-            return {"intent": "chitchat", "location": None, "cuisine": None}, model, tokens
+            return {"intent": "chitchat", "location": None, "cuisine": None}, model, total_tokens
 
         # 其餘任何實質提問/搜尋，安全保底為 search
         logger.info(f"JSON 解析失敗，使用者非純問候語 ('{last_user_msg[:30]}')，安全保底為 search 意圖")
-        return {"intent": "search", "location": None, "cuisine": None}, model, tokens
+        return {"intent": "search", "location": None, "cuisine": None}, model, total_tokens

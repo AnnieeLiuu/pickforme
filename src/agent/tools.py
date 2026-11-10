@@ -3,6 +3,8 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
 
+from pydantic import ValidationError
+from src.agent.schemas import GeocodeArgs, SearchNearbyArgs, TabelogInfoArgs
 from src.db.repositories.restaurant import RestaurantRepository
 from src.services.entity_resolver import EntityResolver
 from src.services.google_places import GooglePlacesClient
@@ -111,10 +113,12 @@ class AgentToolExecutor:
             return json.dumps({"error": f"Tool execution failed: {str(e)}"}, ensure_ascii=False)
 
     async def _handle_geocode_location(self, args: dict[str, Any]) -> str:
-        query = args.get("query", "")
-        if not query:
-            return json.dumps({"error": "Query string is required"}, ensure_ascii=False)
+        try:
+            validated = GeocodeArgs.model_validate(args)
+        except ValidationError as e:
+            return json.dumps({"error": f"Invalid geocode_location args: {e}"}, ensure_ascii=False)
 
+        query = validated.query
         coords = await self.places_client.geocode_location(query)
         if not coords:
             return json.dumps({"error": f"Could not geocode query '{query}'"}, ensure_ascii=False)
@@ -123,12 +127,14 @@ class AgentToolExecutor:
         return json.dumps({"query": query, "lat": lat, "lng": lng}, ensure_ascii=False)
 
     async def _handle_search_nearby(self, args: dict[str, Any]) -> str:
-        lat = float(args.get("lat", 0.0))
-        lng = float(args.get("lng", 0.0))
-        radius = int(args.get("radius", 800))
-        keyword = args.get("keyword", "")
+        try:
+            validated = SearchNearbyArgs.model_validate(args)
+        except ValidationError as e:
+            return json.dumps({"error": f"Invalid search_nearby args: {e}"}, ensure_ascii=False)
 
-        places = await self.places_client.search_nearby(lat=lat, lng=lng, radius=radius, keyword=keyword)
+        places = await self.places_client.search_nearby(
+            lat=validated.lat, lng=validated.lng, radius=validated.radius, keyword=validated.keyword
+        )
         # 上下文控管：精簡為前 5 家重點店家與核心欄位，大幅減輕本地 LLM Prompt 負擔
         compact_places = [
             {
@@ -146,9 +152,12 @@ class AgentToolExecutor:
         return json.dumps({"count": len(compact_places), "places": compact_places}, ensure_ascii=False)
 
     async def _handle_get_tabelog_info(self, args: dict[str, Any]) -> str:
-        google_place_id = args.get("google_place_id", "")
-        if not google_place_id:
-            return json.dumps({"error": "google_place_id is required"}, ensure_ascii=False)
+        try:
+            validated = TabelogInfoArgs.model_validate(args)
+        except ValidationError as e:
+            return json.dumps({"error": f"Invalid get_tabelog_info args: {e}"}, ensure_ascii=False)
+
+        google_place_id = validated.google_place_id
 
         # 1. 檢查 DB 是否已有快取 (包含 7 天 TTL 驗證)
         cached = None
@@ -188,10 +197,10 @@ class AgentToolExecutor:
                 )
 
         # 2. 無快取或快取已過期 7 天，進行實體比對與抓取
-        store_name = args.get("store_name", "")
-        phone = args.get("phone", "")
-        lat = args.get("lat", 0.0)
-        lng = args.get("lng", 0.0)
+        store_name = validated.store_name
+        phone = validated.phone
+        lat = validated.lat
+        lng = validated.lng
 
         google_store = {
             "google_place_id": google_place_id,
