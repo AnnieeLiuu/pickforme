@@ -14,6 +14,7 @@ import time
 from typing import TYPE_CHECKING, Any, Optional
 from uuid import UUID
 
+from src.agent.schemas import extract_preferences_from_text
 from src.services.entity_resolver import (
     extract_prefecture_from_address,
     extract_prefecture_from_tabelog_url,
@@ -101,7 +102,70 @@ def calculate_foodie_score(store: dict[str, Any]) -> float:
     elif dist_m > 800:
         dist_penalty = 0.05
 
-    return base_score + award_bonus - dist_penalty
+    # 4. 硬性條件違反懲罰 (Deterministic Constraint Sensor)
+    constraint_penalty = 0.45 if store.get("constraint_violation") is True else 0.0
+
+    return base_score + award_bonus - dist_penalty - constraint_penalty
+
+
+def apply_deterministic_constraints(
+    stores: list[dict[str, Any]],
+    modifier: Optional[str] = None,
+    preferences: Optional[dict[str, Any]] = None,
+) -> list[dict[str, Any]]:
+    """Deterministic Constraint Sensor: 根據當輪 modifier 與長期偏好對明確違反硬性條件的店家標記降權"""
+    if not stores:
+        return []
+
+    payment_reqs: set[str] = set()
+    dietary_reqs: set[str] = set()
+
+    if isinstance(preferences, dict):
+        pay_list = preferences.get("payment_preferences")
+        if isinstance(pay_list, list):
+            payment_reqs.update(str(p) for p in pay_list if p)
+        diet_list = preferences.get("dietary_restrictions")
+        if isinstance(diet_list, list):
+            dietary_reqs.update(str(d) for d in diet_list if d)
+
+    if modifier:
+        extracted = extract_preferences_from_text(modifier)
+        payment_reqs.update(extracted.get("payment_preferences", []))
+        dietary_reqs.update(extracted.get("dietary_restrictions", []))
+
+    if not payment_reqs and not dietary_reqs:
+        return stores
+
+    for store in stores:
+        violated = False
+        store_name = str(store.get("name_ja") or store.get("name") or "")
+
+        # 1. 支付條件檢驗
+        if "credit_card" in payment_reqs:
+            is_cash_only = store.get("accepts_cash_only") is True
+            cards = store.get("credit_cards")
+            no_cards = isinstance(cards, list) and len(cards) == 0 and store.get("accepts_credit_cards") is not True
+            if is_cash_only or no_cards:
+                violated = True
+
+        if "paypay" in payment_reqs:
+            if store.get("supports_paypay") is False or store.get("accepts_cash_only") is True:
+                violated = True
+
+        # 2. 飲食禁忌檢驗
+        if "不吃牛" in dietary_reqs and "牛" in store_name:
+            violated = True
+        if "不吃豬" in dietary_reqs and any(k in store_name for k in ("豚", "豬", "猪")):
+            violated = True
+        if "不吃生食" in dietary_reqs and any(k in store_name for k in ("寿司", "鮨", "刺身", "壽司")):
+            violated = True
+        if "不吃辣" in dietary_reqs and any(k in store_name for k in ("激辛", "麻辣", "担々", "擔擔", "辛")):
+            violated = True
+
+        if violated:
+            store["constraint_violation"] = True
+
+    return stores
 
 
 def rank_and_select_top_stores(

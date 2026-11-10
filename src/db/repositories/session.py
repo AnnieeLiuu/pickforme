@@ -45,12 +45,21 @@ class SessionRepository:
                 if attempt == 1:
                     raise
 
+    def _parse_raw_recommended_json(self, raw: Any) -> Any:
+        """安全解析 last_recommended_ids 欄位 (相容 None, list, JSON str, dict)"""
+        if isinstance(raw, str):
+            try:
+                return json.loads(raw)
+            except json.JSONDecodeError:
+                return None
+        return raw
+
     async def get_last_recommended_stores(self, chat_id: int) -> list[dict[str, Any]]:
         """取得當前最後一輪推薦的店家清單 (供 follow_up 目標 1, 2, 3 追問使用)"""
         session = await self.get_session(chat_id)
-        if not session:
+        if not session or not isinstance(session, dict):
             return []
-        raw = session.get("last_recommended_ids")
+        raw = self._parse_raw_recommended_json(session.get("last_recommended_ids"))
         if not raw:
             return []
         if isinstance(raw, list):
@@ -64,9 +73,9 @@ class SessionRepository:
     async def get_seen_place_ids(self, chat_id: int) -> set[str]:
         """取得該使用者對話累積看過的所有 google_place_id"""
         session = await self.get_session(chat_id)
-        if not session:
+        if not session or not isinstance(session, dict):
             return set()
-        raw = session.get("last_recommended_ids")
+        raw = self._parse_raw_recommended_json(session.get("last_recommended_ids"))
         if not raw:
             return set()
 
@@ -86,18 +95,140 @@ class SessionRepository:
                         seen.add(str(item["google_place_id"]))
         return seen
 
+    async def get_working_memory(self, chat_id: int) -> dict[str, Any]:
+        """取得 Working Memory (上一輪 last_cuisine 與 last_location)，向下相容舊版格式"""
+        default_wm: dict[str, Any] = {"last_cuisine": None, "last_location": None}
+        try:
+            session = await self.get_session(chat_id)
+        except Exception:
+            return default_wm
+        if not session or not isinstance(session, dict):
+            return default_wm
+        raw = self._parse_raw_recommended_json(session.get("last_recommended_ids"))
+        if isinstance(raw, dict):
+            wm = raw.get("working_memory")
+            if isinstance(wm, dict):
+                return {
+                    **wm,
+                    "last_cuisine": wm.get("last_cuisine"),
+                    "last_location": wm.get("last_location"),
+                }
+        return default_wm
+
+    async def get_long_term_preferences(self, chat_id: int) -> dict[str, list[str]]:
+        """取得 Long-Term Preferences (飲食禁忌與支付偏好)，向下相容舊版格式"""
+        default_prefs: dict[str, list[str]] = {
+            "dietary_restrictions": [],
+            "payment_preferences": [],
+        }
+        try:
+            session = await self.get_session(chat_id)
+        except Exception:
+            return default_prefs
+        if not session or not isinstance(session, dict):
+            return default_prefs
+        raw = self._parse_raw_recommended_json(session.get("last_recommended_ids"))
+        if isinstance(raw, dict):
+            prefs = raw.get("long_term_preferences")
+            if isinstance(prefs, dict):
+                dietary = prefs.get("dietary_restrictions")
+                payment = prefs.get("payment_preferences")
+                return {
+                    "dietary_restrictions": [str(x) for x in dietary] if isinstance(dietary, list) else [],
+                    "payment_preferences": [str(x) for x in payment] if isinstance(payment, list) else [],
+                }
+        return default_prefs
+
+    async def update_long_term_preferences(
+        self,
+        chat_id: int,
+        dietary_restrictions: Optional[list[str]] = None,
+        payment_preferences: Optional[list[str]] = None,
+    ) -> dict[str, list[str]]:
+        """合併去重並持久化使用者的長期飲食禁忌與支付偏好"""
+        existing_prefs = await self.get_long_term_preferences(chat_id)
+        dietary_list = list(existing_prefs.get("dietary_restrictions", []))
+        payment_list = list(existing_prefs.get("payment_preferences", []))
+
+        if dietary_restrictions:
+            for item in dietary_restrictions:
+                if item and item not in dietary_list:
+                    dietary_list.append(str(item))
+        if payment_preferences:
+            for item in payment_preferences:
+                if item and item not in payment_list:
+                    payment_list.append(str(item))
+
+        updated_prefs: dict[str, list[str]] = {
+            "dietary_restrictions": dietary_list,
+            "payment_preferences": payment_list,
+        }
+
+        current_stores: list[dict[str, Any]] = []
+        accumulated_ids: list[str] = []
+        wm: dict[str, Any] = {"last_cuisine": None, "last_location": None}
+
+        try:
+            session = await self.get_session(chat_id)
+            if isinstance(session, dict):
+                raw = self._parse_raw_recommended_json(session.get("last_recommended_ids"))
+                if isinstance(raw, list):
+                    current_stores = raw
+                    accumulated_ids = [
+                        str(r["google_place_id"]) for r in raw if isinstance(r, dict) and r.get("google_place_id")
+                    ]
+                elif isinstance(raw, dict):
+                    if isinstance(raw.get("current"), list):
+                        current_stores = raw["current"]
+                    if isinstance(raw.get("accumulated_seen_ids"), list):
+                        accumulated_ids = [str(x) for x in raw["accumulated_seen_ids"]]
+                    if isinstance(raw.get("working_memory"), dict):
+                        wm = {
+                            **raw["working_memory"],
+                            "last_cuisine": raw["working_memory"].get("last_cuisine"),
+                            "last_location": raw["working_memory"].get("last_location"),
+                        }
+        except Exception as e:
+            logger.warning(f"Failed to read existing session in update_long_term_preferences: {e}")
+
+        data_to_store = {
+            "current": current_stores,
+            "accumulated_seen_ids": accumulated_ids,
+            "working_memory": wm,
+            "long_term_preferences": updated_prefs,
+        }
+
+        pool = await get_db_pool()
+        sql = """
+            INSERT INTO chat_sessions (chat_id, last_recommended_ids, updated_at)
+            VALUES (%s, %s, NOW())
+            ON CONFLICT (chat_id) DO UPDATE SET
+                last_recommended_ids = EXCLUDED.last_recommended_ids,
+                updated_at = NOW();
+        """
+        async with pool.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(sql, (chat_id, json.dumps(data_to_store, ensure_ascii=False)))
+                await conn.commit()
+
+        return updated_prefs
+
     async def update_recommended_ids(
         self,
         chat_id: int,
         recommended_ids: list[dict[str, Any]],
         accumulate: bool = True,
+        last_cuisine: Optional[str] = None,
+        last_location: Optional[str] = None,
     ) -> None:
-        """更新推薦店家清單，預設累積更新歷史看過的店家 ID"""
+        """更新推薦店家清單，預設累積更新歷史看過的店家 ID，同時保留長期偏好與更新 Working Memory"""
         pool = await get_db_pool()
         accumulated_seen_ids: list[str] = []
 
         if accumulate:
             existing_seen = await self.get_seen_place_ids(chat_id)
+            if not isinstance(existing_seen, set):
+                existing_seen = set(existing_seen) if isinstance(existing_seen, (list, tuple)) else set()
             for r in recommended_ids:
                 pid = r.get("google_place_id")
                 if pid:
@@ -106,9 +237,43 @@ class SessionRepository:
         else:
             accumulated_seen_ids = [str(r["google_place_id"]) for r in recommended_ids if r.get("google_place_id")]
 
+        existing_wm: dict[str, Any] = {"last_cuisine": None, "last_location": None}
+        try:
+            wm_res = await self.get_working_memory(chat_id)
+            if isinstance(wm_res, dict):
+                existing_wm = wm_res
+        except Exception:
+            pass
+
+        existing_prefs: dict[str, list[str]] = {
+            "dietary_restrictions": [],
+            "payment_preferences": [],
+        }
+        try:
+            prefs_res = await self.get_long_term_preferences(chat_id)
+            if isinstance(prefs_res, dict):
+                existing_prefs = {
+                    "dietary_restrictions": prefs_res.get("dietary_restrictions", [])
+                    if isinstance(prefs_res.get("dietary_restrictions"), list)
+                    else [],
+                    "payment_preferences": prefs_res.get("payment_preferences", [])
+                    if isinstance(prefs_res.get("payment_preferences"), list)
+                    else [],
+                }
+        except Exception:
+            pass
+
+        updated_wm = {
+            **existing_wm,
+            "last_cuisine": last_cuisine if last_cuisine is not None else existing_wm.get("last_cuisine"),
+            "last_location": last_location if last_location is not None else existing_wm.get("last_location"),
+        }
+
         data_to_store = {
             "current": recommended_ids,
             "accumulated_seen_ids": accumulated_seen_ids,
+            "working_memory": updated_wm,
+            "long_term_preferences": existing_prefs,
         }
 
         sql = """
