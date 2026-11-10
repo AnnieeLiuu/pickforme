@@ -36,7 +36,7 @@ graph TD
 
     subgraph BackgroundWorker ["🔄 非同步佇列與預熱"]
         LocalWorker["🏠 Prewarm Worker (離峰熱門商圈預熱入庫)"]
-        HotDB -->|prewarm_jobs (SKIP LOCKED)| LocalWorker
+        HotDB -->|"prewarm_jobs (SKIP LOCKED)"| LocalWorker
     end
 
     FSM <--> LLMTier
