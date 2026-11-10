@@ -15,9 +15,10 @@
 ```mermaid
 graph TD
     User(["📱 Telegram Client"]) -->|Webhook / HTTPS| Server["🚀 FastAPI 後端 @ Cloud Run"]
-    Server --> FSM["⚙️ 自研 4 階段狀態機 (FoodRecommendationFSM)"]
+    Server --> Gate["⚡ 0ms QuickPassGate 快篩與安全絆線 (src/agent/gate.py)"]
+    Gate -->|"0ms Fast-Reply / 結構化路由"| FSM["⚙️ 自研 4 階段狀態機 (FoodRecommendationFSM)"]
 
-    subgraph LLMTier ["🧠 多級 LLM 推論核心 (LLMClient)"]
+    subgraph LLMTier ["🧠 多級 LLM 推論核心 (LLMClient + Pydantic Self-Correction)"]
         Groq["🥇 Groq qwen3.8-27b (0.7s 極速主力)"]
         Gemini["🥈 Gemini 3.8 Flash (429 自動備援)"]
         Ollama["🥉 本機 Ollama qwen2.5 (離線保底)"]
@@ -25,8 +26,8 @@ graph TD
         Gemini -.->|離線降級| Ollama
     end
 
-    subgraph StorageTier ["🗄️ 冷熱資料儲存分層與向量引擎"]
-        HotDB[("🐘 Neon Postgres (熱層: 快取/餐廳/對話歷史)")]
+    subgraph StorageTier ["🗄️ 冷熱資料儲存分層與雙層記憶引擎"]
+        HotDB[("🐘 Neon Postgres (熱層: 快取/餐廳/Two-Tier 記憶)")]
         VectorDB[("🔍 pgvector: halfvec(768) 評論向量")]
         ColdArchive[("📦 GCS 冷層 (Snappy Parquet 壓縮封存)")]
         DuckDBEngine["🦆 DuckDB OLAP 分析引擎 (scripts/analyze_traces.py)"]
@@ -59,7 +60,7 @@ graph TD
 | :--- | :--- | :--- |
 | **`restaurants`** | 餐廳實體主檔 | 遵從 Google 條款僅永久儲存 `google_place_id`，其餘名稱座標由 Tabelog 授權資料為主；`phone` 為實體對齊關鍵索引。 |
 | **`tabelog_cache`** | 雙平台評分快取 | 記錄 `tabelog_rating`、`match_confidence`、PayPay 支援與信用卡 JSONB。設有 7 天 TTL 過期機制。 |
-| **`chat_sessions`** | 對話狀態與多輪記憶 | 記錄 `last_location` (地理點位)、`last_recommended_ids` (防止換一批推薦重複)、`conversation_history` (保留 3 輪摘要)。 |
+| **`chat_sessions`** | 對話狀態與雙層記憶 (Two-Tier Memory) | 記錄 `last_location` (地理點位)、`last_recommended_ids` JSONB（內含 `current` 當輪推薦、`accumulated_seen_ids` 累積排除黑名單、`working_memory` (`last_cuisine`, `last_location`) 短期工作記憶與 `long_term_preferences` (`dietary_restrictions`, `payment_preferences`) 長期飲食禁忌/支付偏好）、`conversation_history` (保留 3 輪摘要)。 |
 | **`prewarm_jobs`** | 離線預熱任務佇列 | 支援 `SKIP LOCKED` 並行領取，支援 `/prewarm <地名>` 任務狀態與 Telegram 完成推播。 |
 | **`agent_runs` / `agent_steps`** | OTel 格式可觀測性 Trace | 記錄每次 Pipeline 總耗時、Token 消耗、狀態機各步驟的 Tool 輸入/輸出 Payload 與例外訊息。 |
 | **`review_embeddings`** | 評論語意向量庫 | 支援 `pgvector` halfvec(768)，供 Phase B 跨語言品項檢索與老饕心得比對。 |
@@ -109,11 +110,15 @@ flowchart TD
     %% 2. 確定性 4 階段 FSM 狀態機流水線
     CheckType -- "美食搜尋 / 推薦 / 追問" --> FSMInit["FoodRecommendationFSM (src/agent/pipeline.py)"]
 
-    subgraph State1 ["State 1: 使用者意圖與地點解析 (Micro-LLM / Follow-up)"]
-        FSMInit --> CheckFollowUp{"是否為追問句?<br/>(例: 第2家有開嗎?)"}
-        CheckFollowUp -- "是追問" --> AnswerDirect["由 chat_sessions 歷史候選資料直接回答<br/>0.5s 秒答，不重複調用 Places"] --> EndResponse
-        CheckFollowUp -- "全新搜尋" --> ParseIntent["Micro-LLM 結構化解析 (0.3s JSON)<br/>提煉 location, cuisine, sort_by"]
-        ParseIntent --> CheckCoord{"有無地理座標?"}
+    subgraph State1 ["State 1: 0ms QuickPassGate 快篩與意圖解析 (src/agent/gate.py & stages/intent.py)"]
+        FSMInit --> QuickPass["⚡ QuickPassGate 0ms 確定性快篩與安全絆線<br/>(攔截越獄/超長輸入/問候/道謝/店號追問/換一批/座標直搜)"]
+        QuickPass -- "命中 Fast-Reply / 安全絆線" --> GateFastReply["0ms 極速秒回 / 安全防護攔截"] --> EndResponse
+        QuickPass -- "命中 follow_up_index" --> AnswerDirect["由 chat_sessions 歷史候選資料直接回答<br/>0.5s 秒答，不重複調用 Places"] --> EndResponse
+        QuickPass -- "未命中快篩 / 需語意解析" --> ParseIntent["Micro-LLM 結構化解析 + Pydantic Self-Correction<br/>(IntentOutput Schema 驗證 + 自動重試自癒)"]
+        ParseIntent --> SyncMemory["Two-Tier Memory 雙軌偏好抽取與繼承<br/>(更新 long_term_preferences + 繼承 working_memory)"]
+        SyncMemory --> CheckFollowUp{"是否為追問句?"}
+        CheckFollowUp -- "是追問" --> AnswerDirect
+        CheckFollowUp -- "搜尋 / 換一批" --> CheckCoord{"有無地理座標?"}
         CheckCoord -- "無座標" --> Geocode["Google Geocoding API<br/>地名轉 (lat, lng)"]
         CheckCoord -- "已有座標" --> S1Done["鎖定座標與料理分類"]
         Geocode --> S1Done
@@ -134,7 +139,7 @@ flowchart TD
 
     S2Select --> Progress2["Telegram 狀態推播 2:<br/>📊 正在彙整 Google 與 Tabelog 雙平台評分卡片..."]
 
-    subgraph State3 ["State 3: Tabelog 平行實體對齊 (Parallel Enrichment)"]
+    subgraph State3 ["State 3: Tabelog 平行實體對齊與硬性條件感測 (Parallel Enrichment & Constraint Sensor)"]
         Progress2 --> ParallelGather["asyncio.gather 平行對齊 3~5 家候選店"]
         
         subgraph PerStore ["每家候選店對齊邏輯"]
@@ -151,9 +156,10 @@ flowchart TD
         end
     end
 
-    HitCache --> S3Done["3 家店家雙平台資料彙整完成<br/>寫入 chat_sessions.last_recommended_ids"]
-    SaveCache --> S3Done
-    FallbackGoogle --> S3Done
+    HitCache --> ConstraintSensor["🎯 Deterministic Constraint Sensor<br/>(apply_deterministic_constraints 硬性飲食禁忌/支付偏好降權與重排)"]
+    SaveCache --> ConstraintSensor
+    FallbackGoogle --> ConstraintSensor
+    ConstraintSensor --> S3Done["3 家店家雙平台資料彙整完成<br/>寫入 chat_sessions.last_recommended_ids (Two-Tier Memory)"]
 
     subgraph State4 ["State 4: 單次合成推薦卡片 (Synthesis, Guardrail & Template Fallback)"]
         S3Done --> LLMSynthesis["LLMClient 單次生成高美感卡片<br/>(Groq ➡️ Gemini ➡️ Ollama Failover)"]
@@ -167,7 +173,16 @@ flowchart TD
     TemplateFallback --> EndResponse
 ```
 
-### E. Production AI 護欄體系：確定性數值防偽與防規則漂移 (Deterministic Guardrails & Contract Testing)
+### E. Production AI 護欄體系：Agent Harness、確定性數值防偽與防規則漂移 (Agent Harness, Deterministic Guardrails & Contract Testing)
+- **0ms 入口快篩與安全絆線 (`src/agent/gate.py` - `QuickPassGate`)**：
+  - **前置確定性分流 (0ms Pre-Classifier)**：在進入 Stage 1 LLM 前，以 0ms 正則規則直接處理純問候 (`greeting`)、純道謝 (`thanks`)、Healthcheck 探針 (`__healthcheck__`)、指定店號追問 (`follow_up_index`: 第 1/2/3 家)、純換一批 (`pure_more`) 與日本國境經緯度直搜 (`coords_search`: `20.0<=lat<=46.0, 122.0<=lng<=154.0`)，大幅削減不必要之 LLM 呼叫與延遲。
+  - **安全絆線防禦 (Security Tripwire)**：攔截超過 500 字元之異常超長輸入 (`tripwire_length`) 與典型 Prompt Injection 越獄字串 (`tripwire_injection`，如 `ignore previous instructions`、`無視先前的指令`)，0ms 直接回傳安全提示並寫入 `quick_pass_gate` Trace 審計步驟。
+- **Pydantic v2 結構化合約與 Self-Correction 自癒迴圈 (`src/agent/schemas.py` & `src/agent/llm_client.py`)**：
+  - **嚴格資料邊界校驗**：以 Pydantic v2 `BaseModel` 定義 `IntentOutput`（含 `target_index` 1~3 邊界、`dietary_restrictions`、`payment_preferences`）以及 `GeocodeArgs`、`SearchNearbyArgs`、`TabelogInfoArgs` 工具參數驗證。
+  - **ValidationError 自癒重試 (Self-Correction Loop)**：`LLMClient.call_structured_json(messages, schema=IntentOutput, max_retries=1)` 在解析 JSON 後自動執行 Pydantic 驗證；若模型輸出違反 Schema（如欄位型別錯誤或非法枚舉值），自動將 `ValidationError` 詳細錯誤附加回對話訊息要求模型即時修正重試，重試仍失敗時平滑降級至安全預設結構。
+- **Stage 3 確定性硬性條件感測器 (`src/agent/stages/enrichment.py` - `apply_deterministic_constraints`)**：
+  - **硬性飲食與支付偏好掃描**：透過 `extract_preferences_from_text` 結合當輪 `modifier` 與跨輪 `long_term_preferences`（支援 `credit_card`、`paypay`、`不吃牛`、`不吃豬`、`不吃生食`、`不吃辣`），在 Stage 3 對候選店家的支付屬性與店名特徵進行確定性稽核。
+  - **違規降權與自動重排**：一旦偵測到店家違反硬性條件（例如要求刷卡但店家為 `accepts_cash_only=True`，或忌牛卻為牛丼/燒肉名店），自動標記 `constraint_violation = True`，於 `calculate_foodie_score` 施加 `-0.45` 重度懲罰並重新執行 `rank_and_select_top_stores` 排序。
 - **痛點與挑戰 (The Problem)**：
   - LLM 在生成高生動度推薦卡片時存在機率性微調數值幻覺（如將 3.78 筆誤寫成 3.70），高敏感美食評分失真將嚴重損害用戶信任。
   - 若使用二次 LLM 審核（LLM-as-a-Judge）會增加 >1s 延遲與 Token 成本；若使用寬鬆正則，極易誤傷內文中的非評分數值（如「排隊 3.5 小時」）。
@@ -184,7 +199,7 @@ flowchart TD
 - **老饕潛力預篩、自適應查驗與重排演算法 (`src/agent/pipeline.py`)**：
   - **Google 記憶體端老饕潛力預篩 (State 2.5)**：Google Places 單次調用直取 20 筆周邊店家，在記憶體中依評分、評論數與距離綜合預篩出 4 筆主選與 2 筆備選種子。
   - **自適應漸進查驗與提早終止 (State 3.1 & 3.2)**：第一梯隊並行查驗 4 家；若高分名店（Tabelog $\ge 3.45$ 或百名店）$\ge 2$ 家即觸發 Early Stop 提早終止，多數場景 0 額外延遲；品質不足時動態查驗備選店家救援。
-  - **$S_i$ 綜合老饕計分重排**：以 Tabelog 評分為核心權重（未命中時 Google 評分安全折算），疊加百名店/Award 加分與距離微幅懲罰，精選 Top 3 店家並注入 `🥇/🥈/🥉` 排名徽章。
+  - **$S_i$ 綜合老饕計分重排**：以 Tabelog 評分為核心權重（未命中時 Google 評分安全折算），疊加百名店/Award 加分、距離微幅懲罰與硬性條件違規懲罰 (`-0.45`)，精選 Top 3 店家並注入 `🥇/🥈/🥉` 排名徽章。
 - **防腐保證：CI 雙向合約測試防禦 (Contract Testing in CI/CD)**：
   - 於 `tests/test_pipeline.py` 建立自動化合約測試，驗證 System Prompt 定義的排版格式與 Guardrail 錨點 100% 同步；任何提示詞變更若破壞了護欄合約，CI 立即報警阻擋合併。
 - **即時監控：DevOps 遠端健康度巡檢 (`src/agent/devops.py`)**：
@@ -195,18 +210,19 @@ flowchart TD
 ### F. 工程維護品質與軟體最佳實踐 (Engineering & Maintainability Practices)
 - **品質防線與 CI 守門 (Code Quality Gates)**：
   - **靜態檢查與型別標註**：全面採用 `ruff` (代碼規範/格式化) 與 `mypy` (Python 3.11 嚴格型別校驗)，確保程式碼可讀性與型別安全。
-  - **自動化測試與覆蓋率**：建立 131 項覆蓋核心邏輯之單元、合約與黃金回歸測試 (`tests/test_real_world_regressions.py`)，整合 `pytest-cov` Cobertura XML 報告與 GitLab CI/CD Pipeline (`.gitlab-ci.yml`)，未通過品質關卡禁止合併主線。
+  - **自動化測試與覆蓋率**：建立覆蓋核心邏輯、Agent Harness 與黃金回歸案例之完整自動化測試集 (`tests/test_real_world_regressions.py`)，整合 `pytest-cov` Cobertura XML 報告與 GitLab CI/CD Pipeline (`.gitlab-ci.yml`)，未通過品質關卡禁止合併主線。
   - **全鏈路可觀測性看板 (Observability Pages & Design System)**：由 `src/eval/reporter.py` 載入獨立 HTML 模板 (`src/eval/templates/river_dashboard.html`) 生成現代 3-Pane 滿版全景河流圖看板 (`public/index.html`)，依循 [`docs/OBSERVABILITY_DESIGN_SYSTEM.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/OBSERVABILITY_DESIGN_SYSTEM.md) 之 Draw.io 5 大語意形狀規範，達成 0 原始碼閱讀下的端到端即時架構透視。
 - **高內聚低耦合架構解耦 (Modular FSM & Facade Orchestrator)**：
-  - **狀態機管線解耦 (`src/agent/stages/`)**：徹底根除單一巨大檔案 (God File)，`FoodRecommendationFSM` (`src/agent/pipeline.py`, ~330 行) 作為 Facade 調度器，將四大階段完全拆解至獨立子模組：`stages/intent.py` (意圖與多輪追問)、`stages/places_search.py` (階梯擴圈與預篩)、`stages/enrichment.py` (Tabelog 雙平台並行補全與老饕重排)、`stages/synthesis.py` (卡片合成與 Scoped Anchor 護欄)。
+  - **狀態機管線與 Harness 模組化 (`src/agent/stages/`、`src/agent/gate.py`、`src/agent/schemas.py`)**：徹底根除單一巨大檔案 (God File)，`FoodRecommendationFSM` (`src/agent/pipeline.py`) 作為 Facade 調度器，協同 `gate.py` (`QuickPassGate` 0ms 入口快篩)、`schemas.py` (Pydantic v2 結構化合約與偏好抽取器) 與四大階段子模組：`stages/intent.py` (意圖、雙層記憶繼承與多輪追問)、`stages/places_search.py` (階梯擴圈與預篩)、`stages/enrichment.py` (Tabelog 雙平台並行補全、Deterministic Constraint Sensor 與老饕重排)、`stages/synthesis.py` (卡片合成與 Scoped Anchor 護欄)。
   - **前後端表現層分離 (`src/eval/templates/`)**：將 2,200+ 行之互動式 Dashboard HTML/CSS/JS 抽離至獨立模板檔，評估腳本僅專注於資料計算與填充，落實關注點分離 (Separation of Concerns)。
 - **資安防護與存取控制 (Security & Access Control)**：
   - **Telegram Webhook Secret Token 驗證**：要求驗證 `X-Telegram-Bot-Api-Secret-Token` 標頭，防止惡意流量觸發 Cloud Run。
   - **白名單過濾**：以 `TELEGRAM_ALLOWED_USER_ID` 限制存取權限。
   - **GitLab Secret Detection**：引入 CI 密鑰洩漏檢測模板，確保 API Keys 不外洩。
-- **快取維護與對話記憶 (Cache TTL & Session Context)**：
+- **快取維護與雙層對話記憶 (Cache TTL & Two-Tier Session Memory)**：
   - **7 天 Tabelog 快取 TTL**：Neon DB 快取超過 7 天自動觸發背景爬蟲刷新，平衡評分即時性與抓取頻率。
   - **3 輪對話歷史記憶**：`chat_sessions` 自動保存最近 3 輪對話內容，支援自然語言追問（如「第 2 家有開嗎？」）。
+  - **Two-Tier Memory 雙層記憶架構 (`src/db/repositories/session.py`)**：於 `chat_sessions.last_recommended_ids` JSONB 中同時維護短期工作記憶 `working_memory`（記錄 `last_cuisine` 與 `last_location`，供 `"more"` 換一批無縫繼承）與跨輪長期偏好 `long_term_preferences`（持久化累積 `dietary_restrictions` 飲食禁忌與 `payment_preferences` 支付偏好，並向下相容舊版 List/Dict 格式）。
 - **OTel 格式 Trace 可觀測性 (Structured Observability & Trace Deep-Dive)**：
   - 每筆 Agent 執行同步記錄至 Neon `agent_runs` 與 `agent_steps`，量化分析 Model 降級率、Tool Latency (ms) 與 Token 成本。
   - **DuckDB 冷熱雙模歷程透視 CLI (`scripts/analyze_traces.py`)**：支援從冷層 Snappy Parquet 或 Neon DB 熱層一鍵提取近期問答清單，選定特定問答後即可輸出完整「端到端歷程透視報告」，包含提問句、最終回答卡片、中間每個 State 流程節點、個別耗時 (ms) 與精確之 Input/Output JSON 結構。

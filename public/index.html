@@ -346,7 +346,7 @@ html, body, #frame-content, #frame-header, .header, header {
         <h2 style="font-size: 21px; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: -0.5px;">PickForMe 4-Tier LLMOps 評測與全景河流圖中控台</h2>
       </div>
       <p style="font-size: 12px; color: #64748b; margin: 0;">
-        穿透 5 大架構分層 · <strong>即時全量對話穿透盤點</strong> · <strong>走過節點動態流光</strong> · <strong>未走過節點查閱略過決策</strong> · <strong>Groq OTPM 1000 專屬額度監控</strong>
+        穿透 5 大架構分層 · <strong>即時全量對話穿透盤點</strong> · <strong>走過節點動態流光</strong> · <strong>未走過節點查閱略過決策</strong> · <strong>Groq OTPM 1000 專屬額度監控</strong> · <strong>⚡ 0ms QuickPassGate 快篩</strong> · <strong>🛡️ Pydantic Self-Correction</strong> · <strong>🧠 Two-Tier Memory</strong> · <strong>🎯 Deterministic Constraint Sensor</strong>
       </p>
     </div>
     <div style="font-size: 11px; color: #059669; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 4px 10px; border-radius: 20px; font-weight: bold; display: flex; align-items: center; gap: 6px;">
@@ -593,7 +593,7 @@ html, body, #frame-content, #frame-header, .header, header {
         <!-- 節點 1: State 1 Intent 解析 -->
         <div id="node-state-1" onclick="clickNode('state_1')" class="river-node node-active flow-decision" style="width: 340px;">
           <div class="node-layer-tag">INTENT EXTRACTOR</div>
-          <div class="node-title">🧠 State 1: Micro-LLM 結構化意圖抽取</div>
+          <div class="node-title">🧠 State 1: QuickPassGate 0ms 快篩 + Micro-LLM 結構化意圖抽取 (Pydantic Self-Correction)</div>
           <div id="badge-state-1" class="node-badge">intent: search | location: 神保町 | cuisine: 飯糰</div>
         </div>
 
@@ -876,7 +876,7 @@ html, body, #frame-content, #frame-header, .header, header {
         <div id="node-db-session-write" onclick="clickNode('db_session_write')" class="river-node node-active flow-database" style="width: 380px; background: #faf5ff; border: 1.5px solid #c084fc;">
           <div class="node-status-flag" id="flag-db-session-write" style="color: #9333ea;">✓ 對話記憶落庫</div>
           <div class="node-layer-tag" style="color: #9333ea;">SESSION & OBSERVABILITY DB</div>
-          <div class="node-title">💾 寫入 chat_sessions 記憶庫 ＆ agent_runs 追蹤</div>
+          <div class="node-title">💾 寫入 chat_sessions Two-Tier Memory 記憶庫 ＆ agent_runs 追蹤</div>
           <div class="node-badge" style="background: #f3e8ff; color: #7e22ce; border: 1px solid #d8b4fe;">保存本輪 3 家候選供追問 · 記錄 1,242ms E2E 鏈路日誌</div>
         </div>
 
@@ -1020,7 +1020,7 @@ const auditDatabase = {
       action: "收到旅人輸入，建立本輪 Trace Run 追蹤。"
     },
     state_1: {
-      title: "🧠 State 1: Micro-LLM 結構化意圖抽取",
+      title: "🧠 State 1: QuickPassGate 0ms 快篩 + Micro-LLM 結構化意圖抽取 (Pydantic Self-Correction)",
       latency: "280 ms",
       desc: "調用 Groq qwen3.8-27b 解析結構化意圖 JSON，嚴格解耦地點、料理核心詞與風格修飾詞。",
       input: { "message": "神保町車站 飯糰" },
@@ -1197,7 +1197,7 @@ const auditDatabase = {
       action: "收到缺乏明確行政區或車站的提問，進入意圖抽取。"
     },
     state_1: {
-      title: "🧠 State 1: Micro-LLM 結構化意圖抽取",
+      title: "🧠 State 1: QuickPassGate 0ms 快篩 + Micro-LLM 結構化意圖抽取 (Pydantic Self-Correction)",
       latency: "270 ms",
       desc: "解析結構化意圖 JSON，精準識別料理核心詞「拉麵」，但發現 location 欄位為空 (null)。",
       input: { "message": "我想吃拉麵" },
@@ -1277,7 +1277,7 @@ const auditDatabase = {
       action: "收到追問問句，即時通知：「正在為您翻閱店家營業資訊...」"
     },
     state_1: {
-      title: "🧠 State 1: Micro-LLM 結構化意圖抽取",
+      title: "🧠 State 1: QuickPassGate 0ms 快篩 + Micro-LLM 結構化意圖抽取 (Pydantic Self-Correction)",
       latency: "250 ms",
       desc: "精準識別出代名詞「第二家」與「營業時間」查詢意圖。",
       input: { "message": "第二家今天有開嗎？" },
@@ -1364,7 +1364,7 @@ const auditDatabase = {
       action: "收到找店問句，建立本輪 Trace Run 追蹤。"
     },
     state_1: {
-      title: "🧠 State 1: Micro-LLM 結構化意圖抽取",
+      title: "🧠 State 1: QuickPassGate 0ms 快篩 + Micro-LLM 結構化意圖抽取 (Pydantic Self-Correction)",
       latency: "260 ms",
       desc: "調用 Groq qwen3.8-27b 解析結構化意圖 JSON，解耦地點「新宿」、料理核心詞「燒肉」與修飾詞「炭火」。",
       input: { "message": "新宿站 炭火燒肉" },
@@ -1484,7 +1484,7 @@ const auditDatabase = {
       action: "排版完全符合 Telegram 標準，准予推播！"
     },
     db_session_write: {
-      title: "💾 寫入 chat_sessions 記憶庫 ＆ agent_runs 追蹤",
+      title: "💾 寫入 chat_sessions Two-Tier Memory 記憶庫 ＆ agent_runs 追蹤",
       latency: "35 ms",
       desc: "將推薦之 3 家炭火燒肉寫入 chat_sessions 供後續追問，並記錄 1,820ms 鏈路日誌。",
       input: { "session_id": 1202194852, "stores_count": 3 },
@@ -1552,7 +1552,7 @@ const auditDatabase = {
       action: "收到找店問句，建立本輪 Trace Run 追蹤。"
     },
     state_1: {
-      title: "🧠 State 1: Micro-LLM 結構化意圖抽取",
+      title: "🧠 State 1: QuickPassGate 0ms 快篩 + Micro-LLM 結構化意圖抽取 (Pydantic Self-Correction)",
       latency: "240 ms",
       desc: "調用 Groq qwen3.8-27b 解析結構化意圖 JSON，解耦地點「銀座」、料理「壽司」與風格「高級江戶前」。",
       input: { "message": "銀座 高級江戶前壽司" },
@@ -1672,7 +1672,7 @@ const auditDatabase = {
       action: "排版放行。"
     },
     db_session_write: {
-      title: "💾 寫入 chat_sessions 記憶庫 ＆ agent_runs 追蹤",
+      title: "💾 寫入 chat_sessions Two-Tier Memory 記憶庫 ＆ agent_runs 追蹤",
       latency: "25 ms",
       desc: "保存推薦名單並記錄 640ms 極速鏈路日誌。",
       input: { "session_id": 1202194852, "stores_count": 3 },
@@ -2267,6 +2267,40 @@ window.onresize = () => {
     "tier4_success": 1.0,
     "latency_avg_ms": 0.1
   },
+  "harness_badges": [
+    {
+      "id": "quick_pass_gate",
+      "label": "⚡ 0ms QuickPassGate 快篩",
+      "desc": "0ms 確定性攔截問候/道謝/店號追問/純換一批/座標直搜與 Prompt Injection 安全絆線"
+    },
+    {
+      "id": "pydantic_self_correction",
+      "label": "🛡️ Pydantic Self-Correction",
+      "desc": "IntentOutput & Tool Args 結構化合約驗證 + ValidationError 自動重試自癒迴圈"
+    },
+    {
+      "id": "two_tier_memory",
+      "label": "🧠 Two-Tier Memory",
+      "desc": "chat_sessions JSONB 雙層記憶：working_memory 短期繼承 + long_term_preferences 長期飲食/支付偏好"
+    },
+    {
+      "id": "constraint_sensor",
+      "label": "🎯 Deterministic Constraint Sensor",
+      "desc": "Stage 3 硬性飲食禁忌與支付偏好感測器，違規自動標記 constraint_violation 並扣減 0.45 分重排"
+    }
+  ],
+  "step_tool_labels": {
+    "quick_pass_gate": "⚡ 0ms QuickPassGate 快篩",
+    "intent_parser": "🧠 Pydantic IntentOutput (Self-Correction)",
+    "extract_intent": "🧠 Pydantic IntentOutput (Self-Correction)",
+    "places_search_ladder": "🗺️ Places 智慧階梯檢索",
+    "parallel_tabelog_enrichment": "📊 Tabelog 平行查驗 + Constraint Sensor",
+    "tabelog_parallel_enrich": "📊 Tabelog 平行查驗 + Constraint Sensor",
+    "card_synthesis": "🛡️ Scoped Anchor 卡片合成",
+    "generate_recommendation_card": "🛡️ Scoped Anchor 卡片合成",
+    "llm_follow_up": "💬 Two-Tier Memory 追問直答",
+    "llm_chitchat": "💬 親切禮貌引導回覆"
+  },
   "case_results": [
     {
       "case_id": "eval_001",
@@ -2276,7 +2310,7 @@ window.onresize = () => {
       "tier2_pass": true,
       "tier3_pass": true,
       "tier4_pass": true,
-      "latency_ms": 1,
+      "latency_ms": 0,
       "details": {
         "tier1": {
           "expected": {
@@ -2414,7 +2448,7 @@ window.onresize = () => {
       "tier2_pass": true,
       "tier3_pass": true,
       "tier4_pass": true,
-      "latency_ms": 0,
+      "latency_ms": 1,
       "details": {
         "tier1": {
           "expected": {
@@ -3352,7 +3386,8 @@ window.onresize = () => {
         },
         "latency_ms": 1391,
         "error_message": null,
-        "created_at": "2026-10-12T14:28:56.098009+00:00"
+        "created_at": "2026-10-12T14:28:56.098009+00:00",
+        "tool_label": "🧠 Pydantic IntentOutput (Self-Correction)"
       },
       {
         "step_id": "958eec4f-f9d7-49cd-856a-90e77435348c",
@@ -3371,7 +3406,8 @@ window.onresize = () => {
         },
         "latency_ms": 384,
         "error_message": null,
-        "created_at": "2026-10-12T14:28:58.539619+00:00"
+        "created_at": "2026-10-12T14:28:58.539619+00:00",
+        "tool_label": "search_nearby_ladder"
       },
       {
         "step_id": "0a51ecc1-da91-444c-8235-153759265b3e",
@@ -3484,7 +3520,8 @@ window.onresize = () => {
         },
         "latency_ms": 9702,
         "error_message": null,
-        "created_at": "2026-10-12T14:29:08.599478+00:00"
+        "created_at": "2026-10-12T14:29:08.599478+00:00",
+        "tool_label": "📊 Tabelog 平行查驗 + Constraint Sensor"
       },
       {
         "step_id": "73501162-2cc5-4b8f-aa19-cc7d0667f990",
@@ -3503,7 +3540,8 @@ window.onresize = () => {
         },
         "latency_ms": 1826,
         "error_message": null,
-        "created_at": "2026-10-12T14:29:12.259146+00:00"
+        "created_at": "2026-10-12T14:29:12.259146+00:00",
+        "tool_label": "🛡️ Scoped Anchor 卡片合成"
       }
     ],
     "fe699b9a-dee3-4bde-8aaf-ee97e8d48ad1": [
@@ -3526,7 +3564,8 @@ window.onresize = () => {
         },
         "latency_ms": 398,
         "error_message": null,
-        "created_at": "2026-10-11T13:42:20.413612+00:00"
+        "created_at": "2026-10-11T13:42:20.413612+00:00",
+        "tool_label": "🧠 Pydantic IntentOutput (Self-Correction)"
       },
       {
         "step_id": "aefb625f-1ddb-49d7-aea5-30aeb5683db0",
@@ -3545,7 +3584,8 @@ window.onresize = () => {
         },
         "latency_ms": 548,
         "error_message": null,
-        "created_at": "2026-10-11T13:42:21.877554+00:00"
+        "created_at": "2026-10-11T13:42:21.877554+00:00",
+        "tool_label": "search_nearby_ladder"
       },
       {
         "step_id": "ddd31f45-bf8c-45fd-8e9b-10c71d1139d3",
@@ -3658,7 +3698,8 @@ window.onresize = () => {
         },
         "latency_ms": 3162,
         "error_message": null,
-        "created_at": "2026-10-11T13:42:25.323487+00:00"
+        "created_at": "2026-10-11T13:42:25.323487+00:00",
+        "tool_label": "📊 Tabelog 平行查驗 + Constraint Sensor"
       },
       {
         "step_id": "15484bab-279f-4d99-af2a-328ad9c7e1c2",
@@ -3677,7 +3718,8 @@ window.onresize = () => {
         },
         "latency_ms": 1943,
         "error_message": null,
-        "created_at": "2026-10-11T13:42:28.702500+00:00"
+        "created_at": "2026-10-11T13:42:28.702500+00:00",
+        "tool_label": "🛡️ Scoped Anchor 卡片合成"
       }
     ],
     "25f12315-8bd0-4073-b7ad-880c2307a8cf": [
@@ -3700,7 +3742,8 @@ window.onresize = () => {
         },
         "latency_ms": 626,
         "error_message": null,
-        "created_at": "2026-10-13T14:41:01.900895+00:00"
+        "created_at": "2026-10-13T14:41:01.900895+00:00",
+        "tool_label": "🧠 Pydantic IntentOutput (Self-Correction)"
       },
       {
         "step_id": "4c4a853c-d842-4971-a36c-f3a273527a4f",
@@ -3719,7 +3762,8 @@ window.onresize = () => {
         },
         "latency_ms": 416,
         "error_message": null,
-        "created_at": "2026-10-13T14:41:03.241560+00:00"
+        "created_at": "2026-10-13T14:41:03.241560+00:00",
+        "tool_label": "search_nearby_ladder"
       },
       {
         "step_id": "167bb9ae-d2ca-4d89-bff2-45fd606dfdf1",
@@ -3904,7 +3948,8 @@ window.onresize = () => {
         },
         "latency_ms": 17051,
         "error_message": null,
-        "created_at": "2026-10-13T14:41:20.549513+00:00"
+        "created_at": "2026-10-13T14:41:20.549513+00:00",
+        "tool_label": "📊 Tabelog 平行查驗 + Constraint Sensor"
       },
       {
         "step_id": "f874a4e3-6a96-4c09-8092-4c97c20fac49",
@@ -3923,7 +3968,8 @@ window.onresize = () => {
         },
         "latency_ms": 2082,
         "error_message": null,
-        "created_at": "2026-10-13T14:41:25.090389+00:00"
+        "created_at": "2026-10-13T14:41:25.090389+00:00",
+        "tool_label": "🛡️ Scoped Anchor 卡片合成"
       }
     ],
     "d16d0a5d-e19a-443f-a703-9fcdaa63c6e6": [
@@ -3946,7 +3992,8 @@ window.onresize = () => {
         },
         "latency_ms": 352,
         "error_message": null,
-        "created_at": "2026-10-12T16:14:43.488076+00:00"
+        "created_at": "2026-10-12T16:14:43.488076+00:00",
+        "tool_label": "🧠 Pydantic IntentOutput (Self-Correction)"
       },
       {
         "step_id": "ce985343-1d84-4be2-a0b4-2aee419e3551",
@@ -3965,7 +4012,8 @@ window.onresize = () => {
         },
         "latency_ms": 340,
         "error_message": null,
-        "created_at": "2026-10-12T16:14:44.688460+00:00"
+        "created_at": "2026-10-12T16:14:44.688460+00:00",
+        "tool_label": "search_nearby_ladder"
       },
       {
         "step_id": "e0e70a99-7a51-4a2e-ba6e-f535320a2e59",
@@ -4078,7 +4126,8 @@ window.onresize = () => {
         },
         "latency_ms": 2559,
         "error_message": null,
-        "created_at": "2026-10-12T16:14:47.476353+00:00"
+        "created_at": "2026-10-12T16:14:47.476353+00:00",
+        "tool_label": "📊 Tabelog 平行查驗 + Constraint Sensor"
       },
       {
         "step_id": "12e6e583-42c0-47f5-a005-69717d670cf6",
@@ -4097,7 +4146,8 @@ window.onresize = () => {
         },
         "latency_ms": 1777,
         "error_message": null,
-        "created_at": "2026-10-12T16:14:50.587693+00:00"
+        "created_at": "2026-10-12T16:14:50.587693+00:00",
+        "tool_label": "🛡️ Scoped Anchor 卡片合成"
       }
     ],
     "b0621e0f-21bd-4825-a6fe-8b02a09e4697": [
@@ -4120,7 +4170,8 @@ window.onresize = () => {
         },
         "latency_ms": 371,
         "error_message": null,
-        "created_at": "2026-10-13T14:26:14.730703+00:00"
+        "created_at": "2026-10-13T14:26:14.730703+00:00",
+        "tool_label": "🧠 Pydantic IntentOutput (Self-Correction)"
       },
       {
         "step_id": "3a0c0caa-fd5c-4db4-b386-a9e9277991c0",
@@ -4139,7 +4190,8 @@ window.onresize = () => {
         },
         "latency_ms": 517,
         "error_message": null,
-        "created_at": "2026-10-13T14:26:16.293206+00:00"
+        "created_at": "2026-10-13T14:26:16.293206+00:00",
+        "tool_label": "search_nearby_ladder"
       },
       {
         "step_id": "90ac7b9d-9330-4e4c-9c78-4996a07f5554",
@@ -4312,7 +4364,8 @@ window.onresize = () => {
         },
         "latency_ms": 9642,
         "error_message": null,
-        "created_at": "2026-10-13T14:26:26.192555+00:00"
+        "created_at": "2026-10-13T14:26:26.192555+00:00",
+        "tool_label": "📊 Tabelog 平行查驗 + Constraint Sensor"
       },
       {
         "step_id": "7b5f3cb7-b714-4bd5-bf66-f21653b1f2d5",
@@ -4331,7 +4384,8 @@ window.onresize = () => {
         },
         "latency_ms": 1704,
         "error_message": null,
-        "created_at": "2026-10-13T14:26:29.921276+00:00"
+        "created_at": "2026-10-13T14:26:29.921276+00:00",
+        "tool_label": "🛡️ Scoped Anchor 卡片合成"
       }
     ],
     "d2189f5f-a6a0-4e79-b106-bcfc0f447b5e": [
@@ -4354,7 +4408,8 @@ window.onresize = () => {
         },
         "latency_ms": 3800,
         "error_message": null,
-        "created_at": "2026-10-18T12:59:16.993504+00:00"
+        "created_at": "2026-10-18T12:59:16.993504+00:00",
+        "tool_label": "🧠 Pydantic IntentOutput (Self-Correction)"
       },
       {
         "step_id": "12f8c546-b01b-4610-98bf-b92b5686bc9d",
@@ -4373,7 +4428,8 @@ window.onresize = () => {
         },
         "latency_ms": 9500,
         "error_message": null,
-        "created_at": "2026-10-18T12:59:33.993382+00:00"
+        "created_at": "2026-10-18T12:59:33.993382+00:00",
+        "tool_label": "search_nearby_ladder"
       },
       {
         "step_id": "f2ba465f-f4b0-4769-83f2-d78c11c5d2d0",
@@ -4558,7 +4614,8 @@ window.onresize = () => {
         },
         "latency_ms": 167827,
         "error_message": null,
-        "created_at": "2026-10-18T13:02:22.268707+00:00"
+        "created_at": "2026-10-18T13:02:22.268707+00:00",
+        "tool_label": "📊 Tabelog 平行查驗 + Constraint Sensor"
       },
       {
         "step_id": "15b6b210-306b-4f4a-9787-eff3b268b60e",
@@ -4579,7 +4636,8 @@ window.onresize = () => {
         },
         "latency_ms": 15795,
         "error_message": null,
-        "created_at": "2026-10-18T13:02:46.393298+00:00"
+        "created_at": "2026-10-18T13:02:46.393298+00:00",
+        "tool_label": "card_synthesis_format_fallback"
       }
     ],
     "9417e5d7-1098-46d5-959c-c3052b374260": [
@@ -4602,7 +4660,8 @@ window.onresize = () => {
         },
         "latency_ms": 385,
         "error_message": null,
-        "created_at": "2026-10-11T13:43:31.359839+00:00"
+        "created_at": "2026-10-11T13:43:31.359839+00:00",
+        "tool_label": "🧠 Pydantic IntentOutput (Self-Correction)"
       },
       {
         "step_id": "316e6d80-809b-4692-ae43-078ae946fc1b",
@@ -4621,7 +4680,8 @@ window.onresize = () => {
         },
         "latency_ms": 331,
         "error_message": null,
-        "created_at": "2026-10-11T13:43:32.927920+00:00"
+        "created_at": "2026-10-11T13:43:32.927920+00:00",
+        "tool_label": "search_nearby_ladder"
       },
       {
         "step_id": "df2e507c-4d0c-4ee7-a3d7-89539dc9fc10",
@@ -4734,7 +4794,8 @@ window.onresize = () => {
         },
         "latency_ms": 2958,
         "error_message": null,
-        "created_at": "2026-10-11T13:43:36.140392+00:00"
+        "created_at": "2026-10-11T13:43:36.140392+00:00",
+        "tool_label": "📊 Tabelog 平行查驗 + Constraint Sensor"
       },
       {
         "step_id": "507fbc3d-d99d-463c-bdac-65477102f806",
@@ -4753,7 +4814,8 @@ window.onresize = () => {
         },
         "latency_ms": 2600,
         "error_message": null,
-        "created_at": "2026-10-11T13:43:40.078507+00:00"
+        "created_at": "2026-10-11T13:43:40.078507+00:00",
+        "tool_label": "🛡️ Scoped Anchor 卡片合成"
       }
     ],
     "ef30db8e-272d-42a9-a3d0-4f952b01cb9a": [
@@ -4776,7 +4838,8 @@ window.onresize = () => {
         },
         "latency_ms": 410,
         "error_message": null,
-        "created_at": "2026-10-11T10:55:22.893038+00:00"
+        "created_at": "2026-10-11T10:55:22.893038+00:00",
+        "tool_label": "🧠 Pydantic IntentOutput (Self-Correction)"
       },
       {
         "step_id": "d9f28537-5cd7-4c01-bb3a-890cf494eb68",
@@ -4795,7 +4858,8 @@ window.onresize = () => {
         },
         "latency_ms": 420,
         "error_message": null,
-        "created_at": "2026-10-11T10:55:24.167859+00:00"
+        "created_at": "2026-10-11T10:55:24.167859+00:00",
+        "tool_label": "search_nearby_ladder"
       },
       {
         "step_id": "618133ab-d4ab-4c56-aa60-690c5c3ced42",
@@ -4908,7 +4972,8 @@ window.onresize = () => {
         },
         "latency_ms": 7140,
         "error_message": null,
-        "created_at": "2026-10-11T10:55:31.547348+00:00"
+        "created_at": "2026-10-11T10:55:31.547348+00:00",
+        "tool_label": "📊 Tabelog 平行查驗 + Constraint Sensor"
       },
       {
         "step_id": "43a95483-929a-41e2-8a3c-2f705ad6329e",
@@ -4927,7 +4992,8 @@ window.onresize = () => {
         },
         "latency_ms": 2002,
         "error_message": null,
-        "created_at": "2026-10-11T10:55:35.362311+00:00"
+        "created_at": "2026-10-11T10:55:35.362311+00:00",
+        "tool_label": "🛡️ Scoped Anchor 卡片合成"
       }
     ],
     "131047f5-3770-4e9e-b2dc-a1ff4584cf23": [
@@ -4950,7 +5016,8 @@ window.onresize = () => {
         },
         "latency_ms": 6499,
         "error_message": null,
-        "created_at": "2026-10-18T11:49:11.105654+00:00"
+        "created_at": "2026-10-18T11:49:11.105654+00:00",
+        "tool_label": "🧠 Pydantic IntentOutput (Self-Correction)"
       },
       {
         "step_id": "661cdb94-3834-4706-8354-bf5a950b3639",
@@ -4969,7 +5036,8 @@ window.onresize = () => {
         },
         "latency_ms": 10201,
         "error_message": null,
-        "created_at": "2026-10-18T11:49:30.912143+00:00"
+        "created_at": "2026-10-18T11:49:30.912143+00:00",
+        "tool_label": "search_nearby_ladder"
       },
       {
         "step_id": "301f23a2-36db-4d9c-84ce-5532ccbfb75a",
@@ -5159,7 +5227,8 @@ window.onresize = () => {
         },
         "latency_ms": 286699,
         "error_message": null,
-        "created_at": "2026-10-18T11:54:19.103737+00:00"
+        "created_at": "2026-10-18T11:54:19.103737+00:00",
+        "tool_label": "📊 Tabelog 平行查驗 + Constraint Sensor"
       },
       {
         "step_id": "43887613-8ce2-4b8a-9918-5570e8f0efc4",
@@ -5178,7 +5247,8 @@ window.onresize = () => {
         },
         "latency_ms": 8800,
         "error_message": null,
-        "created_at": "2026-10-18T11:54:50.549068+00:00"
+        "created_at": "2026-10-18T11:54:50.549068+00:00",
+        "tool_label": "🛡️ Scoped Anchor 卡片合成"
       }
     ],
     "43381823-6cf7-4077-a321-2cdc2330f15b": [
@@ -5201,7 +5271,8 @@ window.onresize = () => {
         },
         "latency_ms": 408,
         "error_message": null,
-        "created_at": "2026-10-11T14:49:01.132570+00:00"
+        "created_at": "2026-10-11T14:49:01.132570+00:00",
+        "tool_label": "🧠 Pydantic IntentOutput (Self-Correction)"
       },
       {
         "step_id": "f012940a-8fec-4ce9-a311-ffb18179d4d1",
@@ -5220,7 +5291,8 @@ window.onresize = () => {
         },
         "latency_ms": 401,
         "error_message": null,
-        "created_at": "2026-10-11T14:49:02.433198+00:00"
+        "created_at": "2026-10-11T14:49:02.433198+00:00",
+        "tool_label": "search_nearby_ladder"
       },
       {
         "step_id": "93d75b5b-cb8b-4d04-a5bb-0ecf845a81fb",
@@ -5381,7 +5453,8 @@ window.onresize = () => {
         },
         "latency_ms": 3781,
         "error_message": null,
-        "created_at": "2026-10-11T14:49:06.469921+00:00"
+        "created_at": "2026-10-11T14:49:06.469921+00:00",
+        "tool_label": "📊 Tabelog 平行查驗 + Constraint Sensor"
       },
       {
         "step_id": "b4ab1256-4308-4efe-af0f-e4485ab2c36c",
@@ -5400,7 +5473,8 @@ window.onresize = () => {
         },
         "latency_ms": 1849,
         "error_message": null,
-        "created_at": "2026-10-11T14:49:10.182422+00:00"
+        "created_at": "2026-10-11T14:49:10.182422+00:00",
+        "tool_label": "🛡️ Scoped Anchor 卡片合成"
       }
     ],
     "cd95329e-5d9f-4c68-bf9d-a1098b868e8c": [
@@ -5423,7 +5497,8 @@ window.onresize = () => {
         },
         "latency_ms": 429,
         "error_message": null,
-        "created_at": "2026-10-11T15:15:23.207308+00:00"
+        "created_at": "2026-10-11T15:15:23.207308+00:00",
+        "tool_label": "🧠 Pydantic IntentOutput (Self-Correction)"
       },
       {
         "step_id": "33067a1b-fedd-46d2-bf9c-dd083e59a55a",
@@ -5442,7 +5517,8 @@ window.onresize = () => {
         },
         "latency_ms": 396,
         "error_message": null,
-        "created_at": "2026-10-11T15:15:24.437491+00:00"
+        "created_at": "2026-10-11T15:15:24.437491+00:00",
+        "tool_label": "search_nearby_ladder"
       },
       {
         "step_id": "74aacf40-7d77-471c-9923-d86486dcc670",
@@ -5603,7 +5679,8 @@ window.onresize = () => {
         },
         "latency_ms": 2997,
         "error_message": null,
-        "created_at": "2026-10-11T15:15:27.696283+00:00"
+        "created_at": "2026-10-11T15:15:27.696283+00:00",
+        "tool_label": "📊 Tabelog 平行查驗 + Constraint Sensor"
       },
       {
         "step_id": "4c646bf1-f77d-4480-8b3d-edc335984ccc",
@@ -5622,7 +5699,8 @@ window.onresize = () => {
         },
         "latency_ms": 1947,
         "error_message": null,
-        "created_at": "2026-10-11T15:15:31.037231+00:00"
+        "created_at": "2026-10-11T15:15:31.037231+00:00",
+        "tool_label": "🛡️ Scoped Anchor 卡片合成"
       }
     ],
     "fbf9f5bf-bf8a-4023-b8a9-56023df1952a": [
@@ -5645,7 +5723,8 @@ window.onresize = () => {
         },
         "latency_ms": 391,
         "error_message": null,
-        "created_at": "2026-10-11T15:23:15.501028+00:00"
+        "created_at": "2026-10-11T15:23:15.501028+00:00",
+        "tool_label": "🧠 Pydantic IntentOutput (Self-Correction)"
       },
       {
         "step_id": "ec566cc9-e824-4b5b-ae7f-b4e9b1fc4838",
@@ -5664,7 +5743,8 @@ window.onresize = () => {
         },
         "latency_ms": 343,
         "error_message": null,
-        "created_at": "2026-10-11T15:23:16.810360+00:00"
+        "created_at": "2026-10-11T15:23:16.810360+00:00",
+        "tool_label": "search_nearby_ladder"
       },
       {
         "step_id": "3863fa2b-c8bc-41c9-be63-2ae8d795af54",
@@ -5801,7 +5881,8 @@ window.onresize = () => {
         },
         "latency_ms": 8784,
         "error_message": null,
-        "created_at": "2026-10-11T15:23:25.965428+00:00"
+        "created_at": "2026-10-11T15:23:25.965428+00:00",
+        "tool_label": "📊 Tabelog 平行查驗 + Constraint Sensor"
       },
       {
         "step_id": "39357ddb-ed64-4ecf-994a-2990e1bcd9f4",
@@ -5820,7 +5901,8 @@ window.onresize = () => {
         },
         "latency_ms": 2505,
         "error_message": null,
-        "created_at": "2026-10-11T15:23:30.561723+00:00"
+        "created_at": "2026-10-11T15:23:30.561723+00:00",
+        "tool_label": "🛡️ Scoped Anchor 卡片合成"
       }
     ],
     "bad8bc5f-ea5c-4b2c-ae50-cc1f4a704e2c": [
@@ -5843,7 +5925,8 @@ window.onresize = () => {
         },
         "latency_ms": 383,
         "error_message": null,
-        "created_at": "2026-10-11T15:39:14.701839+00:00"
+        "created_at": "2026-10-11T15:39:14.701839+00:00",
+        "tool_label": "🧠 Pydantic IntentOutput (Self-Correction)"
       },
       {
         "step_id": "9f273955-e982-4d30-ae59-847953af1ecd",
@@ -5862,7 +5945,8 @@ window.onresize = () => {
         },
         "latency_ms": 326,
         "error_message": null,
-        "created_at": "2026-10-11T15:39:15.865881+00:00"
+        "created_at": "2026-10-11T15:39:15.865881+00:00",
+        "tool_label": "search_nearby_ladder"
       },
       {
         "step_id": "86ae9c44-3763-4218-9a9f-12993a1b969b",
@@ -6023,7 +6107,8 @@ window.onresize = () => {
         },
         "latency_ms": 2403,
         "error_message": null,
-        "created_at": "2026-10-11T15:39:18.509382+00:00"
+        "created_at": "2026-10-11T15:39:18.509382+00:00",
+        "tool_label": "📊 Tabelog 平行查驗 + Constraint Sensor"
       },
       {
         "step_id": "272e2fa2-94d8-44dc-876f-9fb8a2a24b18",
@@ -6042,7 +6127,8 @@ window.onresize = () => {
         },
         "latency_ms": 1395,
         "error_message": null,
-        "created_at": "2026-10-11T15:39:21.213137+00:00"
+        "created_at": "2026-10-11T15:39:21.213137+00:00",
+        "tool_label": "🛡️ Scoped Anchor 卡片合成"
       }
     ],
     "af3b5f32-06f6-4b8a-a183-24b93fd7c7a5": [
@@ -6065,7 +6151,8 @@ window.onresize = () => {
         },
         "latency_ms": 328,
         "error_message": null,
-        "created_at": "2026-10-23T14:51:52.868223+00:00"
+        "created_at": "2026-10-23T14:51:52.868223+00:00",
+        "tool_label": "🧠 Pydantic IntentOutput (Self-Correction)"
       },
       {
         "step_id": "3e28d976-ff5a-49c8-a42f-4ba5babd9b9a",
@@ -6084,7 +6171,8 @@ window.onresize = () => {
         },
         "latency_ms": 342,
         "error_message": null,
-        "created_at": "2026-10-23T14:51:54.093497+00:00"
+        "created_at": "2026-10-23T14:51:54.093497+00:00",
+        "tool_label": "search_nearby_ladder"
       },
       {
         "step_id": "4df742d9-dd85-42f0-a41e-876cff6a5ba5",
@@ -6269,7 +6357,8 @@ window.onresize = () => {
         },
         "latency_ms": 5753,
         "error_message": null,
-        "created_at": "2026-10-23T14:52:00.362074+00:00"
+        "created_at": "2026-10-23T14:52:00.362074+00:00",
+        "tool_label": "📊 Tabelog 平行查驗 + Constraint Sensor"
       },
       {
         "step_id": "4a801b26-5181-46f7-8ce3-e73172327d9d",
@@ -6288,7 +6377,8 @@ window.onresize = () => {
         },
         "latency_ms": 1955,
         "error_message": null,
-        "created_at": "2026-10-23T14:52:04.240747+00:00"
+        "created_at": "2026-10-23T14:52:04.240747+00:00",
+        "tool_label": "🛡️ Scoped Anchor 卡片合成"
       }
     ],
     "15660873-0ea1-44ee-8dfd-e63e203f18e3": [
@@ -6311,7 +6401,8 @@ window.onresize = () => {
         },
         "latency_ms": 524,
         "error_message": null,
-        "created_at": "2026-10-13T14:42:05.279068+00:00"
+        "created_at": "2026-10-13T14:42:05.279068+00:00",
+        "tool_label": "🧠 Pydantic IntentOutput (Self-Correction)"
       },
       {
         "step_id": "2899940e-1899-4b0a-94bf-cbe57564cb92",
@@ -6330,7 +6421,8 @@ window.onresize = () => {
         },
         "latency_ms": 421,
         "error_message": null,
-        "created_at": "2026-10-13T14:42:06.747028+00:00"
+        "created_at": "2026-10-13T14:42:06.747028+00:00",
+        "tool_label": "search_nearby_ladder"
       },
       {
         "step_id": "4d735b70-1ce6-4b54-8b8e-a170df6bdd89",
@@ -6491,7 +6583,8 @@ window.onresize = () => {
         },
         "latency_ms": 8187,
         "error_message": null,
-        "created_at": "2026-10-13T14:42:15.213708+00:00"
+        "created_at": "2026-10-13T14:42:15.213708+00:00",
+        "tool_label": "📊 Tabelog 平行查驗 + Constraint Sensor"
       },
       {
         "step_id": "d256f2d7-a1dd-4a53-bead-6729ce774979",
@@ -6510,7 +6603,8 @@ window.onresize = () => {
         },
         "latency_ms": 1871,
         "error_message": null,
-        "created_at": "2026-10-13T14:42:18.931693+00:00"
+        "created_at": "2026-10-13T14:42:18.931693+00:00",
+        "tool_label": "🛡️ Scoped Anchor 卡片合成"
       }
     ]
   }
