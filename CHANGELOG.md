@@ -6,6 +6,11 @@
 
 ## [Unreleased]
 ### Added
+- **Pre-Classifier `QuickPassGate` 0ms 入口快篩與安全絆線 (`src/agent/gate.py`)**：在進入 Stage 1 LLM 前執行 0ms 確定性正則快篩，攔截 Prompt Injection 越獄字串與超長輸入 (`>500` 字元)，並針對 `__healthcheck__`、純問候、純道謝提供 0-LLM 秒回，以及針對「指定店號追問 (`follow_up_index`)」、「純換一批 (`pure_more`)」、「日本經緯度座標 (`coords_search`)」直接路由。
+- **Pydantic v2 強型別合約與 Self-Correction 自癒重試迴圈 (`src/agent/schemas.py`, `src/agent/llm_client.py`)**：定義 `IntentOutput` 與 Tool 參數 Schema；當模型輸出違反 JSON 格式或 Pydantic 邊界時，自動捕獲 `ValidationError` 並回饋模型進行 1 次自癒重試，重試失敗時平滑降級至安全預設值。
+- **Two-Tier Memory 雙層記憶架構 (`src/db/repositories/session.py`)**：免改 SQL DDL，於 `chat_sessions.last_recommended_ids` JSONB 實作短期 `working_memory` (`last_cuisine`, `last_location`) 與跨輪 `long_term_preferences` (`dietary_restrictions`, `payment_preferences`)，支援「換一批」無縫繼承與長期飲食/支付偏好持久化。
+- **Stage 3 硬性條件防呆感測器 (`src/agent/stages/enrichment.py` - `apply_deterministic_constraints`)**：結合當輪 `modifier` 與跨輪長期偏好，對違反硬性條件（如要求刷卡/PayPay 卻僅收現金，或忌牛/忌生食）之候選店家自動標記 `constraint_violation` 並於老饕評分扣減 `0.45` 分降權重排。
+- **ADR 0002 架構決策文件**：新增 `docs/adr/0002-deterministic-agent-harness-and-two-tier-memory.md`。
 - **實體對齊都道府縣一票否決硬性護欄 (Prefecture & Distance Hard-Cap Guardrail)**：於 `EntityResolver` 實裝都道府縣代碼（`kanagawa` vs `tokyo`）與 5km 物理距離硬性護欄，跨區候選直接一票否決。
 - **跨語言多候選仲裁池 (Multi-Candidate Arbitration Pool)**：打破羅馬拼音西文名稱在純字元比對下的單一候選鎖定瓶頸，將通過地理護欄之 Top 3 候選全面納入仲裁，精準召回正牌老店（荒井屋 本店）。
 - **行政區平滑降級階梯 (Hierarchical Area Relaxation)**：細部商圈未命中時，優先退回大城市（如「橫濱」、「新宿」），避免裸店名引發全日本 SEO 雜訊污染。
