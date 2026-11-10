@@ -1,9 +1,11 @@
+import inspect
 import logging
 import time
 from typing import Any, Awaitable, Callable, Optional
 
 from src.agent.llm_client import LLMClient
 from src.agent.stages.enrichment import (
+    apply_deterministic_constraints,
     calculate_foodie_score,
     enrich_single_place,
     format_payment_methods,
@@ -213,6 +215,15 @@ class FoodRecommendationFSM:
             )
             intent = parsed.get("intent", "search")
 
+            # 分支 0: QuickPassGate 0ms 直接秒回 (問候/道謝/健康檢查/安全絆線)
+            if intent == "fast_reply":
+                await self.trace_logger.finish_run(
+                    status="completed",
+                    model_used="quick_pass_gate",
+                    total_tokens=0,
+                )
+                return str(parsed.get("fast_reply", ""))
+
             # 分支 A: 純閒聊 / 非美食問題
             if intent == "chitchat":
                 messages = [
@@ -296,6 +307,27 @@ class FoodRecommendationFSM:
             # 3. State 3: 3 店家平行 Tabelog 查驗
             enriched_stores = await self.execute_state_3_parallel_tabelog(candidates, area_hint=loc_name)
 
+            # 3.2 Deterministic Constraint Sensor: 根據當輪 modifier 與長期偏好進行硬性條件降權與重排
+            preferences: dict[str, Any] = {}
+            if chat_id:
+                try:
+                    prefs_fn = getattr(self.session_repo, "get_long_term_preferences", None)
+                    if callable(prefs_fn):
+                        prefs_res = prefs_fn(chat_id)
+                        prefs_val = await prefs_res if inspect.isawaitable(prefs_res) else prefs_res
+                        if isinstance(prefs_val, dict):
+                            preferences = prefs_val
+                except Exception as e:
+                    logger.warning(f"Failed to load long term preferences: {e}")
+
+            enriched_stores = apply_deterministic_constraints(
+                enriched_stores,
+                modifier=modifier,
+                preferences=preferences,
+            )
+            if any(s.get("constraint_violation") is True for s in enriched_stores):
+                enriched_stores = self.rank_and_select_top_stores(enriched_stores, top_k=len(enriched_stores))
+
             # 3.5 pgvector 語意重排與食評亮點萃取 (RAG)
             rerank_query = f"{user_message} {modifier}" if modifier else user_message
             enriched_stores = await self.semantic_rerank_reviews(rerank_query, enriched_stores)
@@ -311,13 +343,15 @@ class FoodRecommendationFSM:
                 location_name=loc_name,
             )
 
-            # 保存推薦店家至 Session 以支援後續追問與累積去重
+            # 保存推薦店家與 Working Memory 至 Session 以支援後續追問與累積去重
             if chat_id:
                 try:
                     await self.session_repo.update_recommended_ids(
                         chat_id=chat_id,
                         recommended_ids=enriched_stores,
                         accumulate=(intent == "more"),
+                        last_cuisine=search_keyword,
+                        last_location=loc_name,
                     )
                 except Exception as e:
                     logger.warning(f"Could not persist recommended stores to session: {e}")

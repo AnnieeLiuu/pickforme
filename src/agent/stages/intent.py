@@ -6,10 +6,14 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 import logging
 import time
 from typing import TYPE_CHECKING, Any, Optional
+
+from src.agent.gate import QuickPassGate
+from src.agent.schemas import IntentOutput, extract_preferences_from_text
 
 if TYPE_CHECKING:
     from src.agent.pipeline import FoodRecommendationFSM
@@ -60,29 +64,96 @@ async def execute_state_1_intent(
     conversation_history: Optional[list[dict[str, str]]],
     chat_id: Optional[int] = None,
 ) -> dict[str, Any]:
-    """State 1: 0.3s 微型 LLM 結構化意圖與座標解析"""
-    messages: list[dict[str, Any]] = [{"role": "system", "content": INTENT_PARSER_SYSTEM_PROMPT}]
-    messages.extend(sanitize_history_for_intent(conversation_history))
-    messages.append({"role": "user", "content": user_message})
+    """State 1: 0ms QuickPassGate 入口快篩 + 0.3s 微型 LLM 結構化意圖與座標解析"""
+    gate_res = QuickPassGate().evaluate(user_message)
+    if gate_res.matched:
+        if gate_res.fast_reply is not None:
+            await fsm.trace_logger.log_step(
+                action_type="state_1_intent",
+                tool_name="quick_pass_gate",
+                tool_input={"message": user_message, "rule": gate_res.rule_name},
+                tool_output={"intent": "fast_reply", "fast_reply": gate_res.fast_reply},
+                latency_ms=0,
+            )
+            return {
+                "intent": "fast_reply",
+                "fast_reply": gate_res.fast_reply,
+                "rule_name": gate_res.rule_name,
+            }
+        parsed = dict(gate_res.parsed_intent or {})
+        await fsm.trace_logger.log_step(
+            action_type="state_1_intent",
+            tool_name="quick_pass_gate",
+            tool_input={"message": user_message, "rule": gate_res.rule_name},
+            tool_output=parsed,
+            latency_ms=0,
+        )
+    else:
+        messages: list[dict[str, Any]] = [{"role": "system", "content": INTENT_PARSER_SYSTEM_PROMPT}]
+        messages.extend(sanitize_history_for_intent(conversation_history))
+        messages.append({"role": "user", "content": user_message})
 
-    t0 = time.time()
-    parsed, model, tokens = await fsm.llm_client.call_structured_json(messages)
-    latency = int((time.time() - t0) * 1000)
+        t0 = time.time()
+        parsed, model, tokens = await fsm.llm_client.call_structured_json(messages, schema=IntentOutput)
+        latency = int((time.time() - t0) * 1000)
 
-    await fsm.trace_logger.log_step(
-        action_type="state_1_intent",
-        tool_name="intent_parser",
-        tool_input={"message": user_message},
-        tool_output=parsed,
-        latency_ms=latency,
-    )
+        await fsm.trace_logger.log_step(
+            action_type="state_1_intent",
+            tool_name="intent_parser",
+            tool_input={"message": user_message},
+            tool_output=parsed,
+            latency_ms=latency,
+        )
+
+    # 確定性與 LLM 雙軌抽取長期飲食禁忌與支付偏好並持久化
+    if chat_id:
+        extracted_prefs = extract_preferences_from_text(user_message)
+        dietary_set = list(
+            dict.fromkeys(
+                (extracted_prefs.get("dietary_restrictions") or []) + (parsed.get("dietary_restrictions") or [])
+            )
+        )
+        payment_set = list(
+            dict.fromkeys(
+                (extracted_prefs.get("payment_preferences") or []) + (parsed.get("payment_preferences") or [])
+            )
+        )
+        if dietary_set or payment_set:
+            try:
+                upd_fn = getattr(fsm.session_repo, "update_long_term_preferences", None)
+                if callable(upd_fn):
+                    res = upd_fn(
+                        chat_id,
+                        dietary_restrictions=dietary_set,
+                        payment_preferences=payment_set,
+                    )
+                    if inspect.isawaitable(res):
+                        await res
+            except Exception as e:
+                logger.warning(f"Failed to update long term preferences: {e}")
 
     intent = parsed.get("intent", "search")
-    loc_str = parsed.get("location")
-    resolved_coords: Optional[tuple[float, float]] = None
 
-    # 優先轉換明確地名為經緯度
-    if loc_str:
+    # 若為 "more" 且缺少料理或地名，優先從 Working Memory 繼承
+    if intent == "more" and chat_id and (not parsed.get("cuisine") or not parsed.get("location")):
+        try:
+            wm_fn = getattr(fsm.session_repo, "get_working_memory", None)
+            if callable(wm_fn):
+                wm_res = wm_fn(chat_id)
+                wm = await wm_res if inspect.isawaitable(wm_res) else wm_res
+                if isinstance(wm, dict):
+                    if not parsed.get("cuisine") and wm.get("last_cuisine"):
+                        parsed["cuisine"] = wm["last_cuisine"]
+                    if not parsed.get("location") and wm.get("last_location"):
+                        parsed["location"] = wm["last_location"]
+        except Exception as e:
+            logger.warning(f"Failed to load working memory for more intent: {e}")
+
+    loc_str = parsed.get("location")
+    resolved_coords: Optional[tuple[float, float]] = parsed.get("coords")
+
+    # 優先轉換明確地名為經緯度 (若尚未由 coords_search 提供座標)
+    if not resolved_coords and loc_str:
         resolved_coords = await fsm.places_client.geocode_location(loc_str)
 
     # 若無地名但使用者有帶 GPS

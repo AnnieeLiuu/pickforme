@@ -1366,3 +1366,97 @@ async def test_case22_internal_diagnostics_and_max_tokens_guardrail():
 
         sent_json = mock_post.call_args.kwargs.get("json", {})
         assert sent_json.get("max_tokens") == 800, f"max_tokens 應為 800: {sent_json}"
+
+
+# ==============================================================================
+# Case 23: QuickPassGate 0-LLM 秒回與指定店號追問快篩回歸測試
+# ==============================================================================
+@pytest.mark.asyncio
+async def test_regression_quick_pass_gate_zero_llm_on_greeting_and_follow_up():
+    """Case 23: 驗證 QuickPassGate 在入口即以 0ms 攔截純問候與指定店號追問：
+    1. 「你好」直接透過 fast_reply 秒回，Stage 1 與 Chitchat 均為 0 次 LLM 呼叫。
+    2. 「第二家可以刷卡嗎」跳過 Stage 1 call_structured_json，直接鎖定 target_index=2 進入 execute_follow_up。
+    """
+    mock_llm = MagicMock()
+    mock_llm.call_structured_json = AsyncMock()
+    mock_llm.call_text = AsyncMock(return_value=("第二家荒井屋可以使用信用卡喔！", "groq", 42))
+
+    mock_session_repo = MagicMock()
+    mock_session_repo.get_last_recommended_stores = AsyncMock(
+        return_value=[
+            {"name_ja": "第一家拉麵", "tabelog_rating": 3.5},
+            {"name_ja": "荒井屋 本店", "tabelog_rating": 3.6, "accepts_credit_cards": True},
+        ]
+    )
+    mock_session_repo.update_long_term_preferences = AsyncMock()
+
+    fsm = FoodRecommendationFSM(
+        llm_client=mock_llm,
+        places_client=MagicMock(),
+        tabelog_scraper=MagicMock(),
+        entity_resolver=MagicMock(),
+        session_repo=mock_session_repo,
+        trace_logger=MagicMock(log_step=AsyncMock(), start_run=AsyncMock(), finish_run=AsyncMock()),
+    )
+
+    # 1. 純問候：「你好」-> 0 次 LLM 呼叫
+    reply_greeting = await fsm.run_pipeline(chat_id=12345, user_message="你好")
+    assert "日本美食推薦助手" in reply_greeting
+    mock_llm.call_structured_json.assert_not_called()
+    mock_llm.call_text.assert_not_called()
+
+    # 2. 指定店號追問：「第二家可以刷卡嗎」-> 跳過 Stage 1 LLM (call_structured_json 0 次)，直接執行 follow_up
+    reply_followup = await fsm.run_pipeline(chat_id=12345, user_message="第二家可以刷卡嗎")
+    assert "荒井屋" in reply_followup
+    mock_llm.call_structured_json.assert_not_called()
+    mock_llm.call_text.assert_called_once()
+    # 驗證傳給 follow_up LLM 的目標店家確實是 target_index=2 (荒井屋 本店)
+    sent_messages = mock_llm.call_text.call_args.args[0]
+    assert "荒井屋 本店" in sent_messages[1]["content"]
+    # 驗證確定性偏好抽取同時觸發了長期偏好更新 (credit_card)
+    mock_session_repo.update_long_term_preferences.assert_awaited_once()
+
+
+# ==============================================================================
+# Case 24: 純「換一批」0ms 快篩與 Working Memory 跨輪繼承回歸測試
+# ==============================================================================
+@pytest.mark.asyncio
+async def test_regression_pure_more_inherits_working_memory_without_intent_llm():
+    """Case 24: 驗證使用者輸入純「換一批」時：
+    1. QuickPassGate 直接命中 pure_more，0 次 Stage 1 LLM 呼叫 (call_structured_json.assert_not_called())。
+    2. 自動從 SessionRepository.get_working_memory 繼承上一輪的 last_cuisine="壽喜燒" 與 last_location="淺草"。
+    """
+    mock_llm = MagicMock()
+    mock_llm.call_structured_json = AsyncMock()
+    mock_llm.call_text = AsyncMock()
+
+    mock_places = MagicMock()
+    mock_places.geocode_location = AsyncMock(return_value=(35.7148, 139.7967))
+
+    mock_session_repo = MagicMock()
+    mock_session_repo.get_working_memory = AsyncMock(return_value={"last_cuisine": "壽喜燒", "last_location": "淺草"})
+    mock_session_repo.get_session = AsyncMock(
+        return_value={"last_location_lat": 35.7148, "last_location_lng": 139.7967}
+    )
+
+    fsm = FoodRecommendationFSM(
+        llm_client=mock_llm,
+        places_client=mock_places,
+        tabelog_scraper=MagicMock(),
+        entity_resolver=MagicMock(),
+        session_repo=mock_session_repo,
+        trace_logger=MagicMock(log_step=AsyncMock(), start_run=AsyncMock(), finish_run=AsyncMock()),
+    )
+
+    parsed = await fsm.execute_state_1_intent(
+        user_message="換一批",
+        user_location=None,
+        conversation_history=[],
+        chat_id=99999,
+    )
+
+    mock_llm.call_structured_json.assert_not_called()
+    assert parsed["intent"] == "more"
+    assert parsed["cuisine"] == "壽喜燒"
+    assert parsed["location"] == "淺草"
+    assert parsed["coords"] == (35.7148, 139.7967)
