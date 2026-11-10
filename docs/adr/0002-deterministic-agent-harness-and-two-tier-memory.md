@@ -44,3 +44,4 @@
 ### 防禦與緩解機制 (Mitigation Strategies)
 - **上限鎖定 (`max_retries=1`)**：自癒迴圈嚴格限制最多重試 1 次，超限立即走純程式碼安全保底，杜絕無限重試風暴。
 - **全量離線回歸測試**：透過 `tests/test_quick_pass_gate.py`、`tests/test_schemas_and_self_correction.py`、`tests/test_two_tier_memory_and_constraints.py` 與 `tests/test_real_world_regressions.py` 鎖定所有邊界條件。
+
