@@ -114,7 +114,7 @@ flowchart TD
         FSMInit --> QuickPass["⚡ QuickPassGate 0ms 確定性快篩與安全絆線<br/>(攔截越獄/超長輸入/問候/道謝/店號追問/換一批/座標直搜)"]
         QuickPass -- "命中 Fast-Reply / 安全絆線" --> GateFastReply["0ms 極速秒回 / 安全防護攔截"] --> EndResponse
         QuickPass -- "命中 follow_up_index" --> AnswerDirect["由 chat_sessions 歷史候選資料直接回答<br/>0.5s 秒答，不重複調用 Places"] --> EndResponse
-        QuickPass -- "未命中快篩 / 需語意解析" --> ParseIntent["Micro-LLM 結構化解析 + Pydantic Self-Correction<br/>(IntentOutput Schema 驗證 + 自動重試自癒)"]
+        QuickPass -- "未命中快篩 [Sanitized Context / Observation Masking]" --> ParseIntent["Micro-LLM 結構化解析 + Pydantic Self-Correction<br/>(IntentOutput Schema 驗證 + 自動重試自癒)"]
         ParseIntent --> SyncMemory["Two-Tier Memory 雙軌偏好抽取與繼承<br/>(更新 long_term_preferences + 繼承 working_memory)"]
         SyncMemory --> CheckFollowUp{"是否為追問句?"}
         CheckFollowUp -- "是追問" --> AnswerDirect
@@ -124,7 +124,7 @@ flowchart TD
         Geocode --> S1Done
     end
 
-    S1Done --> Progress1["Telegram 狀態推播 1:<br/>🔍 已鎖定 地點，正在搜尋評價優質的 種類 餐廳..."]
+    S1Done -->|"注入 FSMRunContext [Working Memory: accumulated_seen_ids Excluded]"| Progress1["Telegram 狀態推播 1:<br/>🔍 已鎖定 地點，正在搜尋評價優質的 種類 餐廳..."]
 
     subgraph State2 ["State 2: 雙源獵店與智慧階梯搜尋 (Tabelog-First Dual-Source & Ladder Search, src/agent/stages/places_search.py)"]
         Progress1 --> DualSource["🌐 源頭 A: Tabelog 主動獵取地區高分/百名店 (discover_area_top_stores)<br/>📍 源頭 B: Google Places 第 1 階 800m 搜尋"]
@@ -164,7 +164,7 @@ flowchart TD
     subgraph State4 ["State 4: 單次合成推薦卡片 (Synthesis, Guardrail & Template Fallback)"]
         S3Done --> LLMSynthesis["LLMClient 單次生成高美感卡片<br/>(Groq ➡️ Gemini ➡️ Ollama Failover)"]
         LLMSynthesis --> CheckLLMResult{"LLM 生成成功?"}
-        CheckLLMResult -- 成功 --> GuardrailCheck["🛡️ Scoped Anchor 區塊錨點護欄<br/>(0.1ms 數值校驗與自動矯正)"]
+        CheckLLMResult -- "成功 [Deterministic Gate: Scoped Overwrite & In-place Repair]" --> GuardrailCheck["🛡️ Scoped Anchor 區塊錨點護欄 & 原地修復<br/>(0.1ms 數值覆寫與 Code Block 原地修補)"]
         GuardrailCheck --> FinalCard["輸出零幻覺精選卡片<br/>店名獨立 Code Block + 🚶步行距離"]
         CheckLLMResult -- 失敗 / 空回覆 --> TemplateFallback["純模板引擎自動防護直出<br/>徽章: ⚠️ AI 語意模型連線異常，已為您自動載入直出卡片"]
     end

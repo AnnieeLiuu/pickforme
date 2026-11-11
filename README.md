@@ -4,7 +4,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-green.svg)](https://fastapi.tiangolo.com/)
 [![Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Type Checked](https://img.shields.io/badge/mypy-checked-blue.svg)](http://mypy-lang.org/)
-[![Tests](https://img.shields.io/badge/pytest-130%20passed-success.svg)](https://docs.pytest.org/)
+[![Tests](https://img.shields.io/badge/pytest-158%20passed-success.svg)](https://docs.pytest.org/)
 
 > **專案定位**：專為日本旅遊打造的高效能智慧美食 Agent 系統。解決遊客外出時「距離近、評分高、有開門、在地評價真實」的痛點。結合 Google Places API、Tabelog 爬蟲與實體比對器、Neon Serverless Postgres 以及 Telegram Bot 介面。
 
@@ -53,9 +53,10 @@
 ```mermaid
 graph TD
     User(["Telegram App / 每次發送位置與問句"]) -->|Webhook| Server["FastAPI 後端 @ Cloud Run"]
-    Server --> FSM["自研 4 階段 FSM 狀態機 (FoodRecommendationFSM)"]
+    Server --> Gate["⚡ 0ms QuickPassGate 快篩與安全絆線<br/>(攔截越獄/問候/店號追問/純換批)"]
+    Gate -->|"通過快篩 [Sanitized Context / Observation Masking]"| FSM["自研 4 階段 FSM 狀態機 (FoodRecommendationFSM)"]
     
-    subgraph MultiTierLLM ["🧠 多級 LLM 推論核心 (LLMClient)"]
+    subgraph MultiTierLLM ["🧠 多級 LLM 推論核心 (LLMClient + Pydantic Self-Correction)"]
         Groq["🥇 Groq qwen3.8-27b (0.7s 極速主力)"]
         Gemini["🥈 Gemini 3.8 Flash (429 自動備援)"]
         Ollama["🥉 本機 Ollama qwen2.5 (離線保底)"]
@@ -63,26 +64,26 @@ graph TD
         Gemini -.->|離線降級| Ollama
     end
 
-    subgraph DeterministicPipeline ["⚡ 確定性 4 階段狀態機流水線"]
-        FSM -->|1. 意圖辨識| S1["State 1: 使用者意圖與追問判斷 (繼承歷史/換批/modifier)"]
-        S1 -->|2. 地圖搜尋| S2["State 2: Google Places 智慧階梯搜尋<br/>(800m~1800m ➔ 2500m 擴圈保底 + 排除已看過)"]
-        S2 -->|3. 雙平台對齊| S3["State 3: Tabelog 雙平台實體對齊<br/>(asyncio.gather 平行處理 + 支付標記 + pgvector 重排)"]
-        S3 -->|4. 生成卡片| S4["State 4: 最終美食卡片排版合成<br/>(日文店名Code區塊 + 🚶起點步行距離 + 💳支付)"]
+    subgraph DeterministicPipeline ["⚡ 確定性 4 階段狀態機流水線 (Typed FSMRunContext)"]
+        FSM -->|"1. 意圖辨識 [Sanitized Context / Observation Masking]"| S1["State 1: 結構化意圖解析 + Two-Tier Memory<br/>(繼承 working_memory / 抽取 long_term_preferences)"]
+        S1 -->|"2. 雙源檢索 [Working Memory: accumulated_seen_ids Excluded]"| S2["State 2: Tabelog 主動獵店 + Google 階梯擴圈<br/>(Tabelog 種子保送 + 800m~2500m + 負向黑名單排除)"]
+        S2 -->|"3. 雙平台對齊與感測"| S3["State 3: Tabelog 平行實體對齊 + Constraint Sensor<br/>(asyncio.gather + 飲食/支付硬性條件降權 + pgvector 重排)"]
+        S3 -->|"4. 生成卡片"| S4["State 4: 最終美食卡片排版合成<br/>(日文店名Code區塊 + 🚶起點步行距離 + 💳支付)"]
         
-        S1 ==>|"【LLM 呼叫 1】0.3s Micro-LLM 結構化意圖抽取"| MultiTierLLM
-        S3 -.->|"【LLM 呼叫 2 (可選)】灰區 0.6~0.85 實體比對裁決"| MultiTierLLM
+        S1 ==>|"【LLM 呼叫 1】0.3s Micro-LLM + Pydantic ValidationError 自癒"| MultiTierLLM
+        S3 -.->|"【LLM 呼叫 2 (可選)】灰區 0.4~0.85 實體比對裁決"| MultiTierLLM
         S4 ==>|"【LLM 呼叫 3】單次 Prompt 高美感推薦卡片生成"| MultiTierLLM
         
-        S4 --> Guardrail["🛡️ Scoped Anchor 毫秒級防偽護欄<br/>(0.1ms 數值校驗與自動矯正)"]
+        S4 -->|"5. 0ms 確定性防禦 [Deterministic Gate: Scoped Overwrite & In-place Repair]"| Guardrail["🛡️ Scoped Anchor 毫秒級防偽護欄 & 原地修復<br/>(0.1ms 數值錨點覆寫 + Code Block 原地修補)"]
         Guardrail --> OutputCard["輸出零幻覺推薦卡片"]
         S4 -.->|LLM全斷線防護| Fallback["純 Python 模板引擎直出保底"]
     end
     
-    subgraph StorageTiering ["🗄️ 冷熱資料儲存分層與向量引擎"]
-        S3 --> HotDB[("Neon Postgres 熱層: 快取/餐廳/對話歷史")]
+    subgraph StorageTiering ["🗄️ 冷熱資料儲存分層與雙重水位線引擎"]
+        S3 --> HotDB[("Neon Postgres 熱層: 快取/餐廳/Two-Tier 記憶")]
         S3 --> VectorDB[("pgvector: halfvec(768) 評論語意索引")]
         FSM -->|OTel 格式 Trace| HotDB
-        HotDB -.->|"背景歸檔 (Parquet)"| ColdStorage[("本機/GCS 冷層: Parquet 壓縮檔")]
+        HotDB -.->|"雙重水位線自動歸檔 (Runs>500 / DB>400MB)"| ColdStorage[("本機/GCS 冷層: Snappy Parquet + 防刪安全鎖")]
         ColdStorage --> DuckDBEngine["🦆 DuckDB OLAP 分析引擎 (analyze_traces.py)"]
     end
 
