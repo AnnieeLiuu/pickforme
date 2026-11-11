@@ -19,8 +19,10 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     GROQ_API_KEY: str = ""
 
-    # Storage
+    # Storage & Cold Archive Watermark
     GCS_BUCKET_NAME: str = "pickforme-cold-archive"
+    COLD_ARCHIVE_MAX_HOT_RUNS: int = 500
+    COLD_ARCHIVE_MAX_DB_SIZE_MB: float = 400.0
 
     # IDE Agent Bridge (Option B)
     IDE_AGENT_BRIDGE_URL: str = "http://127.0.0.1:8000/agent/diagnose"

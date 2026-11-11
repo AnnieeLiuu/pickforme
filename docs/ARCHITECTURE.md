@@ -54,7 +54,7 @@ graph TD
 系統遵循 **SSOT (Single Source of Truth)** 原則，完整 DDL 定義收斂於 [`src/db/schema.sql`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/src/db/schema.sql)。
 
 ### 熱層：Neon Serverless Postgres (容量上限防護)
-- **1 GB 免費額度防護**：採用 `halfvec` 半精度向量節省 50% 儲存空間；每店最多保留 30 則評論 embedding；原始 Trace 保留 14 天後自動歸檔，容量使用率達 70% 時自動觸發 Telegram 告警。
+- **1 GB 免費額度與雙重水位線防護 (`auto_archive_by_watermark`)**：採用 `halfvec` 半精度向量節省 50% 儲存空間；每店最多保留 30 則評論 embedding；每次對話完成後於背景自動巡檢雙重水位線（預設熱層保留最新 `500` 筆 Runs 或 DB 總容量上限 `400 MB`），僅將超出門檻的最舊紀錄壓縮轉檔至 Parquet 歸檔（並在 Cloud Run 無狀態容器內具備 GCS 防刪安全鎖）。
 
 | 資料表 | 用途 | 關鍵欄位 / 設計考量 |
 | :--- | :--- | :--- |

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Any, Optional, Set
 
@@ -188,12 +189,17 @@ class TelegramBotHandler:
             from src.services.cold_storage import ColdStorageArchiver
 
             status_msg_id = await self._send_telegram_message(
-                chat_id, "📦 **正在將 14 天前的歷史 Trace 壓縮轉檔至 Parquet 冷層儲存...**"
+                chat_id, "📦 **正在檢測雙重水位線（筆數 / DB 容量）並將超出配額之歷史 Trace 歸檔至 Parquet 冷層...**"
             )
             archiver = ColdStorageArchiver()
-            res = await archiver.archive_traces(retention_days=14, delete_after_archive=True)
+            res = await archiver.auto_archive_by_watermark(delete_after_archive=True)
             if res.get("status") == "skipped":
-                reply = "ℹ️ 目前熱層中尚無超過 14 天之歷史 Trace，無需歸檔。\n\n💡 系統將持續保護 Neon 1GB 額度安全。"
+                reply = (
+                    f"ℹ️ **目前水位安全，無需歸檔！**\n\n"
+                    f"• **熱層總筆數**：`{res.get('total_runs', 0)}` / `{res.get('max_hot_runs', 500)}` 筆\n"
+                    f"• **Neon DB 容量**：`{res.get('db_size_mb', 0.0)}` / `{res.get('max_db_size_mb', 400.0)}` MB\n\n"
+                    f"💡 系統將於每次對話後自動背景巡檢，超出門檻時自動把多出的最舊紀錄轉為 Parquet。"
+                )
             else:
                 files_str = "\n".join([f"• `{Path(p).name}`" for p in res.get("parquet_files", [])])
                 dest = res.get("destination")
@@ -274,6 +280,24 @@ class TelegramBotHandler:
             await self._edit_telegram_message(chat_id, status_msg_id, final_response)
         else:
             await self._send_telegram_message(chat_id, final_response)
+
+        # 背景非阻塞巡檢雙重水位線（筆數 > 500 或 DB 容量 > 400MB 時自動將多出的舊資料歸檔）
+        asyncio.create_task(self._background_check_and_archive())
+
+    async def _background_check_and_archive(self) -> None:
+        """背景巡檢冷熱儲存雙重水位線，不阻塞使用者對話回應"""
+        try:
+            from src.services.cold_storage import ColdStorageArchiver
+
+            archiver = ColdStorageArchiver()
+            res = await archiver.auto_archive_by_watermark(delete_after_archive=True)
+            if res.get("status") == "success":
+                logger.info(
+                    f"Auto-archive watermark triggered ({res.get('trigger_reason')}): "
+                    f"archived {res.get('runs_archived')} oldest runs to {res.get('destination')}."
+                )
+        except Exception as e:
+            logger.debug(f"Background watermark check skipped or failed: {e}")
 
     async def _send_telegram_message(self, chat_id: int, text: str) -> Optional[int]:
         """發送 Telegram 訊息，支援 Markdown 並含降級機制"""

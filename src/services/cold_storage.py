@@ -53,17 +53,10 @@ class ColdStorageArchiver:
         retention_days: int = 14,
         delete_after_archive: bool = True,
     ) -> dict[str, Any]:
-        """執行歷史 Trace 歸檔作業"""
+        """執行歷史 Trace 歸檔作業（依保留天數）"""
         pool = await get_db_pool()
-        now = datetime.now(timezone.utc)
-        timestamp_str = now.strftime("%Y%m%d_%H%M%S")
-
-        year_dir = self.local_dir / f"year={now.year}" / f"month={now.month:02d}"
-        year_dir.mkdir(parents=True, exist_ok=True)
-
         async with pool.connection() as conn:
             async with conn.cursor() as cur:
-                # 1. 查詢超過保留週期的 agent_runs
                 query_runs = """
                     SELECT run_id, chat_id, user_query, model_used, total_tokens, latency_ms, status, created_at
                     FROM agent_runs
@@ -83,115 +76,209 @@ class ColdStorageArchiver:
                         "destination": "none",
                     }
 
-                runs_data: list[dict[str, Any]] = []
-                expired_run_ids: list[str] = []
-                for r in raw_runs:
-                    d = (
-                        dict(r)
-                        if isinstance(r, dict)
-                        else {
-                            "run_id": str(r[0]),
-                            "chat_id": r[1],
-                            "user_query": r[2],
-                            "model_used": r[3],
-                            "total_tokens": r[4],
-                            "latency_ms": r[5],
-                            "status": r[6],
-                            "created_at": r[7].isoformat() if r[7] else None,
-                        }
-                    )
-                    d["run_id"] = str(d["run_id"])
-                    if isinstance(d.get("created_at"), datetime):
-                        d["created_at"] = d["created_at"].isoformat()
-                    runs_data.append(d)
-                    expired_run_ids.append(d["run_id"])
+                return await self._export_and_cleanup_runs(conn, cur, raw_runs, delete_after_archive)
 
-                # 2. 查詢關聯之 agent_steps
-                query_steps = """
-                    SELECT step_id, run_id, step_number, action_type, tool_name, tool_input, tool_output, latency_ms, error_message, created_at
-                    FROM agent_steps
-                    WHERE run_id = ANY(%s)
-                    ORDER BY step_number ASC;
+    async def auto_archive_by_watermark(
+        self,
+        max_hot_runs: Optional[int] = None,
+        max_db_size_mb: Optional[float] = None,
+        delete_after_archive: bool = True,
+    ) -> dict[str, Any]:
+        """雙重水位線自動歸檔 (Watermark & Quota Guard)
+
+        偵測兩個條件：
+        1. 筆數水位：agent_runs 總筆數 > max_hot_runs (預設 500 筆)
+        2. 容量水位：Neon DB 總容量 > max_db_size_mb (預設 400 MB)
+
+        若任一條件超標，僅將「超出保留筆數的最舊紀錄」（若因容量超標則至少歸檔最舊 20% 紀錄）
+        壓縮轉檔至 Parquet 並安全釋出空間，確保熱層永遠保留最新精華紀錄。
+        """
+        target_max_runs = max_hot_runs if max_hot_runs is not None else settings.COLD_ARCHIVE_MAX_HOT_RUNS
+        target_max_mb = max_db_size_mb if max_db_size_mb is not None else settings.COLD_ARCHIVE_MAX_DB_SIZE_MB
+
+        pool = await get_db_pool()
+        async with pool.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    "SELECT COUNT(*) AS total_runs, pg_database_size(current_database()) AS db_bytes FROM agent_runs;"
+                )
+                row = await cur.fetchone()
+                if not row:
+                    return {"status": "skipped", "reason": "empty_stats", "runs_archived": 0}
+
+                total_runs = int(row["total_runs"] if isinstance(row, dict) else row[0])
+                db_bytes = int(row["db_bytes"] if isinstance(row, dict) else row[1])
+                db_size_mb = round(db_bytes / (1024 * 1024), 2)
+
+                runs_exceeded = total_runs > target_max_runs
+                size_exceeded = db_size_mb > target_max_mb
+
+                if not runs_exceeded and not size_exceeded:
+                    return {
+                        "status": "skipped",
+                        "reason": "below_watermark",
+                        "total_runs": total_runs,
+                        "max_hot_runs": target_max_runs,
+                        "db_size_mb": db_size_mb,
+                        "max_db_size_mb": target_max_mb,
+                        "runs_archived": 0,
+                        "steps_archived": 0,
+                        "parquet_files": [],
+                        "destination": "none",
+                    }
+
+                # 計算需歸檔的最舊筆數：
+                # 若筆數超標，歸檔多出來的 (total_runs - target_max_runs) 筆；
+                # 若僅容量超標，歸檔最舊的 20% (至少 1 筆)
+                overflow_count = max(0, total_runs - target_max_runs)
+                if size_exceeded and overflow_count == 0:
+                    overflow_count = max(1, total_runs // 5)
+
+                query_oldest = """
+                    SELECT run_id, chat_id, user_query, model_used, total_tokens, latency_ms, status, created_at
+                    FROM agent_runs
+                    ORDER BY created_at ASC
+                    LIMIT %s;
                 """
-                await cur.execute(query_steps, (expired_run_ids,))
-                raw_steps = await cur.fetchall()
+                await cur.execute(query_oldest, (overflow_count,))
+                raw_runs = await cur.fetchall()
 
-                steps_data: list[dict[str, Any]] = []
-                for s in raw_steps:
-                    sd = (
-                        dict(s)
-                        if isinstance(s, dict)
-                        else {
-                            "step_id": str(s[0]),
-                            "run_id": str(s[1]),
-                            "step_number": s[2],
-                            "action_type": s[3],
-                            "tool_name": s[4],
-                            "tool_input": s[5],
-                            "tool_output": s[6],
-                            "latency_ms": s[7],
-                            "error_message": s[8],
-                            "created_at": s[9].isoformat() if s[9] else None,
-                        }
-                    )
-                    sd["step_id"] = str(sd["step_id"])
-                    sd["run_id"] = str(sd["run_id"])
-                    if isinstance(sd.get("tool_input"), (dict, list)):
-                        sd["tool_input"] = json.dumps(sd["tool_input"], ensure_ascii=False)
-                    if isinstance(sd.get("tool_output"), (dict, list)):
-                        sd["tool_output"] = json.dumps(sd["tool_output"], ensure_ascii=False)
-                    if isinstance(sd.get("created_at"), datetime):
-                        sd["created_at"] = sd["created_at"].isoformat()
-                    steps_data.append(sd)
+                if not raw_runs:
+                    return {"status": "skipped", "reason": "no_runs_fetched", "runs_archived": 0}
 
-                # 3. 轉為 Apache Parquet 檔案
-                runs_parquet_path = year_dir / f"agent_runs_{timestamp_str}.parquet"
-                runs_table = pa.Table.from_pylist(runs_data)
-                pq.write_table(runs_table, runs_parquet_path, compression="snappy")
+                res = await self._export_and_cleanup_runs(conn, cur, raw_runs, delete_after_archive)
+                res["trigger_reason"] = (
+                    "both_exceeded"
+                    if (runs_exceeded and size_exceeded)
+                    else ("runs_exceeded" if runs_exceeded else "db_size_exceeded")
+                )
+                res["total_runs_before"] = total_runs
+                res["db_size_mb_before"] = db_size_mb
+                return res
 
-                steps_parquet_path = year_dir / f"agent_steps_{timestamp_str}.parquet"
-                steps_table = pa.Table.from_pylist(steps_data)
-                pq.write_table(steps_table, steps_parquet_path, compression="snappy")
+    async def _export_and_cleanup_runs(
+        self,
+        conn: Any,
+        cur: Any,
+        raw_runs: list[Any],
+        delete_after_archive: bool,
+    ) -> dict[str, Any]:
+        """共用匯出 Parquet、嘗試上傳 GCS 與執行安全防刪鎖之核心邏輯"""
+        now = datetime.now(timezone.utc)
+        timestamp_str = now.strftime("%Y%m%d_%H%M%S")
 
-                created_files = [runs_parquet_path, steps_parquet_path]
+        year_dir = self.local_dir / f"year={now.year}" / f"month={now.month:02d}"
+        year_dir.mkdir(parents=True, exist_ok=True)
 
-                # 4. 雙模冷儲存：嘗試上傳 GCS
-                destination = "local"
-                gcs_prefix = f"traces/year={now.year}/month={now.month:02d}"
-                uploaded_runs = self._try_upload_to_gcs(runs_parquet_path, f"{gcs_prefix}/{runs_parquet_path.name}")
-                uploaded_steps = self._try_upload_to_gcs(steps_parquet_path, f"{gcs_prefix}/{steps_parquet_path.name}")
-                if uploaded_runs and uploaded_steps:
-                    destination = "gcs"
-
-                # 5. 熱層清理：CASCADE 刪除 Neon DB 已歸檔記錄
-                # 安全鎖：若執行於 Cloud Run 無狀態容器 (K_SERVICE 存在) 且 GCS 上傳失敗，
-                # 嚴禁刪除 Neon DB 熱資料，避免容器縮容至 0 時本地 Parquet 隨之蒸發造成永久資料遺失。
-                is_cloud_run = bool(os.getenv("K_SERVICE"))
-                hot_deleted = False
-                delete_skipped_reason: Optional[str] = None
-
-                if delete_after_archive:
-                    if is_cloud_run and destination != "gcs":
-                        delete_skipped_reason = "gcs_upload_failed_on_stateless_cloud_run"
-                        logger.warning(
-                            "Stateless safety lock triggered on Cloud Run: GCS upload failed; "
-                            "skipping DELETE FROM agent_runs to prevent data loss."
-                        )
-                    else:
-                        await cur.execute("DELETE FROM agent_runs WHERE run_id = ANY(%s);", (expired_run_ids,))
-                        await conn.commit()
-                        hot_deleted = True
-                        logger.info(f"Cleaned up {len(expired_run_ids)} expired agent_runs from Neon DB.")
-
-                return {
-                    "status": "success",
-                    "runs_archived": len(runs_data),
-                    "steps_archived": len(steps_data),
-                    "parquet_files": [str(p) for p in created_files],
-                    "destination": destination,
-                    "hot_deleted": hot_deleted,
-                    "delete_skipped_reason": delete_skipped_reason,
+        runs_data: list[dict[str, Any]] = []
+        expired_run_ids: list[str] = []
+        for r in raw_runs:
+            d = (
+                dict(r)
+                if isinstance(r, dict)
+                else {
+                    "run_id": str(r[0]),
+                    "chat_id": r[1],
+                    "user_query": r[2],
+                    "model_used": r[3],
+                    "total_tokens": r[4],
+                    "latency_ms": r[5],
+                    "status": r[6],
+                    "created_at": r[7].isoformat() if r[7] else None,
                 }
+            )
+            d["run_id"] = str(d["run_id"])
+            if isinstance(d.get("created_at"), datetime):
+                d["created_at"] = d["created_at"].isoformat()
+            runs_data.append(d)
+            expired_run_ids.append(d["run_id"])
+
+        # 2. 查詢關聯之 agent_steps
+        query_steps = """
+            SELECT step_id, run_id, step_number, action_type, tool_name, tool_input, tool_output, latency_ms, error_message, created_at
+            FROM agent_steps
+            WHERE run_id = ANY(%s)
+            ORDER BY step_number ASC;
+        """
+        await cur.execute(query_steps, (expired_run_ids,))
+        raw_steps = await cur.fetchall()
+
+        steps_data: list[dict[str, Any]] = []
+        for s in raw_steps:
+            sd = (
+                dict(s)
+                if isinstance(s, dict)
+                else {
+                    "step_id": str(s[0]),
+                    "run_id": str(s[1]),
+                    "step_number": s[2],
+                    "action_type": s[3],
+                    "tool_name": s[4],
+                    "tool_input": s[5],
+                    "tool_output": s[6],
+                    "latency_ms": s[7],
+                    "error_message": s[8],
+                    "created_at": s[9].isoformat() if s[9] else None,
+                }
+            )
+            sd["step_id"] = str(sd["step_id"])
+            sd["run_id"] = str(sd["run_id"])
+            if isinstance(sd.get("tool_input"), (dict, list)):
+                sd["tool_input"] = json.dumps(sd["tool_input"], ensure_ascii=False)
+            if isinstance(sd.get("tool_output"), (dict, list)):
+                sd["tool_output"] = json.dumps(sd["tool_output"], ensure_ascii=False)
+            if isinstance(sd.get("created_at"), datetime):
+                sd["created_at"] = sd["created_at"].isoformat()
+            steps_data.append(sd)
+
+        # 3. 轉為 Apache Parquet 檔案
+        runs_parquet_path = year_dir / f"agent_runs_{timestamp_str}.parquet"
+        runs_table = pa.Table.from_pylist(runs_data)
+        pq.write_table(runs_table, runs_parquet_path, compression="snappy")
+
+        steps_parquet_path = year_dir / f"agent_steps_{timestamp_str}.parquet"
+        steps_table = pa.Table.from_pylist(steps_data)
+        pq.write_table(steps_table, steps_parquet_path, compression="snappy")
+
+        created_files = [runs_parquet_path, steps_parquet_path]
+
+        # 4. 雙模冷儲存：嘗試上傳 GCS
+        destination = "local"
+        gcs_prefix = f"traces/year={now.year}/month={now.month:02d}"
+        uploaded_runs = self._try_upload_to_gcs(runs_parquet_path, f"{gcs_prefix}/{runs_parquet_path.name}")
+        uploaded_steps = self._try_upload_to_gcs(steps_parquet_path, f"{gcs_prefix}/{steps_parquet_path.name}")
+        if uploaded_runs and uploaded_steps:
+            destination = "gcs"
+
+        # 5. 熱層清理：CASCADE 刪除 Neon DB 已歸檔記錄
+        # 安全鎖：若執行於 Cloud Run 無狀態容器 (K_SERVICE 存在) 且 GCS 上傳失敗，
+        # 嚴禁刪除 Neon DB 熱資料，避免容器縮容至 0 時本地 Parquet 隨之蒸發造成永久資料遺失。
+        is_cloud_run = bool(os.getenv("K_SERVICE"))
+        hot_deleted = False
+        delete_skipped_reason: Optional[str] = None
+
+        if delete_after_archive:
+            if is_cloud_run and destination != "gcs":
+                delete_skipped_reason = "gcs_upload_failed_on_stateless_cloud_run"
+                logger.warning(
+                    "Stateless safety lock triggered on Cloud Run: GCS upload failed; "
+                    "skipping DELETE FROM agent_runs to prevent data loss."
+                )
+            else:
+                await cur.execute("DELETE FROM agent_runs WHERE run_id = ANY(%s);", (expired_run_ids,))
+                await conn.commit()
+                hot_deleted = True
+                logger.info(f"Cleaned up {len(expired_run_ids)} expired agent_runs from Neon DB.")
+
+        return {
+            "status": "success",
+            "runs_archived": len(runs_data),
+            "steps_archived": len(steps_data),
+            "parquet_files": [str(p) for p in created_files],
+            "destination": destination,
+            "hot_deleted": hot_deleted,
+            "delete_skipped_reason": delete_skipped_reason,
+        }
 
     def analyze_traces_duckdb(self, parquet_glob: Optional[str] = None) -> dict[str, Any]:
         """使用 DuckDB 引擎直接對 Parquet 冷資料進行極速 OLAP 分析 (0 資料庫負載)"""

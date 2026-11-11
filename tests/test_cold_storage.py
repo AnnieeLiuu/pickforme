@@ -143,6 +143,87 @@ async def test_cold_storage_stateless_cloud_run_safety_lock_blocks_delete(tmp_pa
         mock_conn.commit.assert_not_awaited()
 
 
+@pytest.mark.asyncio
+async def test_auto_archive_by_watermark_below_threshold_skips(tmp_path):
+    """驗證雙重水位線未超標時（筆數 <= 500 且 DB 容量 <= 400MB），直接跳過不歸檔。"""
+    mock_pool = MagicMock()
+    mock_conn = MagicMock()
+    mock_cur = AsyncMock()
+
+    mock_pool.connection.return_value.__aenter__.return_value = mock_conn
+    mock_conn.cursor.return_value.__aenter__.return_value = mock_cur
+    # 84 runs, 15 MB
+    mock_cur.fetchone.return_value = {"total_runs": 84, "db_bytes": 15 * 1024 * 1024}
+
+    with patch("src.services.cold_storage.get_db_pool", new_callable=AsyncMock, return_value=mock_pool):
+        archiver = ColdStorageArchiver(local_dir=tmp_path)
+        res = await archiver.auto_archive_by_watermark(max_hot_runs=500, max_db_size_mb=400.0)
+
+        assert res["status"] == "skipped"
+        assert res["reason"] == "below_watermark"
+        assert res["total_runs"] == 84
+        assert res["runs_archived"] == 0
+
+
+@pytest.mark.asyncio
+async def test_auto_archive_by_watermark_exceeded_archives_only_overflow(tmp_path, monkeypatch):
+    """驗證當總筆數超過 max_hot_runs (例如 502 > 500) 時，僅將多出來的最舊 2 筆歸檔。"""
+    monkeypatch.delenv("K_SERVICE", raising=False)
+
+    mock_pool = MagicMock()
+    mock_conn = MagicMock()
+    mock_conn.commit = AsyncMock()
+    mock_cur = AsyncMock()
+
+    mock_pool.connection.return_value.__aenter__.return_value = mock_conn
+    mock_conn.cursor.return_value.__aenter__.return_value = mock_cur
+
+    now = datetime.now(timezone.utc)
+    run_old_1 = uuid4()
+    run_old_2 = uuid4()
+
+    mock_cur.fetchone.return_value = {"total_runs": 502, "db_bytes": 50 * 1024 * 1024}
+    mock_cur.fetchall.side_effect = [
+        # 1st fetchall: oldest 2 overflow runs
+        [
+            {
+                "run_id": run_old_1,
+                "chat_id": 12345,
+                "user_query": "舊問題1",
+                "model_used": "groq",
+                "total_tokens": 500,
+                "latency_ms": 500,
+                "status": "completed",
+                "created_at": now,
+            },
+            {
+                "run_id": run_old_2,
+                "chat_id": 12345,
+                "user_query": "舊問題2",
+                "model_used": "groq",
+                "total_tokens": 600,
+                "latency_ms": 600,
+                "status": "completed",
+                "created_at": now,
+            },
+        ],
+        # 2nd fetchall: agent_steps
+        [],
+    ]
+
+    with patch("src.services.cold_storage.get_db_pool", new_callable=AsyncMock, return_value=mock_pool):
+        archiver = ColdStorageArchiver(local_dir=tmp_path)
+        res = await archiver.auto_archive_by_watermark(max_hot_runs=500, max_db_size_mb=400.0)
+
+        assert res["status"] == "success"
+        assert res["trigger_reason"] == "runs_exceeded"
+        assert res["runs_archived"] == 2
+        assert res["hot_deleted"] is True
+        # 確認 LIMIT 參數確實只抓多出來的 2 筆
+        limit_call = mock_cur.execute.call_args_list[1]
+        assert limit_call.args[1] == (2,)
+
+
 def test_api_admin_archive_endpoint():
     client = TestClient(app)
     mock_res = {
