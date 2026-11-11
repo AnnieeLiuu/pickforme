@@ -114,25 +114,28 @@ PickForMe/
 │   ├── seed_prewarm_jobs.py   # 日本熱門景點預熱腳本
 │   └── setup_webhook.py       # Telegram Webhook 註冊工具
 ├── src/
-│   ├── agent/              # Agent 核心 (Pipeline FSM, LLM Client, Guardrails)
-│   │   ├── pipeline.py     # 4 階段 FSM 狀態機 (FoodRecommendationFSM)
-│   │   ├── llm_client.py   # 統一多模型 LLM 客戶端 (Groq/Gemini/Ollama)
+│   ├── agent/              # Agent 核心 (Pipeline FSM, Gate, Schemas, Stages, Guardrails)
+│   │   ├── stages/         # 4 階段模組化執行器 (intent, places_search, enrichment, synthesis)
+│   │   ├── gate.py         # 0ms QuickPassGate 快篩與安全絆線
+│   │   ├── schemas.py      # Pydantic v2 結構化合約、語意驗證與 FSMRunContext
+│   │   ├── pipeline.py     # 4 階段 FSM 狀態機主入口 (FoodRecommendationFSM)
+│   │   ├── llm_client.py   # 統一多模型 LLM 客戶端 + ValidationError 自癒重試
 │   │   ├── core.py         # AgentEngine Facade 對外入口
 │   │   ├── guardrail.py    # 確定性數值護欄 (Scoped Anchor)
-│   │   ├── validator.py    # 執行期輸出格式防偽護欄
+│   │   ├── validator.py    # 執行期輸出格式防偽護欄與原地修復
 │   │   ├── devops.py       # DevOps 遠端診斷 Subagent
-│   │   ├── tools.py        # 工具註冊與執行輔助
+│   │   ├── tools.py        # 工具註冊與 Pydantic 參數校驗執行輔助
 │   │   └── trace.py        # OTel 格式 Trace 紀錄器
-│   ├── bot/                # Telegram Webhook 與訊息處理
-│   ├── db/                 # Neon Postgres 倉儲層 (Session, Restaurant, Vector, Prewarm)
+│   ├── bot/                # Telegram Webhook 與訊息處理 (含背景雙重水位線自動歸檔)
+│   ├── db/                 # Neon Postgres 倉儲層 (Session 雙層記憶, Restaurant, Vector, Prewarm)
 │   ├── eval/               # LLMOps 評測與全景河流圖可觀測性看板編譯核心
 │   │   ├── reporter.py     # 3-Pane 全景河流圖 HTML 報告生成器
 │   │   └── runner.py       # 離線 4-Tier 黃金題庫評測執行器
-│   ├── services/           # 外部服務 (Google Places, Tabelog, Embedding, Entity Resolver)
+│   ├── services/           # 外部服務 (Google Places, Tabelog 雙源獵店, Embedding, Entity Resolver, Cold Storage)
 │   ├── worker/             # 本機非同步預熱 Worker (SKIP LOCKED 佇列)
 │   ├── config.py           # Pydantic Settings 環境設定
 │   └── main.py             # FastAPI 啟動入口
-├── tests/                  # 129 項單元、整合與黃金回歸測試 (Mock 驅動，CI 100% 通過)
+├── tests/                  # 158 項單元、整合與黃金回歸測試 (Mock 驅動，CI 100% 通過)
 └── pyproject.toml          # Ruff, Mypy 與專案相依設定
 ```
 

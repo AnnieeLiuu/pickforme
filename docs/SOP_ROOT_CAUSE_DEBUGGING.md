@@ -10,23 +10,23 @@
 
 ```mermaid
 flowchart TD
-    subgraph Layer1 ["1. 意圖與結構化約束解析層"]
-        UserMsg["Telegram 使用者輸入"] --> State1["State 1: Intent 解析"]
-        State1 --> History["歷史對話摘要防偏見"]
-        State1 --> Coords["Google Geocoding 取得座標"]
-        State1 --> Constraint["resolve_search_constraints<br/>解耦料理名、半徑階梯與風格標籤"]
+    subgraph Layer1 ["1. 0ms 快篩、意圖與雙層記憶解析層 (QuickPassGate & Intent)"]
+        UserMsg["Telegram 使用者輸入"] --> Gate["⚡ QuickPassGate 0ms 快篩與安全絆線<br/>(攔截越獄/問候/店號追問/純換批)"]
+        Gate -->|"通過快篩 [Sanitized Context / Observation Masking]"| State1["State 1: Micro-LLM 結構化意圖解析<br/>(Pydantic IntentOutput + ValidationError 自癒重試)"]
+        State1 --> TwoTierMem["🧠 Two-Tier Memory 雙層記憶同步<br/>(繼承 working_memory + 持久化 long_term_preferences)"]
+        TwoTierMem --> Coords["Google Geocoding 取得座標"]
+        Coords --> Constraint["resolve_search_constraints<br/>解耦料理名、半徑階梯與風格標籤 (封裝至 FSMRunContext)"]
     end
 
-    subgraph Layer2 ["2. 候選檢索與潛力預篩層"]
-        Constraint --> Exclude["從 Session 載入已推薦黑名單"]
-        Exclude --> State2["State 2: Google Places 智慧階梯搜尋<br/>(強制 languageCode: ja)"]
-        State2 --> RawPlaces["取得原始 Places 資料<br/>含 Google 評分/5則評論/原生支付選項"]
-        RawPlaces --> Prefilter["0ms 老饕潛力預篩<br/>挑選 Top 4 種子 + 2 備選"]
+    subgraph Layer2 ["2. Tabelog 雙源獵店與潛力預篩層 (Dual-Source Discovery)"]
+        Constraint -->|"注入負向約束 [Working Memory: accumulated_seen_ids Excluded]"| DualSearch["State 2: 雙源平行檢索<br/>🌐 源頭 A: Tabelog 主動獵取高分/百名店 (discover_area_top_stores)<br/>📍 源頭 B: Google Places 智慧階梯搜尋 (languageCode: ja)"]
+        DualSearch --> RawPlaces["雙源匯流候選池<br/>(Tabelog 保送種子 tabelog_seed=True + Google 營業中餐廳)"]
+        RawPlaces --> Prefilter["0ms 雙源老饕潛力預篩<br/>(Tabelog 種子 +10.0 保送 + 日本老店保護曲線挑選 Top 6 種子)"]
     end
 
-    subgraph Layer3 ["3. 雙層漏斗實體對齊與快取層"]
-        Prefilter --> CacheCheck{"Neon DB 7天快取命中?"}
-        CacheCheck -- "是 (且行政區一致)" --> FastCache["0ms 快取直出"]
+    subgraph Layer3 ["3. 雙層漏斗實體對齊、快取與硬性條件感測層"]
+        Prefilter --> CacheCheck{"Neon DB 7天快取命中<br/>或已具雙源種子評分?"}
+        CacheCheck -- "是 (且行政區一致)" --> FastCache["0ms 快取 / 雙源種子直出"]
         CacheCheck -- "否" --> GroundingFirst["⚡ Grounding-First 檢索<br/>(避開純 HTTP 直爬 100% 403 撞牆，直達 Yahoo Grounding)"]
         GroundingFirst --> Funnel["Entity Resolver 雙層漏斗"]
         Funnel --> GeoVeto{"都道府縣一致?<br/>(郵區/市區補全/正則)"}
@@ -37,10 +37,12 @@ flowchart TD
         FastPass --> EnrichedStore["完成基礎評分與支付融合"]
         MicroLLM --> EnrichedStore
         VetoDrop --> FallbackGoogle["安全降級為 Google 評分"]
+        FastCache --> EnrichedStore
         EnrichedStore --> EarlyStop{"Tier 1 已有 >=2 家高分名店?"}
-        EarlyStop -- "是" --> RankTop3["老饕綜合加權重排，挑選 Top 3"]
+        EarlyStop -- "是" --> ConstraintSensor["🎯 Deterministic Constraint Sensor<br/>(硬性飲食禁忌/支付偏好稽核，違規扣減 0.45 分)"]
         EarlyStop -- "否" --> Tier2Rescue["啟動 Tier 2 備選店家查驗"]
-        Tier2Rescue --> RankTop3
+        Tier2Rescue --> ConstraintSensor
+        ConstraintSensor --> RankTop3["老饕綜合加權重排，挑選 Top 3"]
     end
 
     subgraph Layer4 ["4. 食評絕對優先覆蓋與 RAG 層"]
@@ -60,12 +62,12 @@ flowchart TD
         BestHighlight --> PromptBuild["Stage 4 Prompt 組合<br/>嚴格依據血統綁定標籤"]
         PromptBuild --> AntiPrompt["注入 No-Rating-As-Reason 禁令"]
         AntiPrompt --> CallLLM["LLM 文字生成卡片"]
-        CallLLM --> ScopedAnchor["Scoped Anchor 評分雙向防偽校對"]
+        CallLLM -->|"0ms 確定性防禦 [Deterministic Gate: Scoped Overwrite & In-place Repair]"| ScopedAnchor["Scoped Anchor 評分雙向防偽覆寫 & Code Block 原地修補"]
         ScopedAnchor --> Validator["validator.py 執行期排版與真實性掃描"]
         Validator --> VetoCheck{"違規評分套話 / 假店名 / 假連結?"}
         VetoCheck -- "是 (違規)" --> FailsafeTemplate["⚠️ 立即一票否決熔斷<br/>自動降級為確定性安全模板"]
         VetoCheck -- "否 (合格)" --> SafeCard["合格卡片"]
-        FailsafeTemplate --> SendTelegram["推播至 Telegram 使用者"]
+        FailsafeTemplate --> SendTelegram["推播至 Telegram 使用者<br/>(背景觸發雙重水位線自動歸檔巡檢)"]
         SafeCard --> SendTelegram
     end
 ```
