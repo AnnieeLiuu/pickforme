@@ -1460,3 +1460,91 @@ async def test_regression_pure_more_inherits_working_memory_without_intent_llm()
     assert parsed["cuisine"] == "壽喜燒"
     assert parsed["location"] == "淺草"
     assert parsed["coords"] == (35.7148, 139.7967)
+
+
+# ==============================================================================
+# Case 25: Tabelog-First 雙源獵店與反向種子保送回歸測試 (防止 Google 低分淘汰日本百名店)
+# ==============================================================================
+@pytest.mark.asyncio
+async def test_regression_tabelog_dual_source_discovery_promotes_hidden_gem_over_tourist_traps():
+    """Case 25: 驗證當日本 Tabelog 3.78 百名店在 Google Maps 僅 3.8 星（甚至排在 Google 第 7 名以後）時：
+    1. State 2 透過 TabelogScraper.discover_area_top_stores 主動獵取該百名店並反查 Google 綁定座標與距離。
+    2. prefilter_potential_foodie_places 給予 tabelog_seed 保送權重，不會被前 6 名 Google 4.7 星觀光客店擠掉。
+    3. 進入 State 3 後，該店憑藉 Tabelog 3.78 + 百名店穩居第 1 名 (🥇)。
+    """
+    mock_places = MagicMock()
+    # Google 階梯回傳 6 家高分觀光客店 (Google 4.6~4.8 星，但 Tabelog 僅 3.15)
+    tourist_places = [
+        {
+            "google_place_id": f"tourist_{i}",
+            "name": f"Tourist Pasta {i}",
+            "lat": 35.6959,
+            "lng": 139.7576,
+            "rating": 4.7,
+            "userRatingCount": 1200,
+        }
+        for i in range(1, 7)
+    ]
+    mock_places.search_nearby = AsyncMock(return_value=tourist_places)
+
+    # 當反查 Tabelog 主動提名的「神保町イタリアン百名店」時，Google 給它 3.8 星
+    hidden_gem_google = [
+        {
+            "google_place_id": "gem_hyakumeiten_1",
+            "name": "トラットリア 神保町 本店",
+            "lat": 35.6962,
+            "lng": 139.7580,
+            "rating": 3.8,
+            "userRatingCount": 45,
+        }
+    ]
+    mock_places.search_by_text = AsyncMock(return_value=hidden_gem_google)
+
+    mock_scraper = MagicMock()
+    mock_scraper.discover_area_top_stores = AsyncMock(
+        return_value=[
+            {
+                "name_ja": "トラットリア 神保町 本店",
+                "tabelog_url": "https://tabelog.com/tokyo/A1310/A131003/13000001/",
+                "tabelog_rating": 3.78,
+                "review_count": 320,
+                "hyakumeiten": ["イタリアン TOKYO 百名店 2025"],
+                "awards": ["イタリアン TOKYO 百名店 2025"],
+            }
+        ]
+    )
+    mock_scraper.search_tabelog_candidates = AsyncMock(return_value=[])
+    mock_scraper.fetch_tabelog_reviews = AsyncMock(return_value=[])
+
+    mock_repo = MagicMock()
+    mock_repo.get_by_google_place_id = AsyncMock(return_value=None)
+
+    fsm = FoodRecommendationFSM(
+        llm_client=MagicMock(),
+        places_client=mock_places,
+        tabelog_scraper=mock_scraper,
+        entity_resolver=MagicMock(),
+        restaurant_repo=mock_repo,
+        trace_logger=MagicMock(log_step=AsyncMock(), start_run=AsyncMock(), finish_run=AsyncMock()),
+    )
+
+    # 1. 執行 State 2 雙源檢索 (限制 max_candidates=6)
+    seeds = await fsm.execute_state_2_places_ladder(
+        lat=35.6959,
+        lng=139.7576,
+        keyword="義大利麵",
+        origin_name="神保町車站",
+        max_candidates=6,
+    )
+
+    # 驗證即使有 6 家 Google 4.7 星觀光客店，Google 僅 3.8 星的 Tabelog 3.78 百名店依然排在種子第 1 順位！
+    assert len(seeds) == 6
+    assert seeds[0]["google_place_id"] == "gem_hyakumeiten_1"
+    assert seeds[0]["tabelog_seed"] is True
+    assert seeds[0]["tabelog_rating"] == 3.78
+
+    # 2. 執行 State 3 平行查驗與老饕重排
+    top_stores = await fsm.execute_state_3_parallel_tabelog(seeds, area_hint="神保町車站")
+    assert top_stores[0]["google_place_id"] == "gem_hyakumeiten_1"
+    assert top_stores[0]["rank_badge"] == "🥇"
+    assert top_stores[0]["tabelog_rating"] == 3.78

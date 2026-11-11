@@ -151,6 +151,33 @@ class TabelogScraper:
             logger.info(f"Web Grounding recovered {len(candidates)} Tabelog candidates for '{store_name}'")
         return candidates
 
+    async def discover_area_top_stores(
+        self,
+        area_name: str,
+        cuisine: str,
+        max_seeds: int = 3,
+    ) -> list[dict[str, Any]]:
+        """主動獵取指定地區與料理類別之 Tabelog 高分/百名店原生名單 (Tabelog-First Discovery)"""
+        clean_area = (area_name or "").strip()
+        clean_cuisine = (cuisine or "").strip()
+        if not clean_area:
+            return []
+
+        raw_candidates = await self.search_via_grounding(
+            store_name=clean_cuisine or "グルメ",
+            area_name=clean_area,
+        )
+        if not raw_candidates:
+            return []
+
+        def _seed_priority(c: dict[str, Any]) -> float:
+            rating = float(c.get("tabelog_rating") or 0.0)
+            has_award = bool(c.get("hyakumeiten") or c.get("awards"))
+            return rating + (0.5 if has_award else 0.0)
+
+        sorted_cands = sorted(raw_candidates, key=_seed_priority, reverse=True)
+        return sorted_cands[:max_seeds]
+
     async def fetch_tabelog_reviews(self, store_name: str, max_reviews: int = 5) -> list[dict[str, Any]]:
         """定向提取特定店家之真實老饕口コミ (單一職責，單次 Yahoo 查詢自然全收)"""
         clean_name = re.sub(r"[（\(\-\|\:\[].*$", "", store_name).strip()

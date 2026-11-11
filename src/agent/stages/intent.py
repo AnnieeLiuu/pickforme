@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-INTENT_PARSER_SYSTEM_PROMPT = """你是一位嚴格的日本美食搜尋意圖解析器。請分析使用者的輸入與上下文，並輸出標準 JSON 格式。
+INTENT_PARSER_SYSTEM_PROMPT = f"""你是一位嚴格的日本美食搜尋意圖解析器。請分析使用者的輸入與上下文，並輸出標準 JSON 格式。
 
 可能的 intent 欄位值：
 1. "search": 使用者想尋找美食餐廳。請精準抽取 location (地名/車站/商圈/景點，若未提及請設為 null) 與 cuisine (料理類別/食物核心名詞，例如「壽喜燒」、「拉麵」，嚴禁包含距離或時間詞，若未指定請設為 "熱門人氣美食")。
@@ -29,15 +29,8 @@ INTENT_PARSER_SYSTEM_PROMPT = """你是一位嚴格的日本美食搜尋意圖�
 4. "chitchat": 純打招呼、禮貌問候、詢問系統功能或非美食主題。
 5. "need_location": 使用者想吃特定食物但未提供任何地名，且系統上下文無 GPS 與無歷史地名。
 
-輸出 JSON 結構規範：
-{
-  "intent": "search" | "more" | "follow_up" | "chitchat" | "need_location",
-  "location": string | null,
-  "cuisine": string | null,
-  "modifier": string | null,
-  "target_index": number | null,
-  "question": string | null
-}
+輸出 JSON 結構規範（由 IntentOutput Schema 自動生成）：
+{IntentOutput.build_json_schema_prompt()}
 只輸出純 JSON 字串，不要包含任何多餘文字。"""
 
 

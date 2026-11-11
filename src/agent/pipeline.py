@@ -4,6 +4,7 @@ import time
 from typing import Any, Awaitable, Callable, Optional
 
 from src.agent.llm_client import LLMClient
+from src.agent.schemas import FSMRunContext
 from src.agent.stages.enrichment import (
     apply_deterministic_constraints,
     calculate_foodie_score,
@@ -267,7 +268,6 @@ class FoodRecommendationFSM:
             if not coords:
                 return "未能識別您的目標座標，請提供日本城市或車站名稱。"
 
-            lat, lng = coords
             cuisine = parsed.get("cuisine") or "熱門美食"
             loc_name = parsed.get("location")
             modifier = parsed.get("modifier")
@@ -283,31 +283,6 @@ class FoodRecommendationFSM:
                 except Exception as e:
                     logger.warning(f"Failed to load seen place ids: {e}")
 
-            # 方案 1A 二段式進度更新 (進度 1)
-            if on_progress:
-                target_desc = f"「{loc_name}」" if loc_name else "您目前位置"
-                if intent == "more":
-                    await on_progress(f"🔄 正在為您排除已看過店家，於 {target_desc} 挖掘下一梯隊高評價名店...")
-                else:
-                    await on_progress(f"🧭 正在為您鎖定 {target_desc} 並檢索週邊熱門美食與食べログ評分...")
-
-            # 2. State 2: 候選店家智慧階梯檢索 (含去重排除與自適應擴圈)
-            candidates = await self.execute_state_2_places_ladder(
-                lat=lat,
-                lng=lng,
-                keyword=search_keyword,
-                origin_name=loc_name,
-                exclude_place_ids=exclude_ids,
-                custom_radii=radii_ladder,
-            )
-            if not candidates:
-                await self.trace_logger.finish_run(status="completed")
-                return f"抱歉，在 {loc_name or '該地點'} 週邊暫時未檢索到更多符合「{search_keyword}」的高評價餐廳，建議可更換地標或料理關鍵字再次搜尋。"
-
-            # 3. State 3: 3 店家平行 Tabelog 查驗
-            enriched_stores = await self.execute_state_3_parallel_tabelog(candidates, area_hint=loc_name)
-
-            # 3.2 Deterministic Constraint Sensor: 根據當輪 modifier 與長期偏好進行硬性條件降權與重排
             preferences: dict[str, Any] = {}
             if chat_id:
                 try:
@@ -320,16 +295,59 @@ class FoodRecommendationFSM:
                 except Exception as e:
                     logger.warning(f"Failed to load long term preferences: {e}")
 
+            # 封裝強型別執行期上下文容器 (FSMRunContext)
+            run_ctx = FSMRunContext(
+                chat_id=chat_id,
+                user_message=user_message,
+                user_location=user_location,
+                intent=intent,
+                location_name=loc_name,
+                coords=(float(coords[0]), float(coords[1])),
+                cuisine=cuisine,
+                modifier=modifier,
+                search_keyword=search_keyword,
+                radii_ladder=radii_ladder,
+                style_tag=style_tag,
+                exclude_place_ids=exclude_ids,
+                long_term_preferences=preferences,
+            )
+            lat, lng = run_ctx.coords  # type: ignore[misc]
+
+            # 方案 1A 二段式進度更新 (進度 1)
+            if on_progress:
+                target_desc = f"「{run_ctx.location_name}」" if run_ctx.location_name else "您目前位置"
+                if run_ctx.intent == "more":
+                    await on_progress(f"🔄 正在為您排除已看過店家，於 {target_desc} 挖掘下一梯隊高評價名店...")
+                else:
+                    await on_progress(f"🧭 正在為您鎖定 {target_desc} 並檢索週邊熱門美食與食べログ評分...")
+
+            # 2. State 2: 候選店家智慧階梯檢索 (含去重排除與自適應擴圈)
+            candidates = await self.execute_state_2_places_ladder(
+                lat=lat,
+                lng=lng,
+                keyword=run_ctx.search_keyword,
+                origin_name=run_ctx.location_name,
+                exclude_place_ids=run_ctx.exclude_place_ids,
+                custom_radii=run_ctx.radii_ladder,
+            )
+            if not candidates:
+                await self.trace_logger.finish_run(status="completed")
+                return f"抱歉，在 {run_ctx.location_name or '該地點'} 週邊暫時未檢索到更多符合「{run_ctx.search_keyword}」的高評價餐廳，建議可更換地標或料理關鍵字再次搜尋。"
+
+            # 3. State 3: 3 店家平行 Tabelog 查驗
+            enriched_stores = await self.execute_state_3_parallel_tabelog(candidates, area_hint=run_ctx.location_name)
+
+            # 3.2 Deterministic Constraint Sensor: 根據當輪 modifier 與長期偏好進行硬性條件降權與重排
             enriched_stores = apply_deterministic_constraints(
                 enriched_stores,
-                modifier=modifier,
-                preferences=preferences,
+                modifier=run_ctx.modifier,
+                preferences=run_ctx.long_term_preferences,
             )
             if any(s.get("constraint_violation") is True for s in enriched_stores):
                 enriched_stores = self.rank_and_select_top_stores(enriched_stores, top_k=len(enriched_stores))
 
             # 3.5 pgvector 語意重排與食評亮點萃取 (RAG)
-            rerank_query = f"{user_message} {modifier}" if modifier else user_message
+            rerank_query = f"{run_ctx.user_message} {run_ctx.modifier}" if run_ctx.modifier else run_ctx.user_message
             enriched_stores = await self.semantic_rerank_reviews(rerank_query, enriched_stores)
 
             # 方案 1A 二段式進度更新 (進度 2 - 準備寫卡片)
@@ -339,19 +357,19 @@ class FoodRecommendationFSM:
             # 4. State 4: 單輪卡片生成
             final_card = await self.execute_state_4_synthesis(
                 stores=enriched_stores,
-                cuisine=search_keyword,
-                location_name=loc_name,
+                cuisine=run_ctx.search_keyword,
+                location_name=run_ctx.location_name,
             )
 
             # 保存推薦店家與 Working Memory 至 Session 以支援後續追問與累積去重
-            if chat_id:
+            if run_ctx.chat_id:
                 try:
                     await self.session_repo.update_recommended_ids(
-                        chat_id=chat_id,
+                        chat_id=run_ctx.chat_id,
                         recommended_ids=enriched_stores,
-                        accumulate=(intent == "more"),
-                        last_cuisine=search_keyword,
-                        last_location=loc_name,
+                        accumulate=(run_ctx.intent == "more"),
+                        last_cuisine=run_ctx.search_keyword,
+                        last_location=run_ctx.location_name,
                     )
                 except Exception as e:
                     logger.warning(f"Could not persist recommended stores to session: {e}")

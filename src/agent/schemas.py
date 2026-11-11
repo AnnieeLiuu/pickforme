@@ -1,20 +1,95 @@
 import re
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class IntentOutput(BaseModel):
-    """Stage 1 意圖解析結構化輸出合約"""
+    """Stage 1 意圖解析結構化輸出合約 (借鏡 PydanticAI Schema-Driven & Semantic Validation)"""
 
-    intent: Literal["search", "more", "follow_up", "chitchat", "need_location"]
-    location: Optional[str] = None
-    cuisine: Optional[str] = None
+    intent: Literal["search", "more", "follow_up", "chitchat", "need_location"] = Field(
+        description='意圖分類：搜尋餐廳 ("search")、換一批/風格轉向 ("more")、追問上一輪店家 ("follow_up")、閒聊 ("chitchat")、缺地點 ("need_location")'
+    )
+    location: Optional[str] = Field(
+        default=None,
+        description="日本地名、車站、商圈或景點名稱（若未提及請設為 null）",
+    )
+    cuisine: Optional[str] = Field(
+        default=None,
+        description='料理類別或食物核心名詞（例如「壽喜燒」、「拉麵」，嚴禁包含距離或時間詞；若 search 未指定則預設為 "熱門人氣美食"）',
+    )
+    modifier: Optional[str] = Field(
+        default=None,
+        description='修飾語或新要求（例如 "更在地老店"、"平價"、"走路15分鐘內"，若無請設為 null）',
+    )
+    target_index: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=3,
+        description="當 intent 為 follow_up 時，追問的店家序號（整數 1, 2 或 3，若未指定特定序號則為 null）",
+    )
+    question: Optional[str] = Field(
+        default=None,
+        description="當 intent 為 follow_up 時，使用者追問的具體問題內容",
+    )
+    dietary_restrictions: list[str] = Field(
+        default_factory=list,
+        description='硬性飲食禁忌清單（如 ["不吃牛", "不吃辣"]）',
+    )
+    payment_preferences: list[str] = Field(
+        default_factory=list,
+        description='支付方式偏好清單（如 ["credit_card", "paypay"]）',
+    )
+
+    @model_validator(mode="after")
+    def validate_semantic_consistency(self) -> "IntentOutput":
+        """跨欄位語意一致性驗證器 (借鏡 PydanticAI @result_validator)"""
+        # 1. 正規化空白字串為 None
+        for attr in ("location", "cuisine", "modifier", "question"):
+            val = getattr(self, attr)
+            if isinstance(val, str):
+                cleaned = val.strip()
+                setattr(self, attr, cleaned if cleaned else None)
+
+        # 2. 若為 search 且未指定 cuisine，自動補齊預設值
+        if self.intent == "search" and not self.cuisine:
+            self.cuisine = "熱門人氣美食"
+
+        # 3. 若為 follow_up，必須至少具備 target_index 或 question，否則觸發 Reflection 自癒重試
+        if self.intent == "follow_up" and self.target_index is None and not self.question:
+            raise ValueError("When intent is 'follow_up', either 'target_index' (1-3) or 'question' must be provided.")
+
+        return self
+
+    @classmethod
+    def build_json_schema_prompt(cls) -> str:
+        """從 Pydantic Model 單一真相來源自動生成結構化 Prompt 規範字串"""
+        schema = cls.model_json_schema()
+        props: dict[str, Any] = schema.get("properties", {})
+        field_lines: list[str] = []
+        for field_name, info in props.items():
+            desc = info.get("description", "")
+            field_lines.append(f'  "{field_name}": {desc}')
+        fields_block = ",\n".join(field_lines)
+        return f"{{\n{fields_block}\n}}"
+
+
+class FSMRunContext(BaseModel):
+    """4 階段 FSM 執行期強型別上下文容器 (借鏡 PydanticAI RunContext[Deps])"""
+
+    chat_id: Optional[int] = None
+    user_message: str
+    user_location: Optional[tuple[float, float]] = None
+    intent: str = "search"
+    location_name: Optional[str] = None
+    coords: Optional[tuple[float, float]] = None
+    cuisine: str = "熱門美食"
     modifier: Optional[str] = None
-    target_index: Optional[int] = Field(default=None, ge=1, le=3)
-    question: Optional[str] = None
-    dietary_restrictions: list[str] = Field(default_factory=list)
-    payment_preferences: list[str] = Field(default_factory=list)
+    search_keyword: str = "熱門美食"
+    radii_ladder: list[int] = Field(default_factory=lambda: [800, 1200, 1800])
+    style_tag: Optional[str] = None
+    exclude_place_ids: set[str] = Field(default_factory=set)
+    long_term_preferences: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class GeocodeArgs(BaseModel):

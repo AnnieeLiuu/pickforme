@@ -279,6 +279,26 @@ async def enrich_single_place(
                 "rating_source": "Tabelog",
             }
 
+    # 1.5 雙源直通車：若該店已由 State 2 Tabelog-First 雙源獵店取得有效 Tabelog 評分或百名店，免重複搜尋清單
+    if place.get("tabelog_seed") and (place.get("tabelog_rating") or place.get("awards") or place.get("hyakumeiten")):
+        pay_desc = format_payment_methods(
+            supports_paypay=place.get("supports_paypay"),
+            credit_cards=place.get("credit_cards"),
+            accepts_credit_cards=place.get("accepts_credit_cards"),
+            accepts_cash_only=place.get("accepts_cash_only"),
+            accepts_nfc=place.get("accepts_nfc"),
+        )
+        return {
+            **place,
+            "name_ja": place.get("name_ja") or store_name,
+            "tabelog_rating": float(place["tabelog_rating"]) if place.get("tabelog_rating") else None,
+            "review_count": place.get("tabelog_review_count") or place.get("review_count"),
+            "awards": place.get("awards") or place.get("hyakumeiten") or [],
+            "payment_methods_desc": pay_desc,
+            "sample_reviews": place.get("reviews") or [],
+            "rating_source": "Tabelog",
+        }
+
     # 2. 未命中快取：執行即時爬蟲與比對
     try:
         # 自動組合商圈/地名關鍵字，精準鎖定在地分店 (如 Mawashizushi KATSU 横浜)

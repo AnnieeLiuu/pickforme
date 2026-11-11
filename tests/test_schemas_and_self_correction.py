@@ -5,6 +5,7 @@ import pytest
 from pydantic import ValidationError
 from src.agent.llm_client import LLMClient
 from src.agent.schemas import (
+    FSMRunContext,
     GeocodeArgs,
     IntentOutput,
     SearchNearbyArgs,
@@ -103,3 +104,40 @@ async def test_tool_executor_rejects_invalid_args_with_structured_error():
     res_str = await executor.execute_tool("search_nearby", {"lat": 10.0, "lng": 139.76})
     res = json.loads(res_str)
     assert "error" in res
+
+
+def test_intent_output_semantic_model_validator_and_schema_prompt():
+    """驗證 PydanticAI Pattern 1 & 2:
+    - build_json_schema_prompt() 動態生成單一真相來源 Prompt
+    - @model_validator 自動清理空白、補齊預設 cuisine，並攔截無問題之 follow_up
+    """
+    prompt_str = IntentOutput.build_json_schema_prompt()
+    assert '"intent":' in prompt_str
+    assert '"dietary_restrictions":' in prompt_str
+    assert '"payment_preferences":' in prompt_str
+
+    # search 未帶 cuisine 時自動補齊 "熱門人氣美食"，且空白 location 自動轉為 None
+    parsed = IntentOutput.model_validate({"intent": "search", "location": "  神保町  ", "cuisine": "   "})
+    assert parsed.location == "神保町"
+    assert parsed.cuisine == "熱門人氣美食"
+
+    # follow_up 若既無 target_index 也無 question，應觸發語意 ValidationError
+    with pytest.raises(ValidationError):
+        IntentOutput.model_validate({"intent": "follow_up", "target_index": None, "question": "   "})
+
+
+def test_fsm_run_context_typed_container():
+    """驗證 PydanticAI Pattern 3: FSMRunContext 強型別狀態容器"""
+    ctx = FSMRunContext(
+        chat_id=999,
+        user_message="神保町 義大利麵",
+        coords=(35.6959, 139.7576),
+        location_name="神保町",
+        search_keyword="義大利麵",
+        exclude_place_ids={"place_1"},
+        long_term_preferences={"dietary_restrictions": ["不吃牛"]},
+    )
+    assert ctx.chat_id == 999
+    assert ctx.coords == (35.6959, 139.7576)
+    assert "place_1" in ctx.exclude_place_ids
+    assert ctx.long_term_preferences["dietary_restrictions"] == ["不吃牛"]

@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import inspect
 import logging
 import math
 import re
@@ -81,29 +83,124 @@ def prefilter_potential_foodie_places(
     places: list[dict[str, Any]],
     max_seeds: int = 6,
 ) -> list[dict[str, Any]]:
-    """Google 端老饕潛力智慧預篩 (Smart Pre-filtering)
+    """雙源老饕潛力智慧預篩 (Tabelog-First Dual-Source Pre-filtering)
 
-    依評分、評論數合理性與距離，在 0ms 內預篩出最具備 Tabelog 高分潛力的種子店家
+    1. 絕對保送權重 (+10.0)：凡由 Tabelog 主動獵店提名 (tabelog_seed=True) 或已知 Tabelog >= 3.45 / 百名店之店家，
+       無條件優先保送進入 Top 種子名單，徹底消除「日本 Tabelog 名店在 Google 僅 3.8 星被觀光客店淘汰」之盲點。
+    2. 日本在地老店保護曲線：將 Google 3.7 ~ 4.4 星視為日本常態優質區間（壓平超過 4.4 星之觀光客虛高分增益），
+       結合評論數對數平滑與步行距離選出剩餘種子。
     """
     if not places:
         return []
 
     def calc_pre_score(p: dict[str, Any]) -> float:
+        t_rating = float(p.get("tabelog_rating") or 0.0)
+        has_award = bool(p.get("hyakumeiten") or p.get("awards"))
+        is_tabelog_seed = bool(p.get("tabelog_seed"))
+
+        # 1. Tabelog 老饕種子保送通道
+        tabelog_boost = 0.0
+        if is_tabelog_seed or t_rating >= 3.45 or has_award:
+            tabelog_boost = 10.0 + (t_rating if t_rating > 0 else 3.5) + (0.5 if has_award else 0.0)
+
         g_rating = float(p.get("rating") or p.get("google_rating") or 3.5)
         rev_count = int(p.get("userRatingCount") or p.get("review_count") or 10)
         dist_m = float(p.get("distance_meters") or 500)
 
-        # Google 評分權重
-        rating_score = g_rating * 0.6
+        # 2. 日本在地老店保護曲線：3.8 ~ 4.4 星皆給予穩健高分，壓抑 > 4.4 星觀光客店的超額輾壓
+        effective_g = min(g_rating, 4.4) if g_rating >= 3.8 else g_rating
+        rating_score = effective_g * 0.55
+
         # 評論數對數平滑 (上限 0.9，防大眾網紅店刷量)
         rev_score = min(math.log10(max(1, rev_count)) * 0.3, 0.9)
         # 距離懲罰：800m 內無扣分，超過 800m 每 500m 扣 0.1
         dist_penalty = max(0.0, (dist_m - 800) / 500 * 0.1) if dist_m > 800 else 0.0
 
-        return rating_score + rev_score - dist_penalty
+        return tabelog_boost + rating_score + rev_score - dist_penalty
 
     sorted_places = sorted(places, key=calc_pre_score, reverse=True)
     return sorted_places[:max_seeds]
+
+
+async def _hydrate_tabelog_seeds_with_places(
+    fsm: FoodRecommendationFSM,
+    lat: float,
+    lng: float,
+    origin_name: Optional[str],
+    keyword: str,
+    max_radius: int,
+    exclude_set: set[str],
+) -> list[dict[str, Any]]:
+    """源頭 A：主動從 Tabelog 獵取該地區高分/百名店名單，並反查 Google Places 錨定座標與步行距離"""
+    if not origin_name:
+        return []
+
+    scraper = getattr(fsm, "tabelog_scraper", None)
+    discover_fn = getattr(scraper, "discover_area_top_stores", None)
+    search_text_fn = getattr(fsm.places_client, "search_by_text", None)
+    if not callable(discover_fn) or not callable(search_text_fn):
+        return []
+
+    try:
+        res = discover_fn(area_name=origin_name, cuisine=keyword, max_seeds=3)
+        tabelog_seeds = await res if inspect.isawaitable(res) else res
+        if not isinstance(tabelog_seeds, list) or not tabelog_seeds:
+            return []
+    except Exception as e:
+        logger.debug(f"Tabelog area seed discovery skipped: {e}")
+        return []
+
+    origin_prefix = f"從「{origin_name}」"
+
+    async def _resolve_one_seed(seed: dict[str, Any]) -> Optional[dict[str, Any]]:
+        name_ja = (seed.get("name_ja") or "").strip()
+        if not name_ja:
+            return None
+        try:
+            call_res = search_text_fn(
+                query=f"{name_ja} {origin_name}",
+                lat=lat,
+                lng=lng,
+                radius=max_radius,
+                max_results=1,
+            )
+            found = await call_res if inspect.isawaitable(call_res) else call_res
+            if not isinstance(found, list) or not found:
+                return None
+            place = dict(found[0])
+            pid = place.get("google_place_id")
+            if not pid or pid in exclude_set:
+                return None
+
+            p_lat = place.get("lat")
+            p_lng = place.get("lng")
+            if p_lat and p_lng:
+                dist_m = int(calculate_distance_meters(lat, lng, p_lat, p_lng))
+                if dist_m > max_radius:
+                    return None
+                walk_mins = max(1, math.ceil(dist_m / 80))
+                place["distance_meters"] = dist_m
+                place["walk_time_minutes"] = walk_mins
+                place["origin_name"] = origin_name
+                place["walking_desc"] = f"{origin_prefix}步行約 {walk_mins} 分鐘 ({dist_m}m)"
+
+            place["tabelog_seed"] = True
+            if seed.get("tabelog_url"):
+                place["tabelog_url"] = seed["tabelog_url"]
+            if seed.get("tabelog_rating") is not None:
+                place["tabelog_rating"] = seed["tabelog_rating"]
+            if seed.get("review_count") is not None:
+                place["tabelog_review_count"] = seed["review_count"]
+            if seed.get("hyakumeiten"):
+                place["hyakumeiten"] = seed["hyakumeiten"]
+                place["awards"] = seed["hyakumeiten"]
+            return place
+        except Exception as e:
+            logger.debug(f"Failed to hydrate Tabelog seed '{name_ja}': {e}")
+            return None
+
+    hydrated = await asyncio.gather(*[_resolve_one_seed(s) for s in tabelog_seeds if isinstance(s, dict)])
+    return [p for p in hydrated if p is not None]
 
 
 async def execute_state_2_places_ladder(
@@ -123,6 +220,21 @@ async def execute_state_2_places_ladder(
     exclude_set = set(exclude_place_ids or set())
 
     radii = custom_radii or [800, 1200, 1800]
+    max_seed_radius = max(radii) if radii else 1800
+
+    # 源頭 A：平行啟動 Tabelog 主動獵店任務 (若有明確地名)
+    tabelog_seed_task = asyncio.create_task(
+        _hydrate_tabelog_seeds_with_places(
+            fsm=fsm,
+            lat=lat,
+            lng=lng,
+            origin_name=origin_name,
+            keyword=keyword,
+            max_radius=max_seed_radius,
+            exclude_set=exclude_set,
+        )
+    )
+
     for r in radii:
         raw_places = await fsm.places_client.search_nearby(lat=lat, lng=lng, radius=r, keyword=keyword)
         # 過濾重複與已看過店家
@@ -167,7 +279,25 @@ async def execute_state_2_places_ladder(
             if len(candidates) >= 3:
                 break
 
-    # Google 端老饕潛力預篩：挑選最具 Tabelog 高分潛力的種子店家 (前 4 筆主選 + 2 筆備選)
+    # 雙源匯流：合併 Tabelog 主動獵店種子與 Google 階梯候選池
+    tabelog_hydrated_seeds = await tabelog_seed_task
+    if tabelog_hydrated_seeds:
+        by_id: dict[str, dict[str, Any]] = {c["google_place_id"]: c for c in candidates if c.get("google_place_id")}
+        for t_seed in tabelog_hydrated_seeds:
+            pid = t_seed.get("google_place_id")
+            if not pid:
+                continue
+            if pid in by_id:
+                # 升級既有 Google 候選店為 Tabelog 保送種子
+                by_id[pid]["tabelog_seed"] = True
+                for k in ("tabelog_url", "tabelog_rating", "tabelog_review_count", "hyakumeiten", "awards"):
+                    if t_seed.get(k) is not None and not by_id[pid].get(k):
+                        by_id[pid][k] = t_seed[k]
+            else:
+                candidates.insert(0, t_seed)
+                by_id[pid] = t_seed
+
+    # 雙源老饕潛力預篩：Tabelog 種子 100% 優先保送 + 挑選種子店家 (前 4 筆主選 + 2 筆備選)
     final_candidates = fsm._prefilter_potential_foodie_places(candidates, max_seeds=max_candidates)
     latency = int((time.time() - t0) * 1000)
 

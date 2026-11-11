@@ -120,20 +120,20 @@ flowchart TD
         CheckFollowUp -- "是追問" --> AnswerDirect
         CheckFollowUp -- "搜尋 / 換一批" --> CheckCoord{"有無地理座標?"}
         CheckCoord -- "無座標" --> Geocode["Google Geocoding API<br/>地名轉 (lat, lng)"]
-        CheckCoord -- "已有座標" --> S1Done["鎖定座標與料理分類"]
+        CheckCoord -- "已有座標" --> S1Done["鎖定座標與搜尋約束解耦<br/>(resolve_search_constraints 分離料理/距離階梯/風格詞)"]
         Geocode --> S1Done
     end
 
     S1Done --> Progress1["Telegram 狀態推播 1:<br/>🔍 已鎖定 地點，正在搜尋評價優質的 種類 餐廳..."]
 
-    subgraph State2 ["State 2: Google Places 智慧階梯搜尋 (Ladder Search)"]
-        Progress1 --> Search800["第 1 階: 半徑 800m 搜尋"]
-        Search800 --> CheckCount1{"店家數 >= 3?"}
-        CheckCount1 -- Yes --> S2Select["依評分/營業中篩選 Top 3 候選店"]
+    subgraph State2 ["State 2: 雙源獵店與智慧階梯搜尋 (Tabelog-First Dual-Source & Ladder Search, src/agent/stages/places_search.py)"]
+        Progress1 --> DualSource["🌐 源頭 A: Tabelog 主動獵取地區高分/百名店 (discover_area_top_stores)<br/>📍 源頭 B: Google Places 第 1 階 800m 搜尋"]
+        DualSource --> CheckCount1{"店家數 >= 3?"}
+        CheckCount1 -- Yes --> S2Select["雙源匯流預篩 Top 種子候選店<br/>(prefilter_potential_foodie_places: Tabelog 種子 100% 優先保送)"]
         CheckCount1 -- No --> Search1200["第 2 階: 擴大半徑至 1200m"]
         Search1200 --> CheckCount2{"店家數 >= 3?"}
         CheckCount2 -- Yes --> S2Select
-        CheckCount2 -- No --> Search1800["第 3 階: 擴大半徑至 1800m"]
+        CheckCount2 -- No --> Search1800["第 3 階: 擴大半徑至 1800m (不足再保底 2500m)"]
         Search1800 --> S2Select
     end
 
