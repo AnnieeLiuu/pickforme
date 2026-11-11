@@ -5,7 +5,22 @@
 ---
 
 ## [Unreleased]
+
+---
+
+## [1.3.0] - 2026-11-11
+
 ### Added
+- **Tabelog 雙源獵店與反向種子保送架構 (`src/services/tabelog_scraper.py`, `src/agent/stages/places_search.py`)**：
+  - 新增 `TabelogScraper.discover_area_top_stores()`，於 State 2 平行主動獵取指定地區與料理之 Tabelog 高分名店與百名店名單，並反查 Google Places 錨定精準經緯度與步行距離（標記 `tabelog_seed = True`）。
+  - 重構 `prefilter_potential_foodie_places()`，賦予 Tabelog 原生種子與百名店 `+10.0` 絕對保送權重，並建立日本在地老店保護曲線（壓平 Google > 4.4 星觀光客店之超額權重），徹底根除「日本 Tabelog 3.7+ 百名店在 Google 僅 3.8 星而在 State 2 遭淘汰」之盲點。
+- **PydanticAI 三大設計模式吸收 (`src/agent/schemas.py`, `src/agent/stages/intent.py`, `src/agent/pipeline.py`)**：
+  - **Schema-Driven Prompt**：新增 `IntentOutput.build_json_schema_prompt()`，由 Pydantic `Field(description=...)` 單一真相來源動態生成 `INTENT_PARSER_SYSTEM_PROMPT` 規範。
+  - **Semantic Result Validator**：於 `IntentOutput` 實作 `@model_validator(mode="after")` 跨欄位語意驗證，自動清理空白字串、補齊預設料理詞並攔截空問題之 `follow_up` 觸發自癒重試。
+  - **Typed RunContext Container**：新增 `FSMRunContext` 強型別執行期上下文容器，收斂 `FoodRecommendationFSM.run_pipeline()` 跨階段狀態傳遞。
+- **冷儲存雙重水位線自動歸檔與 Cloud Run 防刪安全鎖 (`src/services/cold_storage.py`, `src/bot/handlers.py`)**：
+  - 新增 `auto_archive_by_watermark()`，於每次對話結束後非阻塞背景巡檢雙重水位線（預設熱層保留最新 `500` 筆 Runs 或 Neon DB 總容量上限 `400 MB`），僅將超出門檻之最舊紀錄轉為 Parquet 歸檔。
+  - 新增 Cloud Run 無狀態容器防刪安全鎖（偵測 `K_SERVICE` 環境變數）：若 GCS 上傳未就緒而退回容器本地目錄，自動攔截 `DELETE FROM agent_runs` 並在 Telegram `/archive` 明確告警，杜絕容器縮容導致歷史資料蒸發。
 - **Pre-Classifier `QuickPassGate` 0ms 入口快篩與安全絆線 (`src/agent/gate.py`)**：在進入 Stage 1 LLM 前執行 0ms 確定性正則快篩，攔截 Prompt Injection 越獄字串與超長輸入 (`>500` 字元)，並針對 `__healthcheck__`、純問候、純道謝提供 0-LLM 秒回，以及針對「指定店號追問 (`follow_up_index`)」、「純換一批 (`pure_more`)」、「日本經緯度座標 (`coords_search`)」直接路由。
 - **Pydantic v2 強型別合約與 Self-Correction 自癒重試迴圈 (`src/agent/schemas.py`, `src/agent/llm_client.py`)**：定義 `IntentOutput` 與 Tool 參數 Schema；當模型輸出違反 JSON 格式或 Pydantic 邊界時，自動捕獲 `ValidationError` 並回饋模型進行 1 次自癒重試，重試失敗時平滑降級至安全預設值。
 - **Two-Tier Memory 雙層記憶架構 (`src/db/repositories/session.py`)**：免改 SQL DDL，於 `chat_sessions.last_recommended_ids` JSONB 實作短期 `working_memory` (`last_cuisine`, `last_location`) 與跨輪 `long_term_preferences` (`dietary_restrictions`, `payment_preferences`)，支援「換一批」無縫繼承與長期飲食/支付偏好持久化。
