@@ -80,6 +80,7 @@ async def test_cold_storage_archiver_export_and_analyze(tmp_path):
         assert res["runs_archived"] == 1
         assert res["steps_archived"] == 1
         assert len(res["parquet_files"]) == 2
+        assert res["hot_deleted"] is True
 
         # 檢驗 DuckDB 分析引擎
         analytics = archiver.analyze_traces_duckdb()
@@ -89,6 +90,57 @@ async def test_cold_storage_archiver_export_and_analyze(tmp_path):
         assert analytics["total_tokens_used"] == 1500
         assert len(analytics["models_breakdown"]) == 1
         assert analytics["models_breakdown"][0]["model"] == "groq/qwen3.8-27b"
+
+
+@pytest.mark.asyncio
+async def test_cold_storage_stateless_cloud_run_safety_lock_blocks_delete(tmp_path, monkeypatch):
+    """回歸測試：當執行於 Cloud Run (K_SERVICE 存在) 且 GCS 上傳失敗退回 local 時，
+    強制觸發防刪鎖，攔截 DELETE FROM agent_runs 避免無狀態容器縮容造成永久資料遺失。
+    """
+    monkeypatch.setenv("K_SERVICE", "pickforme-service")
+
+    mock_pool = MagicMock()
+    mock_conn = MagicMock()
+    mock_conn.commit = AsyncMock()
+    mock_cur = AsyncMock()
+
+    mock_pool.connection.return_value.__aenter__.return_value = mock_conn
+    mock_conn.cursor.return_value.__aenter__.return_value = mock_cur
+
+    run_id_1 = uuid4()
+    now = datetime.now(timezone.utc)
+
+    mock_cur.fetchall.side_effect = [
+        [
+            {
+                "run_id": run_id_1,
+                "chat_id": 12345,
+                "user_query": "神保町車站 義大利麵",
+                "model_used": "groq/qwen3.8-27b",
+                "total_tokens": 1200,
+                "latency_ms": 950,
+                "status": "completed",
+                "created_at": now,
+            }
+        ],
+        [],
+    ]
+
+    with (
+        patch("src.services.cold_storage.get_db_pool", new_callable=AsyncMock, return_value=mock_pool),
+        patch.object(ColdStorageArchiver, "_try_upload_to_gcs", return_value=False),
+    ):
+        archiver = ColdStorageArchiver(local_dir=tmp_path)
+        res = await archiver.archive_traces(retention_days=14, delete_after_archive=True)
+
+        assert res["status"] == "success"
+        assert res["destination"] == "local"
+        assert res["hot_deleted"] is False
+        assert res["delete_skipped_reason"] == "gcs_upload_failed_on_stateless_cloud_run"
+        # 驗證絕對沒有呼叫 DELETE FROM agent_runs
+        executed_queries = [call.args[0] for call in mock_cur.execute.call_args_list]
+        assert not any("DELETE FROM agent_runs" in q for q in executed_queries)
+        mock_conn.commit.assert_not_awaited()
 
 
 def test_api_admin_archive_endpoint():

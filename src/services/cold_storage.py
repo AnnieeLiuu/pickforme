@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -163,10 +164,24 @@ class ColdStorageArchiver:
                     destination = "gcs"
 
                 # 5. 熱層清理：CASCADE 刪除 Neon DB 已歸檔記錄
+                # 安全鎖：若執行於 Cloud Run 無狀態容器 (K_SERVICE 存在) 且 GCS 上傳失敗，
+                # 嚴禁刪除 Neon DB 熱資料，避免容器縮容至 0 時本地 Parquet 隨之蒸發造成永久資料遺失。
+                is_cloud_run = bool(os.getenv("K_SERVICE"))
+                hot_deleted = False
+                delete_skipped_reason: Optional[str] = None
+
                 if delete_after_archive:
-                    await cur.execute("DELETE FROM agent_runs WHERE run_id = ANY(%s);", (expired_run_ids,))
-                    await conn.commit()
-                    logger.info(f"Cleaned up {len(expired_run_ids)} expired agent_runs from Neon DB.")
+                    if is_cloud_run and destination != "gcs":
+                        delete_skipped_reason = "gcs_upload_failed_on_stateless_cloud_run"
+                        logger.warning(
+                            "Stateless safety lock triggered on Cloud Run: GCS upload failed; "
+                            "skipping DELETE FROM agent_runs to prevent data loss."
+                        )
+                    else:
+                        await cur.execute("DELETE FROM agent_runs WHERE run_id = ANY(%s);", (expired_run_ids,))
+                        await conn.commit()
+                        hot_deleted = True
+                        logger.info(f"Cleaned up {len(expired_run_ids)} expired agent_runs from Neon DB.")
 
                 return {
                     "status": "success",
@@ -174,6 +189,8 @@ class ColdStorageArchiver:
                     "steps_archived": len(steps_data),
                     "parquet_files": [str(p) for p in created_files],
                     "destination": destination,
+                    "hot_deleted": hot_deleted,
+                    "delete_skipped_reason": delete_skipped_reason,
                 }
 
     def analyze_traces_duckdb(self, parquet_glob: Optional[str] = None) -> dict[str, Any]:

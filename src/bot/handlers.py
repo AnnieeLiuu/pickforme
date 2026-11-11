@@ -196,12 +196,24 @@ class TelegramBotHandler:
                 reply = "ℹ️ 目前熱層中尚無超過 14 天之歷史 Trace，無需歸檔。\n\n💡 系統將持續保護 Neon 1GB 額度安全。"
             else:
                 files_str = "\n".join([f"• `{Path(p).name}`" for p in res.get("parquet_files", [])])
+                dest = res.get("destination")
+                hot_deleted = res.get("hot_deleted", False)
+                if hot_deleted:
+                    cleanup_str = "🧹 **熱層清理**：已自 Neon DB 釋出舊紀錄，守護 1GB 免費額度！"
+                elif res.get("delete_skipped_reason") == "gcs_upload_failed_on_stateless_cloud_run":
+                    cleanup_str = (
+                        "⚠️ **安全防刪鎖已觸發**：因 GCS 尚未就緒且目前位於 Cloud Run 無狀態容器，"
+                        "為防止容器縮容遺失檔案，**已自動攔截 Neon DB 刪除動作**（舊資料仍安全保留於 Neon DB）！"
+                    )
+                else:
+                    cleanup_str = "ℹ️ **熱層保留**：未刪除 Neon DB 舊紀錄。"
+
                 reply = (
                     f"🎉 **冷儲存歸檔作業完成！**\n\n"
                     f"📊 **歸檔總量**：`{res.get('runs_archived', 0)}` 筆 Runs / `{res.get('steps_archived', 0)}` 筆 Steps\n"
-                    f"🗄️ **儲存目標**：`{res.get('destination')}` (Apache Parquet Snappy)\n"
+                    f"🗄️ **儲存目標**：`{dest}` (Apache Parquet Snappy)\n"
                     f"📁 **產生檔案**：\n{files_str}\n\n"
-                    f"🧹 **熱層清理**：已自 Neon DB 釋出舊紀錄，守護 1GB 免費額度！"
+                    f"{cleanup_str}"
                 )
             if status_msg_id:
                 await self._edit_telegram_message(chat_id, status_msg_id, reply)
