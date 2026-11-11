@@ -18,18 +18,25 @@
 - **P50 延遲**：`0.0 ms`
 - **P90 延遲**：`0.0 ms`
 
+## 🛡️ Agent Harness 架構防護矩陣 (Harness Capabilities)
+
+- **⚡ 0ms QuickPassGate 快篩**：0ms 確定性攔截問候/道謝/店號追問/純換一批/座標直搜與 Prompt Injection 安全絆線
+- **🛡️ Pydantic Self-Correction**：IntentOutput & Tool Args 結構化合約驗證 + ValidationError 自動重試自癒迴圈
+- **🧠 Two-Tier Memory**：chat_sessions JSONB 雙層記憶：working_memory 短期繼承 + long_term_preferences 長期飲食/支付偏好
+- **🎯 Deterministic Constraint Sensor**：Stage 3 硬性飲食禁忌與支付偏好感測器，違規自動標記 constraint_violation 並扣減 0.45 分重排
+
 ## 📋 測試案例執行矩陣 (Cases Execution Matrix)
 
 | ID | 分類 | 測試提問句 | T1 (意圖) | T2 (比對) | T3 (護欄) | 耗時 |
 | :---: | :--- | :--- | :---: | :---: | :---: | :---: |
-| `eval_001` | `typo_colloquial` | 新宿歌舞妓町有啥開很晚的拉麵，不要太油 | ✅ | ✅ | ✅ | 1ms |
+| `eval_001` | `typo_colloquial` | 新宿歌舞妓町有啥開很晚的拉麵，不要太油 | ✅ | ✅ | ✅ | 0ms |
 | `eval_002` | `multi_landmark` | 想要在橫濱棒球場或橫濱車站附近的壽喜燒 | ✅ | ✅ | ✅ | 0ms |
 | `eval_003` | `taste_rag` | 池袋 想要麵條偏硬有嚼勁的拉麵 | ✅ | ✅ | ✅ | 0ms |
 | `eval_004` | `multi_turn_more` | 還有更多推薦嗎？ | ✅ | ✅ | ✅ | 0ms |
 | `eval_005` | `multi_turn_more` | 我想找更在地的老店 | ✅ | ✅ | ✅ | 0ms |
 | `eval_006` | `follow_up` | 第2家今天有開嗎？ | ✅ | ✅ | ✅ | 0ms |
 | `eval_007` | `follow_up` | 第一家可以刷信用卡或 PayPay 嗎？ | ✅ | ✅ | ✅ | 0ms |
-| `eval_008` | `chitchat` | 哈囉你好！請問你可以幫我做什麼？ | ✅ | ✅ | ✅ | 0ms |
+| `eval_008` | `chitchat` | 哈囉你好！請問你可以幫我做什麼？ | ✅ | ✅ | ✅ | 1ms |
 | `eval_009` | `need_location` | 我想吃炸豬排 | ✅ | ✅ | ✅ | 0ms |
 | `eval_010` | `typo_colloquial` | 澀谷平價居酒屋，預算3000日幣內 | ✅ | ✅ | ✅ | 0ms |
 | `eval_011` | `taste_rag` | 京都 祇園 適合長輩吃的清淡湯豆腐 | ✅ | ✅ | ✅ | 0ms |
