@@ -183,3 +183,107 @@ def test_observability_depth_enhancements(tmp_path: Path) -> None:
     assert "caseHighlightNodes" in content
     assert "case_expand" in content
     assert "case_prewarm" in content
+
+
+def test_trace_to_river_adapter_integration(tmp_path: Path) -> None:
+    """Verifies Trace-to-River Adapter correctly binds real production traces to River Flowchart.
+
+    Ensures that:
+    1. Dynamic Live Runs container and mode switcher buttons exist in the left sidebar.
+    2. initLiveDashboard and switchLiveRun functions exist in JavaScript to dynamically
+       render live Neon DB traces into the River Flowchart and populate the audit drawer.
+    3. Live runs payload is embedded and ready for client-side evaluation.
+    """
+    from src.eval.evaluator import CaseEvalResult, EvalSummary
+
+    mock_summary = EvalSummary(
+        total_cases=1,
+        tier1_intent_accuracy=1.0,
+        tier2_entity_f1=1.0,
+        tier3_guardrail_compliance=1.0,
+        tier4_e2e_success_rate=1.0,
+        latency_p50_ms=300,
+        latency_p90_ms=500,
+        latency_avg_ms=350,
+        all_passed_gate=True,
+        case_results=[
+            CaseEvalResult(
+                case_id="eval_adapter_001",
+                category="observability_adapter",
+                description="測試 Trace-to-River Adapter",
+                user_message="靜岡有推薦的吃的嗎",
+                tier1_pass=True,
+                tier2_pass=True,
+                tier3_pass=True,
+                tier4_pass=True,
+                latency_ms=350,
+            )
+        ],
+    )
+
+    live_runs = [
+        {
+            "run_id": "run-live-adapter-001",
+            "user_query": "靜岡有推薦的吃的嗎",
+            "model_used": "cuisine_guide:grounding",
+            "total_tokens": 0,
+            "latency_ms": 7687,
+            "status": "completed",
+            "created_at": "2026-11-12T09:12:24.470610+00:00",
+        }
+    ]
+
+    live_steps = {
+        "run-live-adapter-001": [
+            {
+                "step_number": 1,
+                "action_type": "state_1_intent",
+                "tool_name": "intent_parser",
+                "tool_input": {"message": "靜岡有推薦的吃的嗎"},
+                "tool_output": {
+                    "intent": "explore_cuisine",
+                    "location": "靜岡",
+                    "explore_category": "food",
+                },
+                "latency_ms": 385,
+            },
+            {
+                "step_number": 2,
+                "action_type": "explore_cuisine",
+                "tool_name": "local_specialty_guide",
+                "tool_input": {"area": "靜岡", "category": "food"},
+                "tool_output": {
+                    "area_name": "靜岡",
+                    "specialties": ["御廚蕎麥", "富士宮炒麵", "山葵漬"],
+                },
+                "latency_ms": 5158,
+            },
+        ]
+    }
+
+    output_file = tmp_path / "adapter_dashboard.html"
+    res_path = generate_html_dashboard(
+        summary=mock_summary,
+        output_path=output_file,
+        live_runs=live_runs,
+        live_steps_by_run=live_steps,
+    )
+
+    assert res_path.exists()
+    content = res_path.read_text(encoding="utf-8")
+
+    # 1. 驗證左欄雙模式切換 Tab 與動態容器
+    assert "btn-mode-live" in content
+    assert "btn-mode-demo" in content
+    assert "container-live-runs" in content
+    assert "container-demo-cases" in content
+
+    # 2. 驗證 JavaScript 橋接適配器函式
+    assert "initLiveDashboard" in content
+    assert "switchLiveRun" in content
+    assert "switchDashboardMode" in content
+
+    # 3. 驗證動態資料與特殊分支支援
+    assert "run-live-adapter-001" in content
+    assert "靜岡有推薦的吃的嗎" in content
+    assert "pickforme-eval-summary-payload" in content
