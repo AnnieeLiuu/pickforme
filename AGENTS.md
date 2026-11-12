@@ -85,4 +85,4 @@ Whenever modifying code, schemas, configurations, or business logic, review and 
    - 重大架構取捨 ➡️ [`docs/adr/`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/adr/) 與 [`CHANGELOG.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/CHANGELOG.md)。
    - HTML 剖析規則 ➡️ [`docs/tabelog_structure.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/tabelog_structure.md)。
 4. **篇幅警戒線 (Length Limit)**：
-   - 本文件行數應嚴格維持在 **106 行以內**。若非涉及專案級全局開發方針的重大修訂，**嚴禁隨意擴增此文件**。
+   - 本文件物理總行數（以 Python `len(open('AGENTS.md', encoding='utf-8').readlines())` 或 VS Code 編輯器真實行號為準，包含空行）應嚴格維持在 **106 行以內**。若非涉及專案級全局開發方針的重大修訂，**嚴禁隨意擴增此文件**。
