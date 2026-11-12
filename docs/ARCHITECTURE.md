@@ -124,11 +124,13 @@ flowchart TD
         CheckIntent -- "explore_cuisine (文化導覽)" --> ResolveExploreCat{"探索品類自適應 (explore_category)<br/>• food (正餐名物料理)<br/>• drink (名茶/地酒/咖啡)<br/>• souvenir (伴手禮/銘菓/老舖)"}
         ResolveExploreCat --> CuisineGuide["CuisineGuideService 知識庫導覽<br/>(Neon DB area_specialty_guides ➔ Grounding 備援)"]
         CuisineGuide --> ReturnGuideCard["回傳在地深度導覽選單卡片<br/>(寫入 suggested_cuisines 與 last_explore_category)"] --> EndResponse
+        ReturnGuideCard -.->|"下一輪輸入「1」或「手刷濃茶」或「和菓子」<br/>(由 SyncMemory 雙軌感知自動繼承)"| ParseIntent
 
         CheckIntent -- "search / more (全品類鎖定檢索：吃/喝/伴手禮)" --> CheckPrefecture{"地理場景 1 判定：是否為縣級超大區域?<br/>is_prefecture_level_area (靜岡/長野/北海道/沖繩)"}
         
         %% 場景 1: 縣級超大區域
         CheckPrefecture -- "是 (縣級廣域無具體市/站)" --> DisambiguatePref["策略 A: 縣級主動反問收斂<br/>1. 產出在地分區選單 (如 1.靜岡車站 / 2.濱松 / 3.沼津港)<br/>2. 暫存 suggested_locations & pending_cuisine 於 Working Memory<br/>3. 回傳 Telegram 引導，下輪輸入 1/2/3 或城鎮名無縫接軌"] --> EndResponse
+        DisambiguatePref -.->|"下一輪輸入「1/2/3」或城鎮名<br/>(由 SyncMemory 雙軌感知自動繼承)"| ParseIntent
         
         %% 場景 2 & 3: 進入座標定錨
         CheckPrefecture -- "否 (具體城鎮/景區/都會)" --> CheckCoord{"有無地理座標?"}
@@ -211,6 +213,32 @@ flowchart TD
 ### D.2 三大消費品類自適應：吃的、喝的與伴手禮 (Three Consumption Categories: Food, Drink, Souvenir)
 
 為了避免向尋找百年抹茶或銘菓老舖的遊客推薦時出現「這家餐廳...」或關注「候位用餐桌數」等文案語境錯置，系統在 **State 1 導覽探索** 與 **State 4 卡片生成** 中建立了全管線的**三大消費品類自適應機制**：
+
+```mermaid
+flowchart TD
+    UserQuery(["使用者自然語言輸入"]) --> CheckIntent{"意圖分支判定 (intent)"}
+
+    %% 分支 1: 開放式文化導覽
+    CheckIntent -- "explore_cuisine<br/>(文化探索・尚未決定吃/喝/買什麼)" --> State1Guide["State 1: CuisineGuideService 在地深度導覽<br/>(Neon DB area_specialty_guides ➔ Grounding 備援)"]
+    State1Guide --> OutputGuide["回傳在地深度導覽選單卡片<br/>(暫存 suggested_cuisines 與 last_explore_category 至 Working Memory)"] --> EndGuide(["回覆 Telegram 完成本輪"])
+
+    %% 多輪點選回流
+    OutputGuide -.->|"下一輪輸入「1」或「手刷濃茶」或「和菓子」<br/>(由 State 1 SyncMemory 雙軌感知自動繼承)"| State1Search
+
+    %% 分支 2: 精確檢索 (吃的/喝的/伴手禮 通用)
+    CheckIntent -- "search / more<br/>(全品類鎖定檢索：吃/喝/伴手禮)" --> State1Search["State 1: 定錨座標與搜尋約束解耦"]
+    State1Search --> State2Places["State 2: 雙源獵店 (Google Places + Tabelog)"]
+    State2Places --> State3Enrich["State 3: 雙平台對齊 + 最近車站萃取 + 硬性條件過濾"]
+    State3Enrich --> State4Synth["State 4: 卡片合成與稱謂自適應 (resolve_card_category)"]
+
+    State4Synth --> FoodOut["🍱 吃的 (food) ➔「指標推薦餐廳」卡片"]
+    State4Synth --> DrinkOut["🍵 喝的 (drink) ➔「指標推薦茶房」卡片 (焙火/茶湯/地酒吟釀)"]
+    State4Synth --> SouvenirOut["🎁 伴手禮 (souvenir) ➔「指標推薦老舖」卡片 (常溫保存/包裝送禮)"]
+
+    FoodOut --> EndAll(["回覆 Telegram 推薦卡片"])
+    DrinkOut --> EndAll
+    SouvenirOut --> EndAll
+```
 
 | 品類代碼 | 中文意涵 | 關鍵字特徵集與辨識邏輯 | State 1 特色導覽行為 (`explore_cuisine`) | State 4 卡片稱謂與指導語 (`resolve_card_category`) | 保底模板徽章與引導語 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
