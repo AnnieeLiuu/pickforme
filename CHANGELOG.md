@@ -7,6 +7,8 @@
 ## [Unreleased]
 
 ### Added
+- **FastAPI Webhook 背景非同步派發 PrewarmWorker (`src/bot/handlers.py`, `tests/test_prewarm_wide_area.py`)**：
+  - 在 Telegram Bot Handler 建立預熱任務後，自動透過 `asyncio.create_task` 派發 `PrewarmWorker.process_next_job()` 在背景執行，徹底解決無獨立常駐 Worker 時任務卡在 `pending` 的問題，預熱完成自動發送 Telegram 推播卡片。
 - **All-in-One 全方位快取預熱與三維度官方權威深度爬蟲 (`src/worker/prewarm.py`, `src/services/authority_scraper.py`, `src/services/cuisine_guide.py`)**：
   - **All-in-One 雙軌並發快取**：升級 `PrewarmWorker`，以 `asyncio.gather` 同步並行執行商圈前 20 家餐廳與 Tabelog 評分快取，以及在地三大文化維度 (`food` 名物、`drink` 飲品/地酒、`souvenir` 必買伴手禮) 之深度預熱。
   - **部分故障隔離 (Partial Failure Isolation)**：文化導覽若遇外部網站超時或解析失敗，以獨立 try-except 隔離，確保餐廳資料庫快取照常完成並安全降級推播，任務永不崩潰。

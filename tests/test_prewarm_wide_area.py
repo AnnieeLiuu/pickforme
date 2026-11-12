@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
@@ -98,6 +99,8 @@ async def test_prewarm_wide_area_select_option():
     """Test 2: Following prompt, user inputs '1' -> creates job for 札幌 and clears state."""
     mock_bot = AsyncMock()
     mock_prewarm = AsyncMock()
+    mock_worker = AsyncMock()
+    mock_worker.process_next_job.return_value = True
     mock_prewarm.create_job.return_value = uuid4()
     session_repo = InMemorySessionRepo()
     agent_engine = AsyncMock()
@@ -107,6 +110,7 @@ async def test_prewarm_wide_area_select_option():
         session_repo=session_repo,  # type: ignore[arg-type]
         prewarm_repo=mock_prewarm,
         agent_engine=agent_engine,
+        prewarm_worker=mock_worker,
     )
 
     with patch("src.config.settings.TELEGRAM_ALLOWED_USER_ID", 0):
@@ -117,9 +121,11 @@ async def test_prewarm_wide_area_select_option():
         # Step 2: user selects '1'
         mock_bot.reset_mock()
         await handler.handle_update(_create_update("1", update_id=202))
+        await asyncio.sleep(0)
 
     # Should create job for option 1 (靜岡車站)
     mock_prewarm.create_job.assert_called_once()
+    mock_worker.process_next_job.assert_called_once()
     call_args = mock_prewarm.create_job.call_args[1]
     assert "靜岡" in call_args["area_name"]
     assert call_args["chat_id"] == 12345
@@ -138,6 +144,8 @@ async def test_prewarm_wide_area_select_all():
     """Test 3: Following prompt, user inputs '全部' -> creates prewarm jobs for all sub-areas."""
     mock_bot = AsyncMock()
     mock_prewarm = AsyncMock()
+    mock_worker = AsyncMock()
+    mock_worker.process_next_job.return_value = True
     mock_prewarm.create_job.side_effect = [uuid4(), uuid4(), uuid4()]
     session_repo = InMemorySessionRepo()
     agent_engine = AsyncMock()
@@ -147,6 +155,7 @@ async def test_prewarm_wide_area_select_all():
         session_repo=session_repo,  # type: ignore[arg-type]
         prewarm_repo=mock_prewarm,
         agent_engine=agent_engine,
+        prewarm_worker=mock_worker,
     )
 
     with patch("src.config.settings.TELEGRAM_ALLOWED_USER_ID", 0):
@@ -157,9 +166,11 @@ async def test_prewarm_wide_area_select_all():
         # Step 2: user selects '全部'
         mock_bot.reset_mock()
         await handler.handle_update(_create_update("全部", update_id=302))
+        await asyncio.sleep(0)
 
     # Should create 3 jobs
     assert mock_prewarm.create_job.call_count == 3
+    assert mock_worker.process_next_job.call_count == 3
     created_areas = [call[1]["area_name"] for call in mock_prewarm.create_job.call_args_list]
     assert any("札幌" in a for a in created_areas)
     assert any("函館" in a for a in created_areas)
@@ -254,6 +265,8 @@ async def test_prewarm_regular_area_direct_creation():
     """Test 6: /prewarm 箱根 -> directly creates 1 prewarm job without disambiguation prompt."""
     mock_bot = AsyncMock()
     mock_prewarm = AsyncMock()
+    mock_worker = AsyncMock()
+    mock_worker.process_next_job.return_value = True
     mock_prewarm.create_job.return_value = uuid4()
     session_repo = InMemorySessionRepo()
     agent_engine = AsyncMock()
@@ -263,13 +276,16 @@ async def test_prewarm_regular_area_direct_creation():
         session_repo=session_repo,  # type: ignore[arg-type]
         prewarm_repo=mock_prewarm,
         agent_engine=agent_engine,
+        prewarm_worker=mock_worker,
     )
 
     with patch("src.config.settings.TELEGRAM_ALLOWED_USER_ID", 0):
         await handler.handle_update(_create_update("/prewarm 箱根", update_id=601))
+        await asyncio.sleep(0)  # Yield loop to allow background task to execute
 
     # Job created directly for 箱根
     mock_prewarm.create_job.assert_called_once_with(area_name="箱根", target_count=20, chat_id=12345)
+    mock_worker.process_next_job.assert_called_once()
     wm = await session_repo.get_working_memory(12345)
     assert "pending_prewarm_options" not in wm
     mock_bot.send_message.assert_called_once()

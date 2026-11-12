@@ -35,12 +35,29 @@ class TelegramBotHandler:
         bot: Optional[Bot] = None,
         devops_subagent: Optional[DevOpsSubagent] = None,
         prewarm_repo: Optional[PrewarmRepository] = None,
+        prewarm_worker: Optional[Any] = None,
     ):
         self.agent_engine = agent_engine or AgentEngine()
         self.session_repo = session_repo or SessionRepository()
         self.bot = bot or (Bot(token=settings.TELEGRAM_BOT_TOKEN) if settings.TELEGRAM_BOT_TOKEN else None)
         self.devops_subagent = devops_subagent or DevOpsSubagent(agent_engine=self.agent_engine)
         self.prewarm_repo = prewarm_repo or PrewarmRepository()
+        self.prewarm_worker = prewarm_worker
+
+    def _dispatch_background_prewarm(self, count: int = 1) -> None:
+        """非同步在背景呼叫 PrewarmWorker 處理任務，無需外部常駐 Worker 進程"""
+        try:
+            if self.prewarm_worker is None:
+                from src.worker.prewarm import PrewarmWorker
+
+                self.prewarm_worker = PrewarmWorker(
+                    prewarm_repo=self.prewarm_repo,
+                    bot=self.bot,
+                )
+            for _ in range(count):
+                asyncio.create_task(self.prewarm_worker.process_next_job())
+        except Exception as e:
+            logger.warning(f"Failed to dispatch background prewarm worker: {e}")
 
     async def setup_commands(self) -> None:
         """向 Telegram 伺服器註冊選單與指令提示 (Slash Commands Menu)"""
@@ -133,6 +150,8 @@ class TelegramBotHandler:
                         except Exception as e:
                             logger.error(f"Failed to create batch prewarm job for '{target_loc}': {e}")
                 await self.session_repo.update_working_memory(chat_id=chat_id, clear_pending_prewarm=True)
+                if created_jobs:
+                    self._dispatch_background_prewarm(count=len(created_jobs))
                 job_list_str = "\n".join(created_jobs)
                 pref = pending_prewarm.get("pref", "")
                 reply_msg = (
@@ -155,6 +174,7 @@ class TelegramBotHandler:
                             job_id = await self.prewarm_repo.create_job(
                                 area_name=target_loc, target_count=20, chat_id=chat_id
                             )
+                            self._dispatch_background_prewarm(count=1)
                             reply_msg = (
                                 f"♨️ **已成功將「{opt.get('name', target_loc)}」排入 Neon 預熱佇列！**\n\n"
                                 f"🆔 **任務 ID**：`{job_id}`\n"
@@ -247,6 +267,7 @@ class TelegramBotHandler:
 
                 try:
                     job_id = await self.prewarm_repo.create_job(area_name=area, target_count=20, chat_id=chat_id)
+                    self._dispatch_background_prewarm(count=1)
                     reply_msg = (
                         f"♨️ **已成功將「{area}」排入 Neon 預熱佇列！**\n\n"
                         f"🆔 **任務 ID**：`{job_id}`\n"
