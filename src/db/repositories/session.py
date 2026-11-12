@@ -328,6 +328,9 @@ class SessionRepository:
             "last_cuisine": last_cuisine if last_cuisine is not None else existing_wm.get("last_cuisine"),
             "last_location": last_location if last_location is not None else existing_wm.get("last_location"),
         }
+        # 一般搜尋完成即代表「特色導覽選單」已消費完畢：清除 suggested_cuisines，
+        # 避免數輪後單獨回覆「1」被映射回過期的導覽品項 (stale menu)
+        updated_wm.pop("suggested_cuisines", None)
 
         data_to_store = {
             "current": recommended_ids,

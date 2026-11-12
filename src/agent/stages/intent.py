@@ -129,28 +129,43 @@ async def execute_state_1_intent(
     intent = parsed.get("intent", "search")
 
     # 處理「特色美食導覽」後的下一輪編號點選 (specialty_index: 1/2/3) 或「直接推薦」(direct_recommend)
-    if chat_id and (parsed.get("specialty_index") is not None or parsed.get("direct_recommend")):
+    if parsed.get("specialty_index") is not None:
+        idx_1based = int(parsed["specialty_index"])
+        wm_sel: dict[str, Any] = {}
+        if chat_id:
+            try:
+                wm_fn = getattr(fsm.session_repo, "get_working_memory", None)
+                if callable(wm_fn):
+                    wm_res = wm_fn(chat_id)
+                    wm_val = await wm_res if inspect.isawaitable(wm_res) else wm_res
+                    if isinstance(wm_val, dict):
+                        wm_sel = wm_val
+            except Exception as e:
+                logger.warning(f"Failed to resolve specialty selection from working memory: {e}")
+        suggested = wm_sel.get("suggested_cuisines")
+        if isinstance(suggested, list) and 0 <= idx_1based - 1 < len(suggested):
+            parsed["cuisine"] = str(suggested[idx_1based - 1])
+            if not parsed.get("location") and wm_sel.get("last_location"):
+                parsed["location"] = wm_sel["last_location"]
+        else:
+            # 無有效導覽選單 (未曾導覽或已被一般搜尋消費)：視為針對上一輪推薦店家第 N 家之追問
+            parsed.pop("specialty_index", None)
+            parsed["intent"] = "follow_up"
+            parsed["target_index"] = idx_1based
+            parsed["question"] = user_message
+            parsed["coords"] = None
+            return parsed
+    elif chat_id and parsed.get("direct_recommend"):
         try:
             wm_fn = getattr(fsm.session_repo, "get_working_memory", None)
             if callable(wm_fn):
                 wm_res = wm_fn(chat_id)
                 wm = await wm_res if inspect.isawaitable(wm_res) else wm_res
-                if isinstance(wm, dict):
-                    if not parsed.get("location") and wm.get("last_location"):
-                        parsed["location"] = wm["last_location"]
-                    if parsed.get("specialty_index") is not None:
-                        idx = int(parsed["specialty_index"]) - 1
-                        suggested = wm.get("suggested_cuisines")
-                        if isinstance(suggested, list) and 0 <= idx < len(suggested):
-                            parsed["cuisine"] = str(suggested[idx])
-                        elif wm.get("last_cuisine"):
-                            parsed["cuisine"] = str(wm["last_cuisine"])
-                        else:
-                            parsed["cuisine"] = "熱門人氣美食"
-                    elif parsed.get("direct_recommend"):
-                        parsed["cuisine"] = "熱門人氣美食"
+                if isinstance(wm, dict) and not parsed.get("location") and wm.get("last_location"):
+                    parsed["location"] = wm["last_location"]
+            parsed["cuisine"] = "熱門人氣美食"
         except Exception as e:
-            logger.warning(f"Failed to resolve specialty selection from working memory: {e}")
+            logger.warning(f"Failed to resolve direct recommend from working memory: {e}")
 
     # 若為 "explore_cuisine" 且未帶地名，嘗試從 Working Memory 繼承上一輪地名
     if intent == "explore_cuisine":

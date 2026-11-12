@@ -40,6 +40,44 @@ _SELECT_SPECIALTY_INDEX_RE = re.compile(
 )
 _DIRECT_RECOMMEND_RE = re.compile(r"^(?:直接推薦|隨便|都可以|不限|不限類型|幫我挑|直接找餐廳)[！!。.\s]*$")
 
+_LOC_PREFIX_NOISE_RE = re.compile(r"^(?:請問|我想要|我想找|我想吃|我想知道|我想|我要|想找|想吃|想知道|想問)\s*")
+_LOC_SUFFIX_NOISE_RE = re.compile(r"(?:的|之|裡|這邊|那邊)$")
+_LOC_STOPWORDS: frozenset[str] = frozenset(
+    {
+        "有什麼",
+        "有哪些",
+        "有啥",
+        "什麼",
+        "哪裡",
+        "哪些",
+        "推薦",
+        "這裡",
+        "這邊",
+        "那裡",
+        "那邊",
+        "附近",
+        "周邊",
+        "日本",
+        "當地",
+        "在地",
+        "本地",
+    }
+)
+
+
+def clean_explore_location(raw_loc: Optional[str]) -> Optional[str]:
+    """清洗探索型問句中擷取的地名片段，拒絕疑問詞/動詞殘留 (如「有什麼」、「我想找」)。
+
+    注意：只剝除多字口語前綴，不剝除單字「那/要/我」，以保護「那須」、「要町」、「我孫子」等真實地名。
+    """
+    loc = (raw_loc or "").strip()
+    loc = _LOC_PREFIX_NOISE_RE.sub("", loc).strip()
+    loc = _LOC_SUFFIX_NOISE_RE.sub("", loc).strip()
+    if len(loc) < 2 or loc in _LOC_STOPWORDS:
+        return None
+    return loc
+
+
 _INDEX_MAP: dict[str, int] = {
     "1": 1,
     "一": 1,
@@ -161,19 +199,18 @@ class QuickPassGate:
         # 7. Local Specialty Exploration (如「神保町有什麼特色美食？」、「淺草名物」)
         m_explore = _EXPLORE_SPECIALTY_RE.match(text)
         if m_explore:
-            raw_loc = m_explore.group(1).strip()
-            clean_loc: Optional[str] = None if raw_loc in ("請問", "這裡", "附近", "這邊", "那裡", "日本") else raw_loc
-            if clean_loc:
-                return GateResult(
-                    matched=True,
-                    rule_name="explore_specialty",
-                    parsed_intent={
-                        "intent": "explore_cuisine",
-                        "location": clean_loc,
-                        "cuisine": None,
-                        "modifier": None,
-                    },
-                )
+            # 地名清洗：剝除口語前綴/尾綴並拒絕疑問詞 (避免「有什麼特色美食」被誤抓 location="有什麼")；
+            # 若清洗後無地名，仍路由為 explore_cuisine，交由 Stage 1 從 working_memory 繼承或反問地點
+            return GateResult(
+                matched=True,
+                rule_name="explore_specialty",
+                parsed_intent={
+                    "intent": "explore_cuisine",
+                    "location": clean_explore_location(m_explore.group(1)),
+                    "cuisine": None,
+                    "modifier": None,
+                },
+            )
 
         # 8. Select Specialty Index from Previous Explore Card (如「1」、「選2」、「第3個」)
         m_sel = _SELECT_SPECIALTY_INDEX_RE.match(text)

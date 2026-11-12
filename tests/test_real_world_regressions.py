@@ -1548,3 +1548,133 @@ async def test_regression_tabelog_dual_source_discovery_promotes_hidden_gem_over
     assert top_stores[0]["google_place_id"] == "gem_hyakumeiten_1"
     assert top_stores[0]["rank_badge"] == "🥇"
     assert top_stores[0]["tabelog_rating"] == 3.78
+
+
+# ==============================================================================
+# Case: 特色導覽地名誤抓 (Explore Location Mis-capture) — v1.3.0 上線缺陷
+# ==============================================================================
+@pytest.mark.parametrize(
+    ("message", "expected_location"),
+    [
+        ("有什麼特色美食？", None),
+        ("我想找特色美食", None),
+        ("我想找神保町的特色美食", "神保町"),
+        ("請問淺草有什麼特色美食？", "淺草"),
+        ("神保町有什麼特色美食？", "神保町"),
+        ("那須特色美食", "那須"),
+    ],
+)
+def test_regression_explore_gate_rejects_question_words_as_location(message, expected_location):
+    """根本原因：_EXPLORE_SPECIALTY_RE 以惰性 (.{2,15}?) 擷取地名，未指定地名的問句
+    「有什麼特色美食？」會被抓成 location="有什麼"，導致卡片出現「『有什麼』匯集了…」。
+    防禦邏輯：clean_explore_location() 剝除多字口語前綴/尾綴並拒絕疑問詞停用詞，
+    同時不剝單字「那」以保護「那須」等真實地名；無地名時交由 working_memory 繼承或反問。
+    """
+    from src.agent.gate import QuickPassGate
+
+    res = QuickPassGate().evaluate(message)
+    assert res.matched and res.rule_name == "explore_specialty"
+    assert res.parsed_intent is not None
+    assert res.parsed_intent["intent"] == "explore_cuisine"
+    assert res.parsed_intent["location"] == expected_location
+
+
+@pytest.mark.asyncio
+async def test_regression_explore_without_location_inherits_or_asks():
+    """無地名探索問句：有 last_location 時繼承；無記憶時改為 need_location 反問，絕不 geocode「有什麼」。"""
+    mock_places = MagicMock()
+    mock_places.geocode_location = AsyncMock(return_value=(35.0, 139.0))
+    trace = MagicMock(log_step=AsyncMock(), start_run=AsyncMock(), finish_run=AsyncMock())
+
+    repo_with_mem = MagicMock()
+    repo_with_mem.get_working_memory = AsyncMock(return_value={"last_location": "淺草", "last_cuisine": "天丼"})
+    fsm = FoodRecommendationFSM(
+        llm_client=MagicMock(),
+        places_client=mock_places,
+        session_repo=repo_with_mem,
+        trace_logger=trace,
+    )
+    parsed = await fsm.execute_state_1_intent("有什麼特色美食？", None, [], chat_id=1)
+    assert parsed["intent"] == "explore_cuisine"
+    assert parsed["location"] == "淺草"
+
+    repo_empty = MagicMock()
+    repo_empty.get_working_memory = AsyncMock(return_value={"last_location": None, "last_cuisine": None})
+    fsm.session_repo = repo_empty
+    parsed2 = await fsm.execute_state_1_intent("有什麼特色美食？", None, [], chat_id=1)
+    assert parsed2["intent"] == "need_location"
+    mock_places.geocode_location.assert_not_called()
+
+
+# ==============================================================================
+# Case: 過期導覽選單 (Stale suggested_cuisines) — v1.3.0 上線缺陷
+# ==============================================================================
+@pytest.mark.asyncio
+async def test_regression_search_clears_stale_suggested_cuisines():
+    """根本原因：update_recommended_ids() 以 {**existing_wm} 保留所有鍵，suggested_cuisines 永不清除，
+    數輪後單獨回覆「1」會被映射回數天前導覽過的特色料理。
+    防禦邏輯：一般搜尋寫入推薦結果時即 pop("suggested_cuisines")。
+    """
+    from src.db.repositories.session import SessionRepository
+
+    repo = SessionRepository()
+    repo.get_seen_place_ids = AsyncMock(return_value=set())
+    repo.get_working_memory = AsyncMock(
+        return_value={"last_cuisine": "歐風咖哩", "last_location": "神保町", "suggested_cuisines": ["歐風咖哩"]}
+    )
+    repo.get_long_term_preferences = AsyncMock(return_value={"dietary_restrictions": [], "payment_preferences": []})
+
+    captured: dict[str, str] = {}
+
+    class _Cur:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def execute(self, sql, params):
+            captured["payload"] = params[1]
+
+    class _Conn:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        def cursor(self):
+            return _Cur()
+
+        async def commit(self):
+            return None
+
+    pool = MagicMock()
+    pool.connection = MagicMock(return_value=_Conn())
+    with patch("src.db.repositories.session.get_db_pool", AsyncMock(return_value=pool)):
+        await repo.update_recommended_ids(
+            chat_id=9, recommended_ids=[{"google_place_id": "p1"}], last_cuisine="歐風咖哩", last_location="神保町"
+        )
+
+    import json as _json
+
+    stored = _json.loads(captured["payload"])
+    assert "suggested_cuisines" not in stored["working_memory"]
+    assert stored["working_memory"]["last_location"] == "神保町"
+
+
+@pytest.mark.asyncio
+async def test_regression_bare_index_without_menu_falls_back_to_follow_up():
+    """無有效導覽選單時，單獨回覆「1」應視為追問上一輪第 1 家店，而非用舊料理重新搜尋。"""
+    repo = MagicMock()
+    repo.get_working_memory = AsyncMock(return_value={"last_location": "新宿", "last_cuisine": "拉麵"})
+    fsm = FoodRecommendationFSM(
+        llm_client=MagicMock(),
+        places_client=MagicMock(geocode_location=AsyncMock(return_value=(35.69, 139.70))),
+        session_repo=repo,
+        trace_logger=MagicMock(log_step=AsyncMock(), start_run=AsyncMock(), finish_run=AsyncMock()),
+    )
+    parsed = await fsm.execute_state_1_intent("1", None, [], chat_id=5)
+    assert parsed["intent"] == "follow_up"
+    assert parsed["target_index"] == 1
+    assert "specialty_index" not in parsed
