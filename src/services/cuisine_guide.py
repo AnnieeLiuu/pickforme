@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -28,6 +29,29 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 DEFAULT_SPECIALTIES_PATH = Path(__file__).resolve().parent.parent.parent / "config" / "local_specialties.json"
+
+KANJI_FOLD: dict[str, str] = {
+    "輕": "軽",
+    "澤": "沢",
+    "橫": "横",
+    "濱": "浜",
+    "淺": "浅",
+    "廣": "広",
+    "澀": "渋",
+    "瀧": "滝",
+    "龍": "竜",
+    "國": "国",
+    "樂": "楽",
+    "藏": "蔵",
+    "鐵": "鉄",
+    "關": "関",
+}
+
+CATEGORY_OFFICIAL_KEYWORDS: dict[Literal["food", "drink", "souvenir"], str] = {
+    "food": "観光協会 特産品 郷土料理 名物",
+    "drink": "観光協会 地酒 銘茶 喫茶 飲み物",
+    "souvenir": "観光協会 お土産 銘菓 和菓子 老舗",
+}
 
 
 class SpecialtyItem(BaseModel):
@@ -79,13 +103,25 @@ class LocalSpecialtyGuideService:
 
     def __init__(
         self,
-        json_path: Optional[Path] = None,
+        json_path: Optional[Path | str] = None,
         guide_repo: Optional[SpecialtyGuideRepository] = None,
+        llm_client: Optional[LLMClient] = None,
     ):
-        self.json_path = json_path or DEFAULT_SPECIALTIES_PATH
+        if json_path is not None:
+            self.json_path = Path(json_path) if isinstance(json_path, str) else json_path
+        else:
+            self.json_path = DEFAULT_SPECIALTIES_PATH
         self._curated_db: dict[str, dict[str, Any]] = self._load_curated_db()
         self.guide_repo = guide_repo
+        self.llm_client = llm_client
         self._alias_index: dict[str, str] = self._build_alias_index()
+
+    def _normalize_kanji(self, text: str) -> str:
+        """安全進行新字體漢字轉化，以便搜尋日本自治體 (.lg.jp / .or.jp) 官網"""
+        res = text
+        for trad, shin in KANJI_FOLD.items():
+            res = res.replace(trad, shin)
+        return res
 
     def _build_alias_index(self) -> dict[str, str]:
         """建立 O(1) 雙向別名倒排索引 (Inverted Index)，拒絕字元硬編碼替換"""
@@ -301,13 +337,231 @@ class LocalSpecialtyGuideService:
                 source_tier="fallback",
             )
 
+    async def _fetch_official_authority_guide(
+        self,
+        area_name: str,
+        category: Literal["food", "drink", "souvenir"] = "food",
+        llm_client: Optional[LLMClient] = None,
+    ) -> Optional[AreaSpecialtyGuide]:
+        """向日本官方自治體與觀光協會 (.lg.jp / .or.jp) 進行權威深度抓取"""
+        client_to_use = llm_client or self.llm_client
+        if client_to_use is None:
+            return None
+
+        clean_area = self._strip_area_suffix(area_name)
+        area_ja = self._normalize_kanji(clean_area)
+        canonical = self._alias_index.get(clean_area.lower()) or self._alias_index.get(area_ja.lower())
+        if canonical:
+            area_ja = self._normalize_kanji(canonical)
+
+        cat_kw = CATEGORY_OFFICIAL_KEYWORDS.get(category, CATEGORY_OFFICIAL_KEYWORDS["food"])
+        query = f"{area_ja} {cat_kw} site:lg.jp OR site:or.jp"
+        encoded = urllib.parse.quote_plus(query)
+        search_url = f"https://search.yahoo.co.jp/search?p={encoded}"
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36"
+            ),
+            "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                search_resp = await client.get(search_url, headers=headers)
+                if search_resp.status_code != 200:
+                    return None
+
+                soup = BeautifulSoup(search_resp.text, "html.parser")
+                target_url: Optional[str] = None
+                for a_tag in soup.find_all("a", href=True):
+                    href = str(a_tag["href"]).strip()
+                    if not (href.startswith("http://") or href.startswith("https://")):
+                        continue
+                    if "yahoo.co.jp" in href:
+                        continue
+                    if ".pdf" in href.lower():
+                        continue
+                    try:
+                        parsed = urllib.parse.urlparse(href)
+                        netloc = parsed.netloc.lower()
+                        if (
+                            netloc.endswith(".lg.jp")
+                            or netloc.endswith(".or.jp")
+                            or ".lg.jp/" in href
+                            or ".or.jp/" in href
+                        ):
+                            target_url = href
+                            break
+                    except Exception:
+                        continue
+
+                if not target_url:
+                    return None
+
+                page_resp = await client.get(target_url, headers=headers)
+                if page_resp.status_code != 200:
+                    return None
+
+                # 處理日文編碼 (UTF-8, Shift_JIS, CP932, EUC-JP)
+                content_type = page_resp.headers.get("content-type", "").lower()
+                if "shift_jis" in content_type or "sjis" in content_type:
+                    enc_order = ["shift_jis", "cp932", "utf-8", "euc-jp"]
+                elif "euc-jp" in content_type:
+                    enc_order = ["euc-jp", "utf-8", "shift_jis"]
+                else:
+                    enc_order = ["utf-8", "shift_jis", "cp932", "euc-jp"]
+
+                html_text = ""
+                for enc in enc_order:
+                    try:
+                        html_text = page_resp.content.decode(enc)
+                        break
+                    except (UnicodeDecodeError, LookupError):
+                        continue
+                if not html_text:
+                    html_text = page_resp.content.decode("shift_jis", errors="replace")
+
+                page_soup = BeautifulSoup(html_text, "html.parser")
+                for tag in page_soup(["script", "style", "nav", "footer", "header", "noscript", "svg"]):
+                    tag.decompose()
+
+                raw_text = page_soup.get_text(" ", strip=True)
+                clean_text = re.sub(r"\s+", " ", raw_text).strip()
+
+                if len(clean_text) < 150:
+                    return None
+
+                category_desc = (
+                    "特色飲品、名茶、地酒或經典喫茶文化"
+                    if category == "drink"
+                    else ("代表性伴手禮、名產、和菓子或名菓禮盒" if category == "souvenir" else "在地特色美食名物")
+                )
+                sys_prompt = (
+                    f"你是一位博學且嚴謹的日本飲食文化史學家與在地導覽員。\n"
+                    f"請「嚴格根據下方日本官方自治體或觀光協會（.lg.jp / .or.jp）之權威網頁內容」，為使用者整理該地區最具代表性的 3 種{category_desc}與歷史文化故事。\n"
+                    "【鐵則】：\n"
+                    "1. 絕對禁止憑空捏造未在官方資料或真實歷史中出現的年份、店名或發源傳說。\n"
+                    "2. 每個品項請包含繁體中文名稱 (cuisine_name)、日文名稱 (name_ja) 與日文純淨搜尋關鍵字 (search_keyword_ja，不可含中文括號)。\n"
+                    "3. 若為伴手禮，flavor_profile 請描述口感層次、包裝寓意或禮盒特色；若為飲品請描述香氣、風味與品飲亮點。\n"
+                    "4. 請輸出符合 AreaSpecialtyGuide 規範之純 JSON 字串（specialties 必須恰好包含 index 1, 2, 3 共三項）。"
+                )
+                user_prompt = f"目標地區：{clean_area}\n探索類別：{category}\n官方權威網頁內容：\n{clean_text[:2500]}"
+
+                data, _, _ = await client_to_use.call_structured_json(
+                    messages=[
+                        {"role": "system", "content": sys_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    schema=AreaSpecialtyGuide,
+                )
+
+                if isinstance(data, dict) and data.get("specialties") and len(data["specialties"]) == 3:
+                    data["category"] = category
+                    data["source_tier"] = "curated"
+                    guide = AreaSpecialtyGuide.model_validate(data)
+                    cache_key = (clean_area, category)
+                    self._runtime_cache[cache_key] = guide
+
+                    if self.guide_repo is not None:
+                        try:
+                            await self.guide_repo.upsert_guide(
+                                area_key=clean_area,
+                                category=category,
+                                area_name=guide.area_name,
+                                intro=guide.intro,
+                                specialties=[s.model_dump() for s in guide.specialties],
+                                aliases=[clean_area, guide.area_name, area_ja],
+                                source_tier="curated",
+                                grounding_snippets=[clean_text[:300]],
+                                verified=True,
+                            )
+                        except Exception as db_e:
+                            logger.warning(f"Failed to write-back official guide to DB ({clean_area}): {db_e}")
+
+                    return guide
+        except Exception as e:
+            logger.warning(f"Official authority guide scraping failed ({area_name}, {category}): {e}")
+
+        return None
+
+    async def _fetch_and_synthesize_via_grounding(
+        self,
+        area_name: str,
+        category: Literal["food", "drink", "souvenir"] = "food",
+        llm_client: Optional[LLMClient] = None,
+    ) -> Optional[AreaSpecialtyGuide]:
+        """Tier 2 Yahoo Japan 即時網頁 Grounding 降級合成"""
+        client_to_use = llm_client or self.llm_client
+        if client_to_use is None:
+            return None
+
+        clean_area = self._strip_area_suffix(area_name)
+        cache_key = (clean_area, category)
+        snippets = await self._fetch_yahoo_grounding_snippets(clean_area, category=category)
+        if len(snippets) < 2:
+            return None
+
+        grounding_context = "\n".join(f"- {s}" for s in snippets)
+        category_desc = (
+            "特色飲品、名茶、地酒或經典喫茶文化"
+            if category == "drink"
+            else ("代表性伴手禮、名產、和菓子或名菓禮盒" if category == "souvenir" else "在地特色美食名物")
+        )
+        sys_prompt = (
+            f"你是一位博學且嚴謹的日本飲食文化史學家與在地導覽員。\n"
+            f"請「嚴格根據下方提供的日本網頁檢索摘要」，為使用者整理該地區最具代表性的 3 種{category_desc}與歷史文化故事。\n"
+            "【鐵則】：\n"
+            "1. 絕對禁止憑空捏造未在檢索摘要或真實歷史中出現的年份、店名或發源傳說。\n"
+            "2. 每個品項請包含繁體中文名稱 (cuisine_name)、日文名稱 (name_ja) 與日文純淨搜尋關鍵字 (search_keyword_ja，不可含中文括號)。\n"
+            "3. 若為伴手禮，flavor_profile 請描述口感層次、包裝寓意或禮盒特色；若為飲品請描述香氣、風味與品飲亮點。\n"
+            "4. 請輸出符合 AreaSpecialtyGuide 規範之純 JSON 字串（specialties 必須恰好包含 index 1, 2, 3 共三項）。"
+        )
+        user_prompt = f"目標地區：{clean_area}\n探索類別：{category}\n\n日本網頁真實檢索摘要：\n{grounding_context}"
+        try:
+            data, _, _ = await client_to_use.call_structured_json(
+                messages=[
+                    {"role": "system", "content": sys_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                schema=AreaSpecialtyGuide,
+            )
+            if isinstance(data, dict) and data.get("specialties") and len(data["specialties"]) == 3:
+                data["category"] = category
+                data["source_tier"] = "grounding"
+                guide = AreaSpecialtyGuide.model_validate(data)
+                self._runtime_cache[cache_key] = guide
+
+                # 品質把關後非阻塞寫回 Neon DB
+                if self.guide_repo is not None:
+                    try:
+                        await self.guide_repo.upsert_guide(
+                            area_key=clean_area,
+                            category=category,
+                            area_name=guide.area_name,
+                            intro=guide.intro,
+                            specialties=[s.model_dump() for s in guide.specialties],
+                            aliases=[clean_area, guide.area_name],
+                            source_tier="grounding",
+                            grounding_snippets=snippets,
+                            verified=False,
+                        )
+                    except Exception as db_e:
+                        logger.warning(f"Failed to write-back guide to DB ({clean_area}): {db_e}")
+
+                return guide
+        except Exception as e:
+            logger.warning(f"Tier 2 grounding synthesis failed for {clean_area} ({category}): {e}")
+
+        return None
+
     async def get_area_guide(
         self,
         area_name: str,
         category: Literal["food", "drink", "souvenir"] = "food",
         llm_client: Optional[LLMClient] = None,
     ) -> AreaSpecialtyGuide:
-        """取得指定日本地區與類別之導覽 (Tier 1 Curated -> 快取 -> Neon DB -> Tier 2 Grounding+WriteBack -> 保底)"""
+        """取得指定日本地區與類別之導覽 (Tier 1 Curated -> 快取 -> Neon DB -> 官方深抓 -> Tier 2 Grounding -> 保底)"""
         clean_area = self._strip_area_suffix(area_name)
         cache_key = (clean_area, category)
 
@@ -320,7 +574,7 @@ class LocalSpecialtyGuideService:
         if cache_key in self._runtime_cache:
             return self._runtime_cache[cache_key]
 
-        # 3. Neon DB 知識庫 (支援手動維護 manual 或過往寫回 grounding)
+        # 3. Neon DB 知識庫 (支援手動維護 manual、官方自治體 curated 或過往寫回 grounding)
         if self.guide_repo is not None:
             try:
                 db_record = await self.guide_repo.get_guide(area_query=clean_area, category=category)
@@ -339,65 +593,50 @@ class LocalSpecialtyGuideService:
             except Exception as e:
                 logger.warning(f"DB lookup for specialty guide failed ({clean_area}, {category}): {e}")
 
-        # 4. Tier 2 Yahoo Japan 真實網頁 Grounding + LLM 提煉 + 品質審查寫回
-        if llm_client is not None:
-            snippets = await self._fetch_yahoo_grounding_snippets(clean_area, category=category)
-            if len(snippets) >= 2:
-                grounding_context = "\n".join(f"- {s}" for s in snippets)
-                category_desc = (
-                    "特色飲品、名茶、地酒或經典喫茶文化"
-                    if category == "drink"
-                    else ("代表性伴手禮、名產、和菓子或名菓禮盒" if category == "souvenir" else "在地特色美食名物")
-                )
-                sys_prompt = (
-                    f"你是一位博學且嚴謹的日本飲食文化史學家與在地導覽員。\n"
-                    f"請「嚴格根據下方提供的日本網頁檢索摘要」，為使用者整理該地區最具代表性的 3 種{category_desc}與歷史文化故事。\n"
-                    "【鐵則】：\n"
-                    "1. 絕對禁止憑空捏造未在檢索摘要或真實歷史中出現的年份、店名或發源傳說。\n"
-                    "2. 每個品項請包含繁體中文名稱 (cuisine_name)、日文名稱 (name_ja) 與日文純淨搜尋關鍵字 (search_keyword_ja，不可含中文括號)。\n"
-                    "3. 若為伴手禮，flavor_profile 請描述口感層次、包裝寓意或禮盒特色；若為飲品請描述香氣、風味與品飲亮點。\n"
-                    "4. 請輸出符合 AreaSpecialtyGuide 規範之純 JSON 字串（specialties 必須恰好包含 index 1, 2, 3 共三項）。"
-                )
-                user_prompt = (
-                    f"目標地區：{clean_area}\n探索類別：{category}\n\n日本網頁真實檢索摘要：\n{grounding_context}"
-                )
-                try:
-                    data, _, _ = await llm_client.call_structured_json(
-                        messages=[
-                            {"role": "system", "content": sys_prompt},
-                            {"role": "user", "content": user_prompt},
-                        ],
-                        schema=AreaSpecialtyGuide,
-                    )
-                    if isinstance(data, dict) and data.get("specialties") and len(data["specialties"]) == 3:
-                        data["category"] = category
-                        data["source_tier"] = "grounding"
-                        guide = AreaSpecialtyGuide.model_validate(data)
-                        self._runtime_cache[cache_key] = guide
+        client_to_use = llm_client or self.llm_client
 
-                        # 品質把關後非阻塞寫回 Neon DB
-                        if self.guide_repo is not None:
-                            try:
-                                await self.guide_repo.upsert_guide(
-                                    area_key=clean_area,
-                                    category=category,
-                                    area_name=guide.area_name,
-                                    intro=guide.intro,
-                                    specialties=[s.model_dump() for s in guide.specialties],
-                                    aliases=[clean_area, guide.area_name],
-                                    source_tier="grounding",
-                                    grounding_snippets=snippets,
-                                    verified=False,
-                                )
-                            except Exception as db_e:
-                                logger.warning(f"Failed to write-back guide to DB ({clean_area}): {db_e}")
+        # 4. 官方自治體/觀光協會 (.lg.jp / .or.jp) 深度抓取
+        if client_to_use is not None:
+            official_guide = await self._fetch_official_authority_guide(
+                clean_area, category=category, llm_client=client_to_use
+            )
+            if official_guide is not None:
+                return official_guide
 
-                        return guide
-                except Exception as e:
-                    logger.warning(f"Tier 2 grounding synthesis failed for {clean_area} ({category}): {e}")
+            # 5. Tier 2 Yahoo Japan 真實網頁 Grounding 降級
+            grounding_guide = await self._fetch_and_synthesize_via_grounding(
+                clean_area, category=category, llm_client=client_to_use
+            )
+            if grounding_guide is not None:
+                return grounding_guide
 
-        # 5. 安全保底 (不寫回 DB、不快取)
+        # 6. 安全保底 (不寫回 DB、不快取)
         return self._build_safe_fallback_guide(clean_area, category=category)
+
+    async def prewarm_area_culture(
+        self, area_name: str, llm_client: Optional[LLMClient] = None
+    ) -> dict[str, AreaSpecialtyGuide]:
+        """並發預熱特定地區之 food, drink, souvenir 三大文化面向，並保證部分故障隔離"""
+        client = llm_client or self.llm_client
+        clean_area = self._strip_area_suffix(area_name)
+        categories: list[Literal["food", "drink", "souvenir"]] = ["food", "drink", "souvenir"]
+
+        results = await asyncio.gather(
+            self.get_area_guide(clean_area, category="food", llm_client=client),
+            self.get_area_guide(clean_area, category="drink", llm_client=client),
+            self.get_area_guide(clean_area, category="souvenir", llm_client=client),
+            return_exceptions=True,
+        )
+
+        guides: dict[str, AreaSpecialtyGuide] = {}
+        for cat, res in zip(categories, results):
+            if isinstance(res, AreaSpecialtyGuide):
+                guides[cat] = res
+            else:
+                logger.warning(f"Prewarm culture category {cat} failed for {clean_area}: {res}")
+                guides[cat] = self._build_safe_fallback_guide(clean_area, category=cat)
+
+        return guides
 
     def render_guide_markdown(self, guide: AreaSpecialtyGuide) -> str:
         """將 AreaSpecialtyGuide 渲染為富含文化厚度且支援互動點選之 Telegram Markdown 卡片"""

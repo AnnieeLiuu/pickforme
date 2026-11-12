@@ -67,14 +67,22 @@ async def test_tier_2_grounding_synthesis_for_unknown_station():
         )
     )
 
-    with patch.object(
-        service,
-        "_fetch_yahoo_grounding_snippets",
-        new_callable=AsyncMock,
-        return_value=[
-            "門前仲町の名物といえば深川めし。江戸時代の漁師料理として発祥。",
-            "深川不動堂参道周辺には下町情緒あふれる居酒屋や老舗和菓子店が並ぶ。",
-        ],
+    with (
+        patch.object(
+            service,
+            "_fetch_official_authority_guide",
+            new_callable=AsyncMock,
+            return_value=None,
+        ),
+        patch.object(
+            service,
+            "_fetch_yahoo_grounding_snippets",
+            new_callable=AsyncMock,
+            return_value=[
+                "門前仲町の名物といえば深川めし。江戸時代の漁師料理として発祥。",
+                "深川不動堂参道周辺には下町情緒あふれる居酒屋や老舗和菓子店が並ぶ。",
+            ],
+        ),
     ):
         guide = await service.get_area_guide("門前仲町", llm_client=mock_llm)
         assert guide.source_tier == "grounding"

@@ -72,16 +72,16 @@
 - Modify: `src/services/cuisine_guide.py:180-350`
 - Test: `tests/test_official_guide_scraper.py`
 
-- [ ] **Step 1: Write failing test for official domain scraper**
+- [x] **Step 1: Write failing test for official domain scraper**
   Create `tests/test_official_guide_scraper.py` with mock httpx responses:
   - Test case 1: Successful official domain scrape (`site:lg.jp OR site:or.jp`) -> extracts official text (handling Shift_JIS) -> synthesizes guide -> `source_tier = 'curated'`.
   - Test case 2: Official site timeout/404 or PDF content -> falls back to Yahoo Grounding -> `source_tier = 'grounding'`.
   - Test case 3: Both fail -> falls back to safe fallback template.
 
-- [ ] **Step 2: Run test to confirm failure**
+- [x] **Step 2: Run test to confirm failure**
   Run `pytest tests/test_official_guide_scraper.py` and confirm failure.
 
-- [ ] **Step 3: Implement `_fetch_official_authority_guide()` and `prewarm_area_culture()` in `cuisine_guide.py`**
+- [x] **Step 3: Implement `_fetch_official_authority_guide()` and `prewarm_area_culture()` in `cuisine_guide.py`**
   - Update `LocalSpecialtyGuideService.__init__` to accept `llm_client: Optional[LLMClient] = None`.
   - Add search query targeting `site:lg.jp OR site:or.jp {clean_area} 観光協会 特産品 郷土料理 名物 お土産` (Japanese Shinjitai).
   - Parse candidate URLs, skip non-HTML/PDF links, fetch page content with `httpx` (4s timeout), decode with `resp.encoding = resp.apparent_encoding` or errors="replace", extract clean text with `BeautifulSoup`.
@@ -89,10 +89,10 @@
   - On failure or text < 150 chars, fallback to `_fetch_and_synthesize_via_grounding()` (`source_tier = 'grounding'`).
   - Add `prewarm_area_culture(area_name, llm_client=None)` which executes prewarm for all 3 categories (`food`, `drink`, `souvenir`) concurrently via `asyncio.gather()`.
 
-- [ ] **Step 4: Verify test passes**
+- [x] **Step 4: Verify test passes**
   Run `pytest tests/test_official_guide_scraper.py` and verify all tests pass.
 
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   Commit with message: `feat(services): implement official domain deep scraping with tiered fallback`
 
 ---
