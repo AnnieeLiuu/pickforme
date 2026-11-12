@@ -122,8 +122,10 @@ class SessionRepository:
         last_cuisine: Optional[str] = None,
         suggested_cuisines: Optional[list[str]] = None,
         last_explore_category: Optional[str] = None,
+        suggested_locations: Optional[list[str]] = None,
+        pending_cuisine: Optional[str] = None,
     ) -> dict[str, Any]:
-        """單獨更新 Working Memory (如 explore_cuisine 導覽後保存 last_location 與 suggested_cuisines)"""
+        """單獨更新 Working Memory (如 explore_cuisine 導覽或縣級反問後保存上下文)"""
         current_stores: list[dict[str, Any]] = []
         accumulated_ids: list[str] = []
         existing_wm = await self.get_working_memory(chat_id)
@@ -155,6 +157,10 @@ class SessionRepository:
             updated_wm["suggested_cuisines"] = suggested_cuisines
         if last_explore_category is not None:
             updated_wm["last_explore_category"] = last_explore_category
+        if suggested_locations is not None:
+            updated_wm["suggested_locations"] = suggested_locations
+        if pending_cuisine is not None:
+            updated_wm["pending_cuisine"] = pending_cuisine
 
         data_to_store = {
             "current": current_stores,
@@ -331,9 +337,11 @@ class SessionRepository:
             "last_cuisine": last_cuisine if last_cuisine is not None else existing_wm.get("last_cuisine"),
             "last_location": last_location if last_location is not None else existing_wm.get("last_location"),
         }
-        # 一般搜尋完成即代表「特色導覽選單」已消費完畢：清除 suggested_cuisines，
-        # 避免數輪後單獨回覆「1」被映射回過期的導覽品項 (stale menu)
+        # 一般搜尋完成即代表「特色導覽選單」或「縣級反問選單」已消費完畢：清除選單暫存，
+        # 避免數輪後單獨回覆「1」被映射回過期的選單品項 (stale menu)
         updated_wm.pop("suggested_cuisines", None)
+        updated_wm.pop("suggested_locations", None)
+        updated_wm.pop("pending_cuisine", None)
 
         data_to_store = {
             "current": recommended_ids,

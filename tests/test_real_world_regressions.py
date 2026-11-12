@@ -1678,3 +1678,204 @@ async def test_regression_bare_index_without_menu_falls_back_to_follow_up():
     assert parsed["intent"] == "follow_up"
     assert parsed["target_index"] == 1
     assert "specialty_index" not in parsed
+
+
+@pytest.mark.asyncio
+async def test_regression_prefecture_disambiguation_menu_and_working_memory():
+    """Case 1: 策略 A - 縣級廣域主動反問收斂。
+    輸入「靜岡 鰻魚飯」，系統識別為縣級大區，回傳分區引導訊息 (靜岡車站、濱松、沼津港)，
+    並將 suggested_locations 與 pending_cuisine 存入 working memory。
+    """
+    repo = MagicMock()
+    repo.get_working_memory = AsyncMock(return_value={})
+    fsm = FoodRecommendationFSM(
+        llm_client=MagicMock(
+            call_structured_json=AsyncMock(
+                return_value=({"intent": "search", "location": "靜岡", "cuisine": "鰻魚飯"}, "mock", 10)
+            )
+        ),
+        places_client=MagicMock(geocode_location=AsyncMock(return_value=None)),
+        session_repo=repo,
+        trace_logger=MagicMock(log_step=AsyncMock(), start_run=AsyncMock(), finish_run=AsyncMock()),
+    )
+    parsed = await fsm.execute_state_1_intent("靜岡 鰻魚飯", None, [], chat_id=123)
+    assert parsed["intent"] == "need_location"
+    assert "need_location_prompt" in parsed
+    prompt = parsed["need_location_prompt"]
+    assert "靜岡" in prompt
+    assert "靜岡車站" in prompt
+    assert "濱松" in prompt
+    assert "沼津" in prompt
+    assert parsed.get("suggested_locations") == ["靜岡車站", "濱松車站", "沼津港"]
+    assert parsed.get("pending_cuisine") == "鰻魚飯"
+
+    # 驗證「靜岡縣」與日文「静岡県」亦能精準判定
+    from src.agent.stages.intent import is_prefecture_level_area
+
+    b1, name1, _ = is_prefecture_level_area("靜岡縣")
+    assert b1 is True and name1 == "靜岡"
+    b2, name2, _ = is_prefecture_level_area("静岡県")
+    assert b2 is True and name2 == "静岡"
+    b3, name3, _ = is_prefecture_level_area("北海道")
+    assert b3 is True and name3 == "北海道"
+    b4, name4, _ = is_prefecture_level_area("長野縣")
+    assert b4 is True and name4 == "長野"
+    b5, name5, _ = is_prefecture_level_area("靜岡市葵區")
+    assert b5 is False and name5 is None
+
+
+@pytest.mark.asyncio
+async def test_regression_prefecture_disambiguation_selection_and_cuisine_inheritance():
+    """Case 2 & 3: 策略 A - 雙軌感知與城鎮名回覆接軌。
+    1. 當 working memory 含有 suggested_locations 時，回覆「2」自動轉為搜尋「濱松車站」+ 繼承「鰻魚飯」，且 intent=search。
+    2. 下一輪若直接回覆城鎮名「濱松」，自動繼承暫存之 pending_cuisine="鰻魚飯"。
+    """
+    # 軌道 1: 回覆 "2"
+    repo1 = MagicMock()
+    repo1.get_working_memory = AsyncMock(
+        return_value={
+            "suggested_locations": ["靜岡車站", "濱松車站", "沼津港"],
+            "pending_cuisine": "鰻魚飯",
+        }
+    )
+    fsm1 = FoodRecommendationFSM(
+        llm_client=MagicMock(),
+        places_client=MagicMock(geocode_location=AsyncMock(return_value=(34.70, 137.73))),
+        session_repo=repo1,
+        trace_logger=MagicMock(log_step=AsyncMock(), start_run=AsyncMock(), finish_run=AsyncMock()),
+    )
+    parsed1 = await fsm1.execute_state_1_intent("2", None, [], chat_id=123)
+    assert parsed1["intent"] == "search"
+    assert parsed1["location"] == "濱松車站"
+    assert parsed1["cuisine"] == "鰻魚飯"
+
+    # 軌道 2: 直接回覆城鎮名 "濱松"
+    repo2 = MagicMock()
+    repo2.get_working_memory = AsyncMock(
+        return_value={
+            "suggested_locations": ["靜岡車站", "濱松車站", "沼津港"],
+            "pending_cuisine": "鰻魚飯",
+        }
+    )
+    fsm2 = FoodRecommendationFSM(
+        llm_client=MagicMock(
+            call_structured_json=AsyncMock(
+                return_value=({"intent": "search", "location": "濱松", "cuisine": "熱門美食"}, "mock", 10)
+            )
+        ),
+        places_client=MagicMock(geocode_location=AsyncMock(return_value=(34.70, 137.73))),
+        session_repo=repo2,
+        trace_logger=MagicMock(log_step=AsyncMock(), start_run=AsyncMock(), finish_run=AsyncMock()),
+    )
+    parsed2 = await fsm2.execute_state_1_intent("濱松", None, [], chat_id=123)
+    assert parsed2["intent"] == "search"
+    assert parsed2["location"] == "濱松"
+    assert parsed2["cuisine"] == "鰻魚飯"
+
+
+def test_regression_transit_text_nearest_station_extraction():
+    """Case 7: Tabelog 交通手段爬蟲正則提取測試。
+    涵蓋一般步行、出口後綴、距離折算等各種日本交通描述。
+    """
+    from src.services.tabelog_scraper import extract_nearest_station_from_transit_text
+
+    # 1. 車站 + 步行分鐘
+    assert extract_nearest_station_from_transit_text("箱根登山鉄道 強羅駅 徒歩5分") == "從「強羅站」步行約 5 分鐘"
+    # 2. 出口後綴 + 步行分鐘
+    assert extract_nearest_station_from_transit_text("強羅駅正面口から徒歩約3分") == "從「強羅站正面口」步行約 3 分鐘"
+    # 3. 鐵道前綴清洗
+    assert (
+        extract_nearest_station_from_transit_text("地下鉄表参道駅 A1出口より徒歩3分")
+        == "從「表参道站 A1出口」步行約 3 分鐘"
+    )
+    # 4. 距離折算 (160m -> 2分鐘)
+    assert extract_nearest_station_from_transit_text("箱根湯本駅から160m") == "從「箱根湯本站」步行約 2 分鐘"
+    # 5. 空值或無關文字
+    assert extract_nearest_station_from_transit_text("") is None
+    assert extract_nearest_station_from_transit_text("無關文字說明") is None
+
+
+def test_regression_walking_description_wide_area_and_point_to_point():
+    """Case 4, 5, 6: 方案 2 - 景區最近車站與防錯位步行描述測試。
+    1. 廣域景區（箱根）+ 最近車站（強羅站 5分鐘）：直接輸出「從「強羅站」步行約 5 分鐘」，無中心點米數。
+    2. 廣域景區（箱根）+ 無車站但有子商圈：輸出「位於箱根「強羅」商圈 (距定位點約 2800m)」。
+    3. 具體車站（箱根湯本站）：維持點對點「從「箱根湯本站」步行約 3 分鐘 (240m)」。
+    4. 都心商圈（新宿）：維持點對點「從「新宿」步行約 4 分鐘 (320m)」。
+    """
+    from src.agent.stages.places_search import format_walking_description, is_wide_area_origin
+
+    # 廣域判定
+    assert is_wide_area_origin("箱根") is True
+    assert is_wide_area_origin("輕井澤") is True
+    assert is_wide_area_origin("箱根湯本站") is False  # 具體站點不降級
+    assert is_wide_area_origin("強羅車站") is False
+    assert is_wide_area_origin("新宿") is False  # 都心商圈不誤殺
+    assert is_wide_area_origin("銀座") is False
+
+    # Case 4: 箱根景區 + 強羅站
+    desc1 = format_walking_description(
+        origin_name="箱根",
+        dist_m=2800,
+        walk_mins=35,
+        nearest_station_desc="從「強羅站」步行約 5 分鐘",
+    )
+    assert desc1 == "從「強羅站」步行約 5 分鐘"
+    assert "2800m" not in desc1
+    assert "從「箱根」步行" not in desc1
+
+    # 箱根景區 + 子商圈
+    desc2 = format_walking_description(
+        origin_name="箱根",
+        dist_m=2800,
+        walk_mins=35,
+        nearest_station_desc=None,
+        address="神奈川県足柄下郡箱根町強羅1300",
+    )
+    assert "強羅" in desc2
+    assert "2800m" in desc2
+
+    # Case 5: 具體車站（箱根湯本站）
+    desc3 = format_walking_description(
+        origin_name="箱根湯本站",
+        dist_m=240,
+        walk_mins=3,
+        nearest_station_desc=None,
+    )
+    assert desc3 == "從「箱根湯本站」步行約 3 分鐘 (240m)"
+
+    # Case 6: 都心商圈（新宿）
+    desc4 = format_walking_description(
+        origin_name="新宿",
+        dist_m=320,
+        walk_mins=4,
+        nearest_station_desc=None,
+    )
+    assert desc4 == "從「新宿」步行約 4 分鐘 (320m)"
+
+
+def test_regression_foodie_score_distance_penalty_waiver_for_wide_area():
+    """方案 2: 廣域景區或持最近車站者，豁免幾何中心距離懲罰。"""
+    from src.agent.stages.enrichment import calculate_foodie_score
+
+    # 普通市區店鋪，距離 2000m -> dist_penalty = 0.12
+    normal_far_store = {
+        "name": "市區遠店",
+        "origin_name": "新宿",
+        "distance_meters": 2000,
+        "tabelog_rating": 3.70,
+    }
+    score_normal = calculate_foodie_score(normal_far_store)
+    # 3.70 - 0.12 = 3.58
+    assert abs(score_normal - 3.58) < 1e-4
+
+    # 箱根景區店鋪，距離 2800m -> 距離懲罰歸零 (0.0)
+    hakone_far_store = {
+        "name": "箱根名店",
+        "origin_name": "箱根",
+        "distance_meters": 2800,
+        "tabelog_rating": 3.70,
+        "nearest_station_desc": "從「強羅站」步行約 5 分鐘",
+    }
+    score_hakone = calculate_foodie_score(hakone_far_store)
+    # 3.70 - 0.0 = 3.70
+    assert abs(score_hakone - 3.70) < 1e-4

@@ -15,6 +15,41 @@ USER_AGENTS = [
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 ]
 
+STATION_WALK_PATTERN = re.compile(
+    r"([^\s\(\)（）「」]{2,10}?駅(?:[東西南北中央正面地下]*[口出口]*|\s*[A-Za-z0-9]+出口)?)(?:[^\d\n]{0,15}?)?(?:より|から)?\s*(?:徒歩|歩き)?\s*(?:で)?\s*(?:約)?\s*(\d{1,2})\s*分"
+)
+STATION_DIST_PATTERN = re.compile(
+    r"([^\s\(\)（）「」]{2,10}?駅(?:[東西南北中央正面地下]*[口出口]*|\s*[A-Za-z0-9]+出口)?)(?:[^\d\n]{0,15}?)?(?:約)?\s*(\d{1,4})\s*m"
+)
+
+
+def clean_station_name(st: str) -> str:
+    """清理鐵道公司前綴並轉換日文『駅』為繁體『站』"""
+    st = re.sub(
+        r"^(?:JR|地下鉄|メトロ|東武線?|西武線?|京王線?|京急線?|小田急線?|東急線?|近鉄線?|名鉄線?|南海線?|阪急線?|阪神線?|京阪線?)\s*",
+        "",
+        st,
+    )
+    return st.replace("駅", "站")
+
+
+def extract_nearest_station_from_transit_text(text: str) -> Optional[str]:
+    """從交通手段或搜尋摘要文字中提取最近車站步行描述 (如「從「強羅站」步行約 5 分鐘」)"""
+    if not text:
+        return None
+    m_walk = STATION_WALK_PATTERN.search(text)
+    if m_walk:
+        st = clean_station_name(m_walk.group(1).strip())
+        mins = int(m_walk.group(2).strip())
+        return f"從「{st}」步行約 {mins} 分鐘"
+    m_dist = STATION_DIST_PATTERN.search(text)
+    if m_dist:
+        st = clean_station_name(m_dist.group(1).strip())
+        meters = int(m_dist.group(2).strip())
+        mins = max(1, round(meters / 80))
+        return f"從「{st}」步行約 {mins} 分鐘"
+    return None
+
 
 class TabelogScraper:
     def __init__(self, timeout_sec: float = 3.0, max_retries: int = 2):
@@ -118,6 +153,9 @@ class TabelogScraper:
             hyaku_matches = re.findall(r"([^\s\"\'\>]+ 百名店 \d{4})", text)
             hyakumeiten = list(dict.fromkeys(hyaku_matches))
 
+            # 最近車站步行指引 (例如：強羅駅 徒歩5分)
+            nearest_station_desc = extract_nearest_station_from_transit_text(text)
+
             # 若此 URL 已記錄過，優先補全遺漏的評分與百名店資料
             if clean_url in seen_urls:
                 for c in candidates:
@@ -128,6 +166,8 @@ class TabelogScraper:
                         if not c.get("hyakumeiten") and hyakumeiten:
                             c["hyakumeiten"] = hyakumeiten
                             c["awards"] = hyakumeiten
+                        if not c.get("nearest_station_desc") and nearest_station_desc:
+                            c["nearest_station_desc"] = nearest_station_desc
                 continue
 
             candidates.append(
@@ -138,6 +178,7 @@ class TabelogScraper:
                     "review_count": review_count,
                     "hyakumeiten": hyakumeiten,
                     "awards": hyakumeiten,
+                    "nearest_station_desc": nearest_station_desc,
                     "sample_reviews": [],
                     "phone": "",
                     "address": "",
@@ -399,9 +440,10 @@ class TabelogScraper:
             if elem.get_text(strip=True)
         ]
 
-        # 支付方式解析 (カード & QRコード)
+        # 支付方式解析 (カード & QRコード) 與 交通手段 (最近車站)
         supports_paypay: Optional[bool] = None
         credit_cards: Optional[list[str]] = None
+        nearest_station_desc: Optional[str] = None
         for tr in soup.select(".rstinfo-table tr, #contents-rstdata tr"):
             th = tr.select_one("th")
             td = tr.select_one("td")
@@ -410,7 +452,9 @@ class TabelogScraper:
             th_text = th.get_text(strip=True)
             td_text = td.get_text(strip=True)
 
-            if "QRコード" in th_text or "決済" in th_text:
+            if "交通手段" in th_text or "アクセス" in th_text:
+                nearest_station_desc = extract_nearest_station_from_transit_text(td_text)
+            elif "QRコード" in th_text or "決済" in th_text:
                 supports_paypay = "PayPay" in td_text
             elif "カード" in th_text:
                 if "不可" in td_text or "利用不可" in td_text:
@@ -418,6 +462,12 @@ class TabelogScraper:
                 else:
                     cards = [card for card in ["VISA", "Master", "JCB", "AMEX", "Diners"] if card in td_text]
                     credit_cards = cards if cards else (["可"] if "可" in td_text else [])
+
+        # 備援：若表格未載明交通，嘗試從副標題或車站標籤提取
+        if not nearest_station_desc:
+            station_elem = soup.select_one(".list-rst__station, .rdheader-subinfo__item--station")
+            if station_elem:
+                nearest_station_desc = extract_nearest_station_from_transit_text(station_elem.get_text(strip=True))
 
         # 口コミ評論摘錄 (解析詳細頁面首頁之熱門食評列表)
         sample_reviews = []
@@ -449,5 +499,6 @@ class TabelogScraper:
             "hyakumeiten": hyakumeiten,
             "supports_paypay": supports_paypay,
             "credit_cards": credit_cards,
+            "nearest_station_desc": nearest_station_desc,
             "sample_reviews": sample_reviews,
         }

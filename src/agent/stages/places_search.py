@@ -21,6 +21,76 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+WIDE_AREA_SCENIC_REGIONS: set[str] = {
+    "箱根",
+    "伊豆",
+    "輕井澤",
+    "軽井沢",
+    "日光",
+    "草津",
+    "有馬",
+    "白濱",
+    "白浜",
+    "河口湖",
+    "富士五湖",
+    "由布院",
+    "湯布院",
+    "登別",
+    "定山溪",
+    "黑川",
+    "黒川",
+    "白馬",
+    "富良野",
+    "美瑛",
+}
+
+
+def is_wide_area_origin(origin_name: Optional[str]) -> bool:
+    """判斷起點是否為多商圈散佈之山區/廣域度假勝地 (如「箱根」、「輕井澤」)
+
+    規則：
+    1. 若結尾包含明確站點後綴（站/駅/Station/口），如「箱根湯本站」、「強羅車站」，視為具體站點 (False)。
+    2. 都心稠密商圈（新宿、澀谷、池袋、銀座）維持點對點導航 (False)。
+    3. 命中廣域景區清單則回傳 True，觸發方案 2 店家最近車站提取機制。
+    """
+    if not origin_name:
+        return False
+    clean = origin_name.strip()
+    if any(clean.endswith(s) for s in ("站", "駅", "Station", "口")):
+        return False
+    stripped = re.sub(r"[町村山]$", "", clean).strip()
+    return clean in WIDE_AREA_SCENIC_REGIONS or stripped in WIDE_AREA_SCENIC_REGIONS
+
+
+def format_walking_description(
+    origin_name: Optional[str],
+    dist_m: int,
+    walk_mins: int,
+    nearest_station_desc: Optional[str] = None,
+    address: Optional[str] = None,
+) -> str:
+    """產生精準步行描述。在廣域景區且有 nearest_station_desc 時，絕不拼接廣域中心點米數 (避免 Usain Bolt 錯位)"""
+    if not is_wide_area_origin(origin_name):
+        origin_prefix = f"從「{origin_name}」" if origin_name else "從「您目前位置」"
+        return f"{origin_prefix}步行約 {walk_mins} 分鐘 ({dist_m}m)"
+
+    # 廣域景區模式：
+    # 1. 優先採用店家所屬之最近車站步行指引 (如「從「強羅站」步行約 5 分鐘」)
+    if nearest_station_desc:
+        return nearest_station_desc
+
+    # 2. 次之若地址可提煉出在地子商圈 (如 箱根町強羅 ➡️ 強羅商圈)
+    sub_area = None
+    if address:
+        sub_m = re.search(r"[町市區区]([^\d\s\-\,]{2,8}?)(?=\d|丁目|番地|\s|$)", address)
+        if sub_m:
+            sub_area = sub_m.group(1).strip()
+    if sub_area:
+        return f"位於{origin_name}「{sub_area}」商圈 (距定位點約 {dist_m}m)"
+
+    # 3. 保底
+    return f"位於「{origin_name}」區域 (距定位點約 {dist_m}m)"
+
 
 def resolve_search_constraints(
     cuisine: str,
@@ -113,8 +183,11 @@ def prefilter_potential_foodie_places(
 
         # 評論數對數平滑 (上限 0.9，防大眾網紅店刷量)
         rev_score = min(math.log10(max(1, rev_count)) * 0.3, 0.9)
-        # 距離懲罰：800m 內無扣分，超過 800m 每 500m 扣 0.1
-        dist_penalty = max(0.0, (dist_m - 800) / 500 * 0.1) if dist_m > 800 else 0.0
+        # 距離懲罰：800m 內無扣分，超過 800m 每 500m 扣 0.1 (若為廣域景區或有最近車站則豁免)
+        dist_penalty = 0.0
+        if not (is_wide_area_origin(p.get("origin_name")) or p.get("nearest_station_desc")):
+            if dist_m > 800:
+                dist_penalty = max(0.0, (dist_m - 800) / 500 * 0.1)
 
         return tabelog_boost + rating_score + rev_score - dist_penalty
 
@@ -150,8 +223,6 @@ async def _hydrate_tabelog_seeds_with_places(
         logger.debug(f"Tabelog area seed discovery skipped: {e}")
         return []
 
-    origin_prefix = f"從「{origin_name}」"
-
     async def _resolve_one_seed(seed: dict[str, Any]) -> Optional[dict[str, Any]]:
         name_ja = (seed.get("name_ja") or "").strip()
         if not name_ja:
@@ -172,6 +243,9 @@ async def _hydrate_tabelog_seeds_with_places(
             if not pid or pid in exclude_set:
                 return None
 
+            if seed.get("nearest_station_desc"):
+                place["nearest_station_desc"] = seed["nearest_station_desc"]
+
             p_lat = place.get("lat")
             p_lng = place.get("lng")
             if p_lat and p_lng:
@@ -182,7 +256,13 @@ async def _hydrate_tabelog_seeds_with_places(
                 place["distance_meters"] = dist_m
                 place["walk_time_minutes"] = walk_mins
                 place["origin_name"] = origin_name
-                place["walking_desc"] = f"{origin_prefix}步行約 {walk_mins} 分鐘 ({dist_m}m)"
+                place["walking_desc"] = format_walking_description(
+                    origin_name=origin_name,
+                    dist_m=dist_m,
+                    walk_mins=walk_mins,
+                    nearest_station_desc=place.get("nearest_station_desc"),
+                    address=place.get("address"),
+                )
 
             place["tabelog_seed"] = True
             if seed.get("tabelog_url"):
@@ -216,7 +296,6 @@ async def execute_state_2_places_ladder(
     """State 2: Google Places 智慧階梯檢索 (800m ➔ 1200m ➔ 1800m ➔ 2500m 擴圈保底) + 潛力預篩"""
     t0 = time.time()
     candidates: list[dict[str, Any]] = []
-    origin_prefix = f"從「{origin_name}」" if origin_name else "從「您目前位置」"
     exclude_set = set(exclude_place_ids or set())
 
     radii = custom_radii or [800, 1200, 1800]
@@ -250,7 +329,13 @@ async def execute_state_2_places_ladder(
                     p["distance_meters"] = dist_m
                     p["walk_time_minutes"] = walk_mins
                     p["origin_name"] = origin_name or "您目前位置"
-                    p["walking_desc"] = f"{origin_prefix}步行約 {walk_mins} 分鐘 ({dist_m}m)"
+                    p["walking_desc"] = format_walking_description(
+                        origin_name=origin_name,
+                        dist_m=dist_m,
+                        walk_mins=walk_mins,
+                        nearest_station_desc=p.get("nearest_station_desc"),
+                        address=p.get("address"),
+                    )
                 candidates.append(p)
                 existing_ids.add(pid)
 
@@ -272,7 +357,13 @@ async def execute_state_2_places_ladder(
                     p["distance_meters"] = dist_m
                     p["walk_time_minutes"] = walk_mins
                     p["origin_name"] = origin_name or "您目前位置"
-                    p["walking_desc"] = f"{origin_prefix}步行約 {walk_mins} 分鐘 ({dist_m}m)"
+                    p["walking_desc"] = format_walking_description(
+                        origin_name=origin_name,
+                        dist_m=dist_m,
+                        walk_mins=walk_mins,
+                        nearest_station_desc=p.get("nearest_station_desc"),
+                        address=p.get("address"),
+                    )
                     p["radius_expanded"] = True
                 candidates.append(p)
                 existing_ids.add(pid)
@@ -290,9 +381,24 @@ async def execute_state_2_places_ladder(
             if pid in by_id:
                 # 升級既有 Google 候選店為 Tabelog 保送種子
                 by_id[pid]["tabelog_seed"] = True
-                for k in ("tabelog_url", "tabelog_rating", "tabelog_review_count", "hyakumeiten", "awards"):
+                for k in (
+                    "tabelog_url",
+                    "tabelog_rating",
+                    "tabelog_review_count",
+                    "hyakumeiten",
+                    "awards",
+                    "nearest_station_desc",
+                ):
                     if t_seed.get(k) is not None and not by_id[pid].get(k):
                         by_id[pid][k] = t_seed[k]
+                if t_seed.get("nearest_station_desc") and is_wide_area_origin(origin_name):
+                    by_id[pid]["walking_desc"] = format_walking_description(
+                        origin_name=origin_name,
+                        dist_m=by_id[pid].get("distance_meters", 0),
+                        walk_mins=by_id[pid].get("walk_time_minutes", 1),
+                        nearest_station_desc=t_seed["nearest_station_desc"],
+                        address=by_id[pid].get("address"),
+                    )
             else:
                 candidates.insert(0, t_seed)
                 by_id[pid] = t_seed

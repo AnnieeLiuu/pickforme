@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
 from src.agent.stages.enrichment import format_payment_methods
+from src.agent.stages.places_search import is_wide_area_origin
 from src.agent.validator import (
     repair_card_in_place,
     repair_store_name_code_blocks,
@@ -381,6 +382,13 @@ async def execute_state_4_synthesis(
     system_prompt = get_recommendation_card_prompt()
     if category_guidance:
         system_prompt += f"\n\n{category_guidance}"
+    if is_wide_area_origin(location_name):
+        wide_area_guidance = (
+            f"【景區/廣域導航指引】\n"
+            f"1. 目標區域「{location_name}」為幅員廣闊之景區/廣域，店家資料若已提供所屬之最近車站或子商圈步行指引（例如「從『強羅站』步行約 5 分鐘」），請務必忠實呈現該站點之步行指引，絕對禁止竄改或重寫為「從『{location_name}』步行」！\n"
+            f"2. 請在文末特派員提醒中附帶溫馨提示，例如：「（💡 特派員提醒：{location_name} 幅員廣闊、景點分散；若您人在特定車站或區域，亦可隨時告訴我指定區域以精準搜尋）」"
+        )
+        system_prompt += f"\n\n{wide_area_guidance}"
 
     messages = [
         {"role": "system", "content": system_prompt},

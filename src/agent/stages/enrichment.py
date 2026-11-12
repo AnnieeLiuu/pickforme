@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any, Optional
 from uuid import UUID
 
 from src.agent.schemas import extract_preferences_from_text
+from src.agent.stages.places_search import format_walking_description, is_wide_area_origin
 from src.services.entity_resolver import (
     extract_prefecture_from_address,
     extract_prefecture_from_tabelog_url,
@@ -95,12 +96,13 @@ def calculate_foodie_score(store: dict[str, Any]) -> float:
     if rev_count >= 500:
         award_bonus += 0.05
 
-    # 3. 距離懲罰
+    # 3. 距離懲罰 (若為廣域景區或已具備最近車站描述，豁免中心點距離扣分，杜絕偏遠降權)
     dist_penalty = 0.0
-    if dist_m > 1500:
-        dist_penalty = 0.12
-    elif dist_m > 800:
-        dist_penalty = 0.05
+    if not (is_wide_area_origin(store.get("origin_name")) or store.get("nearest_station_desc")):
+        if dist_m > 1500:
+            dist_penalty = 0.12
+        elif dist_m > 800:
+            dist_penalty = 0.05
 
     # 4. 硬性條件違反懲罰 (Deterministic Constraint Sensor)
     constraint_penalty = 0.45 if store.get("constraint_violation") is True else 0.0
@@ -210,6 +212,26 @@ def rank_and_select_top_stores(
     return top_stores
 
 
+def _align_walking_and_station(
+    p: dict[str, Any],
+    nearest_station: Optional[str] = None,
+    area_hint: Optional[str] = None,
+) -> dict[str, Any]:
+    """若為廣域景區，依據最近車站或在地子商圈重新排版 walking_desc，絕不拼接廣域中心點米數"""
+    origin = p.get("origin_name") or area_hint
+    st_desc = nearest_station or p.get("nearest_station_desc")
+    p["nearest_station_desc"] = st_desc
+    if is_wide_area_origin(origin):
+        p["walking_desc"] = format_walking_description(
+            origin_name=origin,
+            dist_m=int(p.get("distance_meters") or 0),
+            walk_mins=int(p.get("walk_time_minutes") or 1),
+            nearest_station_desc=st_desc,
+            address=p.get("address"),
+        )
+    return p
+
+
 async def enrich_single_place(
     fsm: FoodRecommendationFSM,
     place: dict[str, Any],
@@ -262,7 +284,7 @@ async def enrich_single_place(
                 accepts_cash_only=place.get("accepts_cash_only"),
                 accepts_nfc=place.get("accepts_nfc"),
             )
-            return {
+            res_dict = {
                 **place,
                 "restaurant_id": str(rid) if rid else None,
                 "tabelog_url": cached.get("tabelog_url"),
@@ -276,8 +298,10 @@ async def enrich_single_place(
                 "credit_cards": pay_cards,
                 "payment_methods_desc": pay_desc,
                 "sample_reviews": place.get("reviews") or [],
+                "nearest_station_desc": place.get("nearest_station_desc"),
                 "rating_source": "Tabelog",
             }
+            return _align_walking_and_station(res_dict, res_dict.get("nearest_station_desc"), area_hint)
 
     # 1.5 雙源直通車：若該店已由 State 2 Tabelog-First 雙源獵店取得有效 Tabelog 評分或百名店，免重複搜尋清單
     if place.get("tabelog_seed") and (place.get("tabelog_rating") or place.get("awards") or place.get("hyakumeiten")):
@@ -288,7 +312,7 @@ async def enrich_single_place(
             accepts_cash_only=place.get("accepts_cash_only"),
             accepts_nfc=place.get("accepts_nfc"),
         )
-        return {
+        res_dict = {
             **place,
             "name_ja": place.get("name_ja") or store_name,
             "tabelog_rating": float(place["tabelog_rating"]) if place.get("tabelog_rating") else None,
@@ -296,8 +320,10 @@ async def enrich_single_place(
             "awards": place.get("awards") or place.get("hyakumeiten") or [],
             "payment_methods_desc": pay_desc,
             "sample_reviews": place.get("reviews") or [],
+            "nearest_station_desc": place.get("nearest_station_desc"),
             "rating_source": "Tabelog",
         }
+        return _align_walking_and_station(res_dict, res_dict.get("nearest_station_desc"), area_hint)
 
     # 2. 未命中快取：執行即時爬蟲與比對
     try:
@@ -416,7 +442,12 @@ async def enrich_single_place(
             except Exception as e:
                 logger.warning(f"Failed to upsert tabelog cache: {e}")
 
-            return {
+            nearest_st = (
+                details.get("nearest_station_desc")
+                or cand.get("nearest_station_desc")
+                or place.get("nearest_station_desc")
+            )
+            res_dict = {
                 **place,
                 "restaurant_id": str(saved_id) if saved_id else None,
                 "tabelog_url": tabelog_url,
@@ -430,8 +461,10 @@ async def enrich_single_place(
                 "credit_cards": cards_list,
                 "payment_methods_desc": pay_desc,
                 "sample_reviews": chosen_reviews,
+                "nearest_station_desc": nearest_st,
                 "rating_source": "Tabelog",
             }
+            return _align_walking_and_station(res_dict, nearest_st, area_hint)
     except Exception as e:
         logger.warning(f"Tabelog scraping / resolution failed for {store_name}: {e}")
 
@@ -449,7 +482,7 @@ async def enrich_single_place(
     fallback_maps_url = place.get("google_maps_url") or (
         f"https://www.google.com/maps/place/?q=place_id:{place_id}" if place_id else None
     )
-    return {
+    fallback_res = {
         **place,
         "restaurant_id": str(fallback_id) if fallback_id else None,
         "tabelog_url": None,
@@ -464,8 +497,10 @@ async def enrich_single_place(
         "credit_cards": [],
         "payment_methods_desc": "現金為主 (建議備足日圓現鈔)",
         "sample_reviews": fallback_reviews,
+        "nearest_station_desc": place.get("nearest_station_desc"),
         "rating_source": "Google",
     }
+    return _align_walking_and_station(fallback_res, fallback_res.get("nearest_station_desc"), area_hint)
 
 
 async def index_store_reviews(

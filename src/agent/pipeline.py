@@ -256,8 +256,26 @@ class FoodRecommendationFSM:
                 await self.trace_logger.finish_run(status="completed", model_used=model, total_tokens=tokens)
                 return chitchat_res
 
-            # 分支 B: 缺乏座標與地名
+            # 分支 B: 缺乏座標與地名 / 縣級超大區域主動收斂 (策略 A)
             if intent == "need_location":
+                prompt_text = parsed.get("need_location_prompt")
+                if prompt_text:
+                    if chat_id and parsed.get("suggested_locations"):
+                        try:
+                            upd_wm_fn = getattr(self.session_repo, "update_working_memory", None)
+                            if callable(upd_wm_fn):
+                                res = upd_wm_fn(
+                                    chat_id=chat_id,
+                                    suggested_locations=parsed["suggested_locations"],
+                                    pending_cuisine=parsed.get("pending_cuisine"),
+                                )
+                                if inspect.isawaitable(res):
+                                    await res
+                        except Exception as e:
+                            logger.warning(f"Failed to persist prefecture disambiguation working memory: {e}")
+                    await self.trace_logger.finish_run(status="completed")
+                    return str(prompt_text)
+
                 await self.trace_logger.finish_run(status="completed")
                 return "🍱 收到！請問您想在哪個城市、車站或地標附近用餐呢？（例如輸入「新宿御苑」或點擊下方 📎 傳送您的即時位置）"
 

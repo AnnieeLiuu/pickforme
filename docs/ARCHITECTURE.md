@@ -178,6 +178,15 @@ flowchart TD
 - **0ms 入口快篩與安全絆線 (`src/agent/gate.py` - `QuickPassGate`)**：
   - **前置確定性分流 (0ms Pre-Classifier)**：在進入 Stage 1 LLM 前，以 0ms 正則規則直接處理純問候 (`greeting`)、純道謝 (`thanks`)、Healthcheck 探針 (`__healthcheck__`)、指定店號追問 (`follow_up_index`: 第 1/2/3 家)、純換一批 (`pure_more`) 與日本國境經緯度直搜 (`coords_search`: `20.0<=lat<=46.0, 122.0<=lng<=154.0`)，大幅削減不必要之 LLM 呼叫與延遲。
   - **安全絆線防禦 (Security Tripwire)**：攔截超過 500 字元之異常超長輸入 (`tripwire_length`) 與典型 Prompt Injection 越獄字串 (`tripwire_injection`，如 `ignore previous instructions`、`無視先前的指令`)，0ms 直接回傳安全提示並寫入 `quick_pass_gate` Trace 審計步驟。
+- **雙階日本地理智慧導航體系 (Two-Tier Geographic Hierarchy)**：
+  - **Tier 1 縣級超大區域主動收斂 (策略 A, `src/agent/stages/intent.py`)**：
+    - 識別未具備具體市/車站之都道府縣級廣域（如「靜岡」、「長野」、「北海道」、「沖繩」），0ms 攔截 Places 盲搜，回傳在地特色分區選單（如：1. 靜岡車站 / 2. 濱松 / 3. 沼津港）。
+    - 透過 Working Memory 暫存 `suggested_locations` 與 `pending_cuisine`，支援下一輪輸入「1/2/3」或城鎮名（如「濱松」）無縫繼承料理需求並鎖定檢索。
+  - **Tier 2 景區最近車站提取與無錯位步行指引 (方案 2, `src/agent/stages/places_search.py`, `src/services/tabelog_scraper.py`)**：
+    - 針對度假景區/山區（「箱根」、「輕井澤」、「日光」等），擴充 Tabelog 交通手段爬蟲與 Yahoo Grounding 萃取最近車站步行指引（`STATION_WALK_PATTERN` / `STATION_DIST_PATTERN`）。
+    - 在廣域景區模式下，直接輸出店家所屬最近車站步行指引（如「從『強羅站』步行約 5 分鐘」），嚴禁拼接廣域幾何中心點大跨度米數（杜絕 5 分鐘走 2.8 公里的 Usain Bolt 錯位 bug）。
+    - 於 `calculate_foodie_score` 豁免廣域景區與持最近車站店家的中心點物理距離懲罰（`dist_penalty = 0.0`），保護偏遠名店不被降權。
+    - 都心稠密商圈（新宿、澀谷、池袋、銀座）與具體車站（箱根湯本站）維持標準點對點導航，不誤殺不降級。
 - **Pydantic v2 結構化合約與 Self-Correction 自癒迴圈 (`src/agent/schemas.py` & `src/agent/llm_client.py`)**：
   - **嚴格資料邊界校驗**：以 Pydantic v2 `BaseModel` 定義 `IntentOutput`（含 `target_index` 1~3 邊界、`dietary_restrictions`、`payment_preferences`）以及 `GeocodeArgs`、`SearchNearbyArgs`、`TabelogInfoArgs` 工具參數驗證。
   - **ValidationError 自癒重試 (Self-Correction Loop)**：`LLMClient.call_structured_json(messages, schema=IntentOutput, max_retries=1)` 在解析 JSON 後自動執行 Pydantic 驗證；若模型輸出違反 Schema（如欄位型別錯誤或非法枚舉值），自動將 `ValidationError` 詳細錯誤附加回對話訊息要求模型即時修正重試，重試仍失敗時平滑降級至安全預設結構。
