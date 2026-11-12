@@ -7,6 +7,9 @@
 ## [Unreleased]
 
 ### Added
+- **全鏈路生產技術棧全景圖入庫與架構文件同步 (`docs/assets/`, `docs/ARCHITECTURE.md`)**：
+  - 將對齊 JamWithAI 生產級標準的 PickForMe 技術棧圖存入儲存庫：包含完全獨立的向量圖檔 [`docs/assets/production_ai_agent_stack.svg`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/assets/production_ai_agent_stack.svg)、互動式 HTML 預覽檔 [`docs/assets/production_ai_agent_stack.html`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/assets/production_ai_agent_stack.html) 以及原始參考圖 [`docs/assets/production_ai_agent_stack_reference.jpg`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/assets/production_ai_agent_stack_reference.jpg)。
+  - 於 [`docs/ARCHITECTURE.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/ARCHITECTURE.md) 第 1 節（系統整體架構）嵌入該圖，完整呈現從 Entry ➔ Agent Core ➔ Data ➔ Quality ➔ Runtime ➔ Ship & Deploy 之全鏈路貫通動線。
 - **Trace-to-River Adapter 實裝與動態可觀測性穿透 (`src/eval/templates/river_dashboard.html`, `public/index.html`, `tests/test_observability_sync.py`)**：
   - **真實線上對話動態串接**：左欄由原先 7 筆靜態寫死案例，全面升級為由 `pickforme-eval-summary-payload` 動態解析 Neon DB 匯入之 15 筆真實生產對話 (`live_runs`)，精確呈現使用者提問、時間戳記、執行總延遲、使用模型與步驟數。
   - **雙模式自由切換 Tab**：新增 `📡 即時線上 (15)` 與 `🎭 架構示範 (7)` 切換標籤，預設載入真實問答，同時保留 7 筆經典情境展示。

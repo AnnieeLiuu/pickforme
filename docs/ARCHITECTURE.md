@@ -45,6 +45,14 @@ graph TD
     FSM --> VectorDB
 ```
 
+### 🌐 全鏈路生產技術棧全景圖 (Production AI Agent Stack)
+
+<p align="center">
+  <img src="assets/production_ai_agent_stack.svg" alt="PickForMe Production AI Agent Stack" width="650" />
+</p>
+
+> **生產棧全景解讀**：本圖完整映射自生產級 AI Agent 架構標準（對齊 JamWithAI Production AI Agent Stack），收斂專案從 `Entry (FastAPI + Pydantic)`、`Agent Core (4-Stage FSM Engine + Multi-Provider LLM Router)`、`Data (Neon Postgres + Cache)`、`Quality (Pytest + Observability)`、`Runtime (UV + Ruff + Mypy)` 至 `Ship & Deploy (Docker + Cloud Run + Neon)` 之全鏈路貫通、雙向遙測與狀態反饋動線。亦可直接預覽 [互動式 HTML 版本](assets/production_ai_agent_stack.html) 或檢視 [原始參考規範圖](assets/production_ai_agent_stack_reference.jpg)。
+
 > 註：關於 4 階段 FSM（State 1~4）內部之決策邏輯、階梯擴圈與 Early Stopping 瀑布流，詳見 **[第 3.D 節詳細狀態機流程圖](#d-完整-agent-決策大腦選擇與-4-階段-fsm-流程圖-agent-decision--4-stage-fsm-flowchart)**。
 
 ---

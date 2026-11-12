@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-[#e2e8f0] text-slate-800 antialiased p-4 m-0 flex justify-center items-center min-h-screen">
+
+  <div class="max-w-[700px] w-full bg-white rounded-3xl shadow-2xl border border-slate-200 p-6 flex flex-col items-center">
+
+    <!-- Header -->
+    <div class="w-full flex items-start justify-between mb-2 px-2">
+      <div>
+        <h1 class="text-2xl font-black text-slate-900 tracking-tight leading-none">
+          Production AI Agent Stack
+        </h1>
+        <p class="text-xs font-semibold text-slate-400 mt-1.5 tracking-wide">
+          Workflow and architecture · PickForMe
+        </p>
+      </div>
+      <div class="flex items-center gap-1.5 font-black text-sm tracking-tighter">
+        <span class="w-3.5 h-3.5 rounded-full bg-gradient-to-tr from-amber-400 via-rose-500 to-indigo-600 inline-block shadow-sm"></span>
+        <span class="text-slate-900 font-extrabold text-xs">PICKFORME</span>
+      </div>
+    </div>
+
+    <!-- PURE VECTOR SVG CANVAS WITH EXACT CONNECTING ARROWS -->
+    <svg viewBox="0 0 660 780" class="w-full h-auto" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <!-- Standard Arrow Marker (Dark Slate) -->
+        <marker id="arrow-dark" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#334155"/>
+        </marker>
+        <!-- Subtle Gray Arrow Marker -->
+        <marker id="arrow-gray" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748b"/>
+        </marker>
+        <!-- Orange Arrow Marker -->
+        <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#ea580c"/>
+        </marker>
+        <!-- Blue Arrow Marker -->
+        <marker id="arrow-blue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#2563eb"/>
+        </marker>
+
+        <!-- Drop Shadow Filter for Cards -->
+        <filter id="shadow" x="-4%" y="-4%" width="108%" height="112%" filterUnits="userSpaceOnUse">
+          <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#0f172a" flood-opacity="0.06"/>
+        </filter>
+      </defs>
+
+      <!-- ================= 1. ENTRY (Top Box) ================= -->
+      <g id="box-entry">
+        <rect x="25" y="10" width="610" height="88" rx="14" fill="#f0fdf4" fill-opacity="0.6" stroke="#86efac" stroke-width="1.2" stroke-dasharray="4 4"/>
+        <text x="330" y="27" text-anchor="middle" font-size="11" font-weight="700" fill="#16a34a">Entry</text>
+
+        <!-- Client Node -->
+        <g id="node-client" filter="url(#shadow)">
+          <rect x="55" y="38" width="125" height="46" rx="8" fill="#eefaf1" stroke="#86efac" stroke-width="1.2"/>
+          <text x="80" y="66" font-size="14">👤</text>
+          <text x="122" y="66" text-anchor="middle" font-size="12" font-weight="700" fill="#1e293b">Client</text>
+        </g>
+
+        <!-- Arrow: Client -> FastAPI -->
+        <line x1="180" y1="61" x2="242" y2="61" stroke="#334155" stroke-width="1.5" marker-end="url(#arrow-dark)"/>
+
+        <!-- FastAPI Node -->
+        <g id="node-fastapi" filter="url(#shadow)">
+          <rect x="250" y="38" width="140" height="46" rx="8" fill="#eefaf1" stroke="#86efac" stroke-width="1.2"/>
+          <text x="278" y="66" font-size="14">⚡</text>
+          <text x="325" y="66" text-anchor="middle" font-size="12" font-weight="800" fill="#1e293b">FastAPI</text>
+        </g>
+
+        <!-- Arrow: FastAPI -> Pydantic -->
+        <line x1="390" y1="61" x2="452" y2="61" stroke="#334155" stroke-width="1.5" marker-end="url(#arrow-dark)"/>
+
+        <!-- Pydantic Node -->
+        <g id="node-pydantic" filter="url(#shadow)">
+          <rect x="460" y="38" width="145" height="46" rx="8" fill="#eefaf1" stroke="#86efac" stroke-width="1.2"/>
+          <text x="488" y="66" font-size="14">📦</text>
+          <text x="535" y="66" text-anchor="middle" font-size="12" font-weight="700" fill="#1e293b">Pydantic</text>
+        </g>
+      </g>
+
+      <!-- ================= 2. AGENT CORE (Middle Big Box) ================= -->
+      <g id="box-agent-core">
+        <rect x="25" y="125" width="610" height="205" rx="14" fill="#eff6ff" fill-opacity="0.4" stroke="#93c5fd" stroke-width="1.2" stroke-dasharray="4 4"/>
+        <text x="330" y="142" text-anchor="middle" font-size="11" font-weight="700" fill="#2563eb">Agent Core</text>
+
+        <!-- Human Review Node -->
+        <g id="node-human-review" filter="url(#shadow)">
+          <rect x="130" y="152" width="130" height="30" rx="6" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1"/>
+          <text x="148" y="172" font-size="11">👤</text>
+          <text x="198" y="171" text-anchor="middle" font-size="11" font-weight="700" fill="#1e293b">Human review</text>
+        </g>
+
+        <!-- Double Arrow: Human Review <-> FSM -->
+        <line x1="195" y1="182" x2="195" y2="202" stroke="#334155" stroke-width="1.5" marker-end="url(#arrow-dark)"/>
+        <line x1="195" y1="202" x2="195" y2="182" stroke="#334155" stroke-width="1.5" marker-end="url(#arrow-dark)"/>
+
+        <!-- PickForMe FSM Node (Equivalent to LangGraph) -->
+        <g id="node-fsm" filter="url(#shadow)">
+          <rect x="90" y="210" width="210" height="92" rx="10" fill="#4f85e8" stroke="#2563eb" stroke-width="1.5"/>
+          <text x="120" y="261" font-size="22">⚙️</text>
+          <text x="205" y="260" text-anchor="middle" font-size="15" font-weight="900" fill="#ffffff" letter-spacing="-0.3">PickForMe FSM</text>
+          <text x="205" y="280" text-anchor="middle" font-size="9" font-weight="600" fill="#dbeafe">Deterministic 4-Stage</text>
+        </g>
+
+        <!-- Arrow: FSM -> LiteLLM / LLMClient -->
+        <line x1="300" y1="256" x2="350" y2="256" stroke="#334155" stroke-width="1.5" marker-end="url(#arrow-dark)"/>
+
+        <!-- Retry / Fallback Box (Orange dashed box) -->
+        <g id="box-retry-fallback">
+          <rect x="355" y="152" width="265" height="162" rx="10" fill="#fff7ed" fill-opacity="0.5" stroke="#fb923c" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <text x="420" y="170" font-size="10" font-weight="700" fill="#ea580c">Retry / Fallback</text>
+
+          <!-- Router: LLMClient (LiteLLM equivalent) -->
+          <g id="node-llmclient" filter="url(#shadow)">
+            <rect x="370" y="188" width="95" height="110" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+            <text x="417" y="240" text-anchor="middle" font-size="18">✨</text>
+            <text x="417" y="262" text-anchor="middle" font-size="12" font-weight="800" fill="#1e293b">LLMClient</text>
+            <text x="417" y="278" text-anchor="middle" font-size="8" font-weight="600" fill="#64748b">Router</text>
+          </g>
+
+          <!-- Arrow: LLMClient -> Model Providers -->
+          <line x1="465" y1="243" x2="487" y2="243" stroke="#ea580c" stroke-width="1.3" marker-end="url(#arrow-orange)"/>
+
+          <!-- Model Providers Box (Purple dashed box) -->
+          <rect x="492" y="172" width="118" height="132" rx="8" fill="#faf5ff" fill-opacity="0.6" stroke="#c084fc" stroke-width="1" stroke-dasharray="3 3"/>
+          <text x="551" y="190" text-anchor="middle" font-size="9" font-weight="700" fill="#9333ea">Model Providers</text>
+
+          <!-- Provider 1: Groq -->
+          <g id="provider-groq" filter="url(#shadow)">
+            <rect x="502" y="200" width="98" height="42" rx="6" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+            <text x="518" y="226" font-size="12">⚡</text>
+            <text x="553" y="226" text-anchor="middle" font-size="11" font-weight="800" fill="#0f172a">Groq</text>
+          </g>
+
+          <!-- Provider 2: Gemini -->
+          <g id="provider-gemini" filter="url(#shadow)">
+            <rect x="502" y="250" width="98" height="42" rx="6" fill="#ffffff" stroke="#e2e8f0" stroke-width="1"/>
+            <text x="518" y="276" font-size="12">💎</text>
+            <text x="553" y="276" text-anchor="middle" font-size="11" font-weight="800" fill="#0f172a">Gemini</text>
+          </g>
+        </g>
+      </g>
+
+      <!-- ================= 3. DATA & RUNTIME ================= -->
+      <!-- DATA BOX (Left) -->
+      <g id="box-data">
+        <rect x="25" y="355" width="410" height="95" rx="14" fill="#fefce8" fill-opacity="0.5" stroke="#fde047" stroke-width="1.2" stroke-dasharray="4 4"/>
+        <text x="230" y="372" text-anchor="middle" font-size="11" font-weight="700" fill="#ca8a04">Data</text>
+
+        <!-- Postgres + pgvector Node -->
+        <g id="node-postgres" filter="url(#shadow)">
+          <rect x="45" y="385" width="180" height="50" rx="8" fill="#fff8e6" stroke="#fde047" stroke-width="1.2"/>
+          <text x="68" y="416" font-size="14">🐘</text>
+          <text x="140" y="411" text-anchor="middle" font-size="11" font-weight="800" fill="#1e293b">Postgres</text>
+          <text x="140" y="425" text-anchor="middle" font-size="9" font-weight="600" fill="#b45309">+ pgvector</text>
+        </g>
+
+        <!-- Redis / Tabelog Cache Node -->
+        <g id="node-redis" filter="url(#shadow)">
+          <rect x="240" y="385" width="180" height="50" rx="8" fill="#fff8e6" stroke="#fde047" stroke-width="1.2"/>
+          <text x="265" y="416" font-size="14">🗄️</text>
+          <text x="335" y="411" text-anchor="middle" font-size="11" font-weight="800" fill="#1e293b">Tabelog Cache</text>
+          <text x="335" y="425" text-anchor="middle" font-size="9" font-weight="600" fill="#b45309">7-Day TTL</text>
+        </g>
+      </g>
+
+      <!-- RUNTIME BOX (Right) -->
+      <g id="box-runtime">
+        <rect x="450" y="355" width="185" height="95" rx="14" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.2" stroke-dasharray="4 4"/>
+        <text x="542" y="372" text-anchor="middle" font-size="11" font-weight="700" fill="#64748b">Runtime</text>
+
+        <!-- UV + Ruff Node -->
+        <g id="node-runtime-tools" filter="url(#shadow)">
+          <rect x="470" y="385" width="145" height="50" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+          <text x="495" y="416" font-size="14">⚡</text>
+          <text x="548" y="415" text-anchor="middle" font-size="12" font-weight="800" fill="#1e293b">Ruff + Mypy</text>
+        </g>
+      </g>
+
+      <!-- ================= 4. QUALITY ================= -->
+      <g id="box-quality">
+        <rect x="25" y="475" width="610" height="90" rx="14" fill="#fef2f2" fill-opacity="0.5" stroke="#fca5a5" stroke-width="1.2" stroke-dasharray="4 4"/>
+        <text x="330" y="492" text-anchor="middle" font-size="11" font-weight="700" fill="#dc2626">Quality</text>
+
+        <!-- Observability: Pages Traces (Langfuse equivalent) -->
+        <g id="node-langfuse" filter="url(#shadow)">
+          <rect x="55" y="504" width="160" height="46" rx="8" fill="#fdf2f2" stroke="#fca5a5" stroke-width="1.2"/>
+          <text x="80" y="533" font-size="14">🌊</text>
+          <text x="142" y="532" text-anchor="middle" font-size="12" font-weight="800" fill="#1e293b">Pages Traces</text>
+        </g>
+
+        <!-- Pytest Node -->
+        <g id="node-pytest" filter="url(#shadow)">
+          <rect x="280" y="504" width="140" height="46" rx="8" fill="#fdf2f2" stroke="#fca5a5" stroke-width="1.2"/>
+          <text x="305" y="533" font-size="14">📊</text>
+          <text x="355" y="532" text-anchor="middle" font-size="12" font-weight="800" fill="#1e293b">Pytest</text>
+        </g>
+
+        <!-- Arrow: Pytest -> Validation -->
+        <line x1="420" y1="527" x2="467" y2="527" stroke="#334155" stroke-width="1.5" marker-end="url(#arrow-dark)"/>
+
+        <!-- Validation (Scoped Anchor) -->
+        <g id="node-validation" filter="url(#shadow)">
+          <rect x="475" y="504" width="145" height="46" rx="8" fill="#fdf2f2" stroke="#fca5a5" stroke-width="1.2"/>
+          <text x="500" y="533" font-size="14">🛡️</text>
+          <text x="552" y="532" text-anchor="middle" font-size="12" font-weight="800" fill="#1e293b">Validation</text>
+        </g>
+      </g>
+
+      <!-- ================= 5. SHIP & DEPLOY ================= -->
+      <!-- SHIP BOX (Bottom Left) -->
+      <g id="box-ship">
+        <rect x="25" y="590" width="345" height="95" rx="14" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.2" stroke-dasharray="4 4"/>
+        <text x="197" y="607" text-anchor="middle" font-size="11" font-weight="700" fill="#64748b">Ship</text>
+
+        <!-- Docker Node -->
+        <g id="node-docker" filter="url(#shadow)">
+          <rect x="45" y="622" width="130" height="48" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+          <text x="70" y="652" font-size="14">🐳</text>
+          <text x="117" y="652" text-anchor="middle" font-size="12" font-weight="800" fill="#1e293b">Docker</text>
+        </g>
+
+        <!-- Arrow: GitHub Actions / GitLab CI -> Docker (Left arrow) -->
+        <line x1="220" y1="646" x2="183" y2="646" stroke="#334155" stroke-width="1.5" marker-end="url(#arrow-dark)"/>
+
+        <!-- GitHub Actions / GitLab CI Node -->
+        <g id="node-ci" filter="url(#shadow)">
+          <rect x="228" y="622" width="130" height="48" rx="8" fill="#ffffff" stroke="#cbd5e1" stroke-width="1"/>
+          <text x="250" y="652" font-size="14">🦊</text>
+          <text x="300" y="652" text-anchor="middle" font-size="11" font-weight="800" fill="#1e293b">GitLab CI</text>
+        </g>
+      </g>
+
+      <!-- DEPLOY BOX (Bottom Right) -->
+      <g id="box-deploy">
+        <rect x="385" y="590" width="250" height="95" rx="14" fill="#faf5ff" fill-opacity="0.5" stroke="#d8b4fe" stroke-width="1.2" stroke-dasharray="4 4"/>
+        <text x="510" y="607" text-anchor="middle" font-size="11" font-weight="700" fill="#9333ea">Deploy</text>
+
+        <!-- GCP Cloud Run Node -->
+        <g id="node-cloud-run" filter="url(#shadow)">
+          <rect x="405" y="622" width="210" height="48" rx="8" fill="#f3e8ff" stroke="#c084fc" stroke-width="1.2"/>
+          <text x="430" y="652" font-size="14">☁️</text>
+          <text x="515" y="652" text-anchor="middle" font-size="12" font-weight="800" fill="#581c87">GCP Cloud Run</text>
+        </g>
+      </g>
+
+
+      <!-- ================= 🌟 THE CRITICAL MISSING ARROWS (EXACT JAMWITHAI REPLICA) ================= -->
+
+      <!-- 1. ENTRY TO AGENT CORE: From bottom of FastAPI, down and bending into PickForMe FSM -->
+      <path d="M 320 84 L 320 106 L 68 106 L 68 256 L 82 256" fill="none" stroke="#334155" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#arrow-dark)"/>
+
+      <!-- 2. AGENT CORE TO DATA: Bi-directional Arrows between FSM and Postgres -->
+      <line x1="120" y1="302" x2="120" y2="378" stroke="#334155" stroke-width="1.4" marker-end="url(#arrow-dark)"/>
+      <line x1="140" y1="378" x2="140" y2="307" stroke="#334155" stroke-width="1.4" marker-end="url(#arrow-dark)"/>
+
+      <!-- 3. AGENT CORE TO DATA: Bi-directional Arrows between FSM and Tabelog Cache -->
+      <line x1="260" y1="302" x2="260" y2="378" stroke="#334155" stroke-width="1.4" marker-end="url(#arrow-dark)"/>
+      <line x1="280" y1="378" x2="280" y2="307" stroke="#334155" stroke-width="1.4" marker-end="url(#arrow-dark)"/>
+
+      <!-- 4. AGENT CORE TO RUNTIME: Subtle dashed line connecting to Runtime -->
+      <path d="M 520 330 L 520 350" fill="none" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="3 3"/>
+
+      <!-- 5. AGENT CORE TO OBSERVABILITY (THE CRITICAL FAR-LEFT ARROW):
+           From left of PickForMe FSM, goes all the way down around data to Pages Traces (Langfuse) -->
+      <path d="M 90 270 L 12 270 L 12 527 L 47 527" fill="none" stroke="#334155" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#arrow-dark)"/>
+
+      <!-- 6. QUALITY TO SHIP (THE CRITICAL CI GATE ARROW):
+           Direct downward arrow from Pytest into GitLab CI -->
+      <line x1="320" y1="550" x2="320" y2="614" stroke="#334155" stroke-width="1.5" marker-end="url(#arrow-dark)"/>
+
+      <!-- 7. SHIP TO DEPLOY:
+           Arrow from GitLab CI directly into GCP Cloud Run -->
+      <path d="M 358 646 L 397 646" fill="none" stroke="#334155" stroke-width="1.5" marker-end="url(#arrow-dark)"/>
+
+      <!-- ================= BOTTOM TAGLINE ================= -->
+      <text x="330" y="730" text-anchor="middle" font-size="12" font-weight="600" fill="#64748b" letter-spacing="0.2">
+        The stack around the model makes it production ready.
+      </text>
+
+    </svg>
+
+  </div>
+
+</body>
+</html>
