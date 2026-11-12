@@ -147,6 +147,8 @@ async def execute_state_1_intent(
             parsed["cuisine"] = str(suggested[idx_1based - 1])
             if not parsed.get("location") and wm_sel.get("last_location"):
                 parsed["location"] = wm_sel["last_location"]
+            if wm_sel.get("last_explore_category"):
+                parsed["explore_category"] = wm_sel["last_explore_category"]
         else:
             # 無有效導覽選單 (未曾導覽或已被一般搜尋消費)：視為針對上一輪推薦店家第 N 家之追問
             parsed.pop("specialty_index", None)
@@ -165,6 +167,7 @@ async def execute_state_1_intent(
                     if not parsed.get("location") and wm.get("last_location"):
                         parsed["location"] = wm["last_location"]
                     last_cat = wm.get("last_explore_category") or "food"
+                    parsed["explore_category"] = last_cat
                     if last_cat == "drink":
                         parsed["cuisine"] = "人気 カフェ 茶房 日本茶"
                     elif last_cat == "souvenir":

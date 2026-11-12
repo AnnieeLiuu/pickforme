@@ -14,6 +14,9 @@
   - 支援跨輪無縫切換（問完「金澤吃什麼」接著問「那喝的呢？」或「有什麼伴手禮？」）與類別自適應之「直接推薦」。
   - 徹底根除 `_KANJI_FOLD_MAP` 字元土炮字典，改採 O(1) 雙向別名倒排索引（Inverted Index）；移除 `GooglePlacesClient` 脆弱之 `category_type_map`，全面改由 TextSearch 搜尋專門店。
   - 於 `AGENTS.md` 頒布「🚫 Anti-Hardcoded Mapping」憲章，杜絕 AI 見招拆招硬寫置換字典之壞習慣。
+- **State 4 推薦卡片類別措辭自適應微調 (`src/agent/stages/synthesis.py`, `src/agent/pipeline.py`)**：
+  - 新增 `resolve_card_category()`，支援當推薦標的為伴手禮（`souvenir`，如和菓子、名產）或茶飲（`drink`，如名茶、喫茶、地酒）時，自動將卡片稱謂由「候選餐廳」自適應為「名店／老舖／茶房」。
+  - 於 LLM Prompt 注入專屬類別指導語，並同步更新純文字保底模板，防止和菓子老舖與茶房被誤稱為餐廳。
 
 ### Fixed
 - **預設 FSM 接線持久化與土炮字典拔除 (`src/agent/pipeline.py`, `src/services/cuisine_guide.py`)**：

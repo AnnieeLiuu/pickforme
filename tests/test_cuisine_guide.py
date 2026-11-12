@@ -396,3 +396,80 @@ async def test_fsm_default_wiring_includes_specialty_guide_repo():
     fsm = FoodRecommendationFSM()
     assert fsm.cuisine_guide_service is not None
     assert isinstance(fsm.cuisine_guide_service.guide_repo, SpecialtyGuideRepository)
+
+
+def test_state_4_template_fallback_adaptive_wording():
+    """驗證 State 4 保底卡片依類別 (souvenir / drink / food) 自適應切換稱謂與標題"""
+    from src.agent.stages.synthesis import render_template_fallback_card
+
+    mock_stores = [
+        {
+            "name_ja": "森八 本店",
+            "tabelog_rating": 3.65,
+            "review_count": 320,
+            "address": "石川県金沢市大手町10-15",
+            "tabelog_url": "https://tabelog.com/ishikawa/A1701/A170101/17000001/",
+        }
+    ]
+
+    # 1. 伴手禮 / 名物 (souvenir)
+    card_souvenir = render_template_fallback_card(
+        mock_stores, "長生殿・落雁", is_format_fallback=True, category="souvenir"
+    )
+    assert "伴手禮" in card_souvenir or "名店" in card_souvenir
+    assert "指標推薦餐廳" not in card_souvenir
+
+    # 2. 名茶 / 飲品 (drink)
+    card_drink = render_template_fallback_card(mock_stores, "加賀棒茶", is_format_fallback=True, category="drink")
+    assert "茶房" in card_drink or "名茶" in card_drink
+    assert "指標推薦餐廳" not in card_drink
+
+    # 3. 一般美食 (food)
+    card_food = render_template_fallback_card(mock_stores, "金澤關東煮", is_format_fallback=True, category="food")
+    assert "指標推薦餐廳" in card_food
+
+
+@pytest.mark.asyncio
+async def test_state_4_synthesis_llm_prompt_adaptive_wording():
+    """驗證 State 4 LLM 生成推薦卡片時，伴手禮與茶飲會注入專屬類別指引，防止稱呼和菓子老舖為餐廳"""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from src.agent.pipeline import FoodRecommendationFSM
+
+    fsm = FoodRecommendationFSM()
+    fsm.llm_client = MagicMock()
+    fsm.llm_client.call_text = AsyncMock(
+        return_value=(
+            "### 🥇 精選推薦 1：`森八 本店`\n⭐️ **Tabelog 評分**：3.65 分\n📍 **老饕推薦理由**：落雁口感細膩。\n\n💡 特派員提醒：適合買回當禮盒！",
+            "mock-llm",
+            100,
+        )
+    )
+
+    mock_stores = [
+        {
+            "name_ja": "森八 本店",
+            "tabelog_rating": 3.65,
+            "review_count": 320,
+            "address": "石川県金沢市大手町10-15",
+            "tabelog_url": "https://tabelog.com/ishikawa/A1701/A170101/17000001/",
+        }
+    ]
+
+    # 測試伴手禮類別呼叫
+    await fsm.execute_state_4_synthesis(
+        stores=mock_stores,
+        cuisine="和菓子",
+        location_name="金澤",
+        category="souvenir",
+    )
+
+    call_args = fsm.llm_client.call_text.call_args[0][0]
+    sys_content = next(m["content"] for m in call_args if m["role"] == "system")
+    user_content = next(m["content"] for m in call_args if m["role"] == "user")
+
+    # 驗證 System Prompt 包含伴手禮專屬指導語，且 User Prompt 使用「候選名店／老舖」而非「候選餐廳」
+    assert "伴手禮／名產" in sys_content
+    assert "避免稱呼為「餐廳」" in sys_content
+    assert "伴手禮／名物類別" in user_content
+    assert "候選名店／老舖" in user_content

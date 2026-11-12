@@ -33,6 +33,7 @@ from src.agent.stages.synthesis import (
     execute_state_4_synthesis,
     get_recommendation_card_prompt,
     render_template_fallback_card,
+    resolve_card_category,
     sanitize_card_ratings,
 )
 
@@ -59,6 +60,7 @@ __all__ = [
     "RECOMMENDATION_CARD_SYSTEM_PROMPT",
     "get_recommendation_card_prompt",
     "render_template_fallback_card",
+    "resolve_card_category",
     "sanitize_card_ratings",
     "execute_state_4_synthesis",
 ]

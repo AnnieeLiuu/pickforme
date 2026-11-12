@@ -178,9 +178,10 @@ class FoodRecommendationFSM:
         stores: list[dict[str, Any]],
         cuisine: str,
         is_format_fallback: bool = False,
+        category: Optional[str] = None,
     ) -> str:
         """LLM 連線失敗或格式回退時的純程式碼資料模板保底 (委派至 stages.synthesis)"""
-        return render_template_fallback_card(stores, cuisine, is_format_fallback=is_format_fallback)
+        return render_template_fallback_card(stores, cuisine, is_format_fallback=is_format_fallback, category=category)
 
     def _sanitize_card_ratings(self, card_text: str, stores: list[dict[str, Any]]) -> str:
         """Scoped Anchor Guardrail (委派至 stages.synthesis)"""
@@ -191,9 +192,10 @@ class FoodRecommendationFSM:
         stores: list[dict[str, Any]],
         cuisine: str,
         location_name: Optional[str],
+        category: Optional[str] = None,
     ) -> str:
         """State 4: 推薦卡片排版合成與護欄校驗 (委派至 stages.synthesis)"""
-        return await stage_execute_state_4_synthesis(self, stores, cuisine, location_name)
+        return await stage_execute_state_4_synthesis(self, stores, cuisine, location_name, category=category)
 
     async def execute_follow_up(
         self,
@@ -356,6 +358,7 @@ class FoodRecommendationFSM:
                 user_message=user_message,
                 user_location=user_location,
                 intent=intent,
+                explore_category=parsed.get("explore_category"),
                 location_name=loc_name,
                 coords=(float(coords[0]), float(coords[1])),
                 cuisine=cuisine,
@@ -407,13 +410,17 @@ class FoodRecommendationFSM:
 
             # 方案 1A 二段式進度更新 (進度 2 - 準備寫卡片)
             if on_progress:
-                await on_progress(f"✍️ 已精選 {len(enriched_stores)} 家高評價指標餐廳，正在為您生成專屬推薦卡片...")
+                cat_word = "名店" if run_ctx.explore_category in ("drink", "souvenir") else "餐廳"
+                await on_progress(
+                    f"✍️ 已精選 {len(enriched_stores)} 家高評價指標{cat_word}，正在為您生成專屬推薦卡片..."
+                )
 
             # 4. State 4: 單輪卡片生成
             final_card = await self.execute_state_4_synthesis(
                 stores=enriched_stores,
                 cuisine=run_ctx.search_keyword,
                 location_name=run_ctx.location_name,
+                category=run_ctx.explore_category,
             )
 
             # 保存推薦店家與 Working Memory 至 Session 以支援後續追問與累積去重

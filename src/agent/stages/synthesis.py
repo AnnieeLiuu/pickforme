@@ -63,20 +63,89 @@ def get_recommendation_card_prompt() -> str:
     return RECOMMENDATION_CARD_SYSTEM_PROMPT
 
 
+def resolve_card_category(cuisine: str = "", category: Optional[str] = None) -> str:
+    """解析推薦卡片之類別屬性 (food / drink / souvenir)
+
+    若已明確傳入 category 則直接採用；否則依據 cuisine 核心關鍵字自動自適應推導。
+    """
+    if category in ("drink", "souvenir", "food"):
+        return category
+    c = (cuisine or "").lower()
+    souvenir_keywords = (
+        "伴手禮",
+        "名產",
+        "土產",
+        "お土産",
+        "みやげ",
+        "和菓子",
+        "銘菓",
+        "點心",
+        "蛋糕",
+        "落雁",
+        "煎餅",
+        "最中",
+        "羊羹",
+        "大福",
+    )
+    drink_keywords = (
+        "茶",
+        "咖啡",
+        "喫茶",
+        "カフェ",
+        "地酒",
+        "日本酒",
+        "酒吧",
+        "飲品",
+        "飲料",
+        "ほうじ茶",
+        "抹茶",
+        "煎茶",
+        "玉露",
+        "清酒",
+    )
+    if any(k in c for k in souvenir_keywords):
+        return "souvenir"
+    if any(k in c for k in drink_keywords):
+        return "drink"
+    return "food"
+
+
 def render_template_fallback_card(
     stores: list[dict[str, Any]],
     cuisine: str,
     is_format_fallback: bool = False,
+    category: Optional[str] = None,
 ) -> str:
     """LLM 連線失敗或格式回退時的純程式碼資料模板保底"""
-    badge = (
-        f"🍱 **已為您精選「{cuisine or '熱門料理'}」指標推薦餐廳如下：**\n"
-        if is_format_fallback
-        else "⚠️ **AI 語意模型連線異常，已為您自動載入直出精準美食卡片：**\n"
-    )
+    cat = resolve_card_category(cuisine=cuisine, category=category)
+    if cat == "souvenir":
+        badge = (
+            f"🎁 **已為您精選「{cuisine or '熱門伴手禮'}」指標推薦名店如下：**\n"
+            if is_format_fallback
+            else "⚠️ **AI 語意模型連線異常，已為您自動載入直出精準伴手禮老舖卡片：**\n"
+        )
+        entity_name = "老舖／名店"
+        explore_more_tip = "若想探索更多伴手禮與銘菓選擇，可隨時告訴我擴大搜尋半徑或換個商圈！"
+    elif cat == "drink":
+        badge = (
+            f"🍵 **已為您精選「{cuisine or '特色茶飲／咖啡'}」指標推薦茶房如下：**\n"
+            if is_format_fallback
+            else "⚠️ **AI 語意模型連線異常，已為您自動載入直出精準名茶／飲品名店卡片：**\n"
+        )
+        entity_name = "茶房／名店"
+        explore_more_tip = "若想探索更多茶房或飲品選擇，可隨時告訴我擴大搜尋半徑或換個商圈！"
+    else:
+        badge = (
+            f"🍱 **已為您精選「{cuisine or '熱門料理'}」指標推薦餐廳如下：**\n"
+            if is_format_fallback
+            else "⚠️ **AI 語意模型連線異常，已為您自動載入直出精準美食卡片：**\n"
+        )
+        entity_name = "餐廳"
+        explore_more_tip = "若想探索更多選擇，可隨時告訴我擴大搜尋半徑或換個商圈！"
+
     lines = [badge]
     if not is_format_fallback:
-        lines.append(f"精選「{cuisine or '熱門料理'}」指標餐廳如下：\n")
+        lines.append(f"精選「{cuisine or '熱門推薦'}」指標{entity_name}如下：\n")
     for idx, s in enumerate(stores, 1):
         name = s.get("name_ja") or s.get("name") or "精選餐廳"
         rating_src = s.get("rating_source", "Google")
@@ -120,9 +189,7 @@ def render_template_fallback_card(
         lines.append("")
 
     if len(stores) < 3:
-        lines.append(
-            f"💡 **特派員提醒**：目前此範圍內精選出 {len(stores)} 家符合條件的名店；若想探索更多選擇，可隨時告訴我擴大搜尋半徑或換個商圈！\n"
-        )
+        lines.append(f"💡 **特派員提醒**：目前此範圍內精選出 {len(stores)} 家符合條件的名店；{explore_more_tip}\n")
 
     return "\n".join(lines).strip()
 
@@ -209,16 +276,43 @@ async def execute_state_4_synthesis(
     stores: list[dict[str, Any]],
     cuisine: str,
     location_name: Optional[str],
+    category: Optional[str] = None,
 ) -> str:
     """State 4: 推薦卡片排版合成、護欄校驗與防禦回退"""
     t0 = time.time()
+    cat = resolve_card_category(cuisine=cuisine, category=category)
+
+    if cat == "souvenir":
+        category_header = "伴手禮／名物類別"
+        entity_label = "候選名店／老舖"
+        honest_label = "高評價名店老舖"
+        category_guidance = (
+            "【重要類別措辭指引 - 伴手禮／名產】：\n"
+            "- 本輪推薦對象為伴手禮／銘菓／土產名店或老舖，排版時請使用「名店／老舖／名菓店」等稱謂，避免稱呼為「餐廳」。\n"
+            "- 點評請著重於招牌點心名產的風味層次、包裝送禮適宜性、賞味期限或常溫攜帶性。\n"
+        )
+    elif cat == "drink":
+        category_header = "特色飲品／名茶類別"
+        entity_label = "候選茶房／名店"
+        honest_label = "高評價茶房名店"
+        category_guidance = (
+            "【重要類別措辭指引 - 特色飲品／名茶茶房】：\n"
+            "- 本輪推薦對象為茶房／喫茶店／咖啡廳／地酒吧，排版時請使用「茶房／喫茶店／名店」等稱謂，避免稱呼為「餐廳」。\n"
+            "- 點評請著重於茶湯風味、香氣層次、焙火喉韻、店內氛圍或招牌茶點搭配。\n"
+        )
+    else:
+        category_header = "美食類別"
+        entity_label = "候選餐廳"
+        honest_label = "高評價店家"
+        category_guidance = ""
+
     honest_notice = ""
     if len(stores) < 3:
-        honest_notice = f"（特別提醒：目前此範圍內符合條件之高評價店家僅有 {len(stores)} 家，請誠實僅呈現這 {len(stores)} 家，絕對禁止無中生有自行腦補其他店家或搜尋連結，並請在特派員提醒中建議使用者若想看更多可擴大半徑或換個商圈）\n"
+        honest_notice = f"（特別提醒：目前此範圍內符合條件之{honest_label}僅有 {len(stores)} 家，請誠實僅呈現這 {len(stores)} 家，絕對禁止無中生有自行腦補其他店家或搜尋連結，並請在特派員提醒中建議使用者若想看更多可擴大半徑或換個商圈）\n"
 
     prompt_content = (
-        f"目標地點：{location_name or '指定區域'}\n美食類別：{cuisine or '熱門美食'}\n"
-        f"候選餐廳總數：共 {len(stores)} 家 {honest_notice}\n候選餐廳詳細數據如下：\n"
+        f"目標地點：{location_name or '指定區域'}\n{category_header}：{cuisine or '熱門推薦'}\n"
+        f"{entity_label}總數：共 {len(stores)} 家 {honest_notice}\n{entity_label}詳細數據如下：\n"
     )
     for idx, s in enumerate(stores, 1):
         rank_badge = s.get("rank_badge") or (["🥇", "🥈", "🥉"][idx - 1] if idx <= 3 else f"#{idx}")
@@ -284,8 +378,12 @@ async def execute_state_4_synthesis(
         if review_text:
             prompt_content += f"- 顧客/老饕真實評價 (來源: {rev_source_label})：{review_text}\n"
 
+    system_prompt = get_recommendation_card_prompt()
+    if category_guidance:
+        system_prompt += f"\n\n{category_guidance}"
+
     messages = [
-        {"role": "system", "content": get_recommendation_card_prompt()},
+        {"role": "system", "content": system_prompt},
         {"role": "user", "content": prompt_content},
     ]
 
@@ -312,7 +410,7 @@ async def execute_state_4_synthesis(
             )
             fsm._last_state_4_model = "template_fallback"
             fsm._last_state_4_tokens = 0
-            fallback_card = fsm._render_template_fallback_card(stores, cuisine, is_format_fallback=True)
+            fallback_card = fsm._render_template_fallback_card(stores, cuisine, is_format_fallback=True, category=cat)
             latency = int((time.time() - t0) * 1000)
             await fsm.trace_logger.log_step(
                 action_type="state_4_synthesis",
@@ -320,6 +418,7 @@ async def execute_state_4_synthesis(
                 tool_input={
                     "stores_count": len(stores),
                     "cuisine": cuisine,
+                    "category": cat,
                     "fatal_errors": fatal_errors,
                 },
                 tool_output={"card_content": fallback_card, "length": len(fallback_card)},
@@ -342,6 +441,7 @@ async def execute_state_4_synthesis(
                 "stores_count": len(stores),
                 "cuisine": cuisine,
                 "location": location_name,
+                "category": cat,
             },
             tool_output={"card_content": card_text, "length": len(card_text)},
             latency_ms=latency,
@@ -351,12 +451,12 @@ async def execute_state_4_synthesis(
         logger.error(f"State 4 LLM card synthesis failed: {e}. Activating template fallback...")
         fsm._last_state_4_model = "template_fallback"
         fsm._last_state_4_tokens = 0
-        fallback_card = fsm._render_template_fallback_card(stores, cuisine)
+        fallback_card = fsm._render_template_fallback_card(stores, cuisine, category=cat)
         latency = int((time.time() - t0) * 1000)
         await fsm.trace_logger.log_step(
             action_type="state_4_synthesis",
             tool_name="card_synthesis_fallback",
-            tool_input={"stores_count": len(stores), "cuisine": cuisine, "error": str(e)},
+            tool_input={"stores_count": len(stores), "cuisine": cuisine, "category": cat, "error": str(e)},
             tool_output={"card_content": fallback_card, "length": len(fallback_card)},
             latency_ms=latency,
         )
