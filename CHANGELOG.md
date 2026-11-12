@@ -35,6 +35,11 @@
   - 於 LLM Prompt 注入專屬類別指導語，並同步更新純文字保底模板，防止和菓子老舖與茶房被誤稱為餐廳。
 
 ### Fixed
+- **專案文檔與雲端部署環境配置校正 (`.gitlab-ci.yml`, `docs/ARCHITECTURE.md`, `README.md`, `.env.example`, `docs/tabelog_structure.md`)**：
+  - 修復 `.gitlab-ci.yml` 部署環境變數名稱漂移 (`GOOGLE_MAPS_API_KEY` ➔ `GOOGLE_PLACES_API_KEY`，`TELEGRAM_ALLOWED_USERS` ➔ `TELEGRAM_ALLOWED_USER_ID`)。
+  - 精簡 `docs/ARCHITECTURE.md`：移除過期開發排程甘特圖與衝突的舊版 README 預覽，更新模型名稱為 Qwen 3.8 27B。
+  - 校正 `README.md`：修正 `scripts/archive_to_cold.py` 名稱與測試通過數 (`183 passed`)，建立正式 `LICENSE` (MIT) 消除死連結。
+  - 同步 `.env.example`：清理未實裝的 LINE 變數，補齊現行 `LLM_PRIMARY_PROVIDER` 與 Ollama 離線推論設定。
 - **雙階地理導航邊界缺陷與選單交叉污染修復 (`src/db/repositories/session.py`, `src/services/tabelog_scraper.py`, `src/agent/stages/places_search.py`)**：
   - 修復 `SessionRepository.update_working_memory` 多輪選單殘留污染：更新 `suggested_cuisines` 時互斥清空 `suggested_locations` 與 `pending_cuisine`，反之亦然，徹底杜絕特色選單遭過期縣級選單劫持。
   - 修復 `tabelog_scraper` 交通手段正則誤判：嚴格要求具備 `(?:徒歩|歩き|歩いて)` 步行關鍵字，明確排除 `(?:バス|車|タクシー|お車)` 等大眾運輸或開車，杜絕將公車 15 分鐘誤判為步行。

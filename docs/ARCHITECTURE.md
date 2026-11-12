@@ -1,6 +1,6 @@
 # 🍱 PickForMe - 日本美食 AI Agent 實作計畫書 (V2.0 完整版)
 
-> **專案定位**：專為日本旅遊設計的智慧美食代理人（AI Agent）。解決外出時「距離近、評分高、有開門、評論符合偏好」的搜尋痛點。對外作為 DS 轉 AI 工程師的作品集，展示自研 Tool-calling Agent 迴圈、Neon + GCS 冷熱資料庫分層、Telegram 互動介面、電話優先實體匹配與四層自動化 Eval 評估框架。
+> **專案定位**：專為日本旅遊設計的智慧美食代理人（AI Agent）。解決外出時「距離近、評分高、有開門、評論符合偏好」的搜尋痛點。對外作為 DS 轉 AI 工程師的作品集，展示自研確定性 4 階段有限狀態機 (FoodRecommendationFSM)、Neon + GCS 冷熱資料庫分層、Telegram 互動介面、電話優先實體匹配與四層自動化 Eval 評估框架。
 
 > [!IMPORTANT]
 > **系統全局導航與根因排查手冊 (System Blueprint & Debugging SOP)**：
@@ -86,7 +86,7 @@ graph TD
      - 核心品牌 Token 高度相符 (>= 0.85) ➔ 直接命中 (`rule_high`)。
      - 搜尋引擎首位店家主幹完全吻合 ➔ 信任搜尋結果首選 (`top1_core_match`, 0.92)。
   2. **Level 2: LLM 智能裁決 (Smart Arbiter)**：
-     - 灰色地帶 (0.40 ~ 0.85)：異構店名、日英文夾雜、長品類修飾詞，自動由 Groq Llama 3.3 70B（<300ms）或 Gemini 3.8 Flash 進行語意判定 (`llm_verify`)。
+     - 灰色地帶 (0.40 ~ 0.85)：異構店名、日英文夾雜、長品類修飾詞，自動由 Groq Qwen 3.8 27B（<300ms）或 Gemini 3.8 Flash 進行語意判定 (`llm_verify`)。
   3. **匹配失敗兜底**：標註「Tabelog 暫無評分，以 Google 為依據」，確保零幻覺。
 
 ### C. 預熱與防封鎖機制 (`src/worker/prewarm.py`)
@@ -316,39 +316,4 @@ flowchart TD
   - **自動化部署腳本 (`scripts/deploy_cloud_run.sh`)**：支援一鍵讀取環境變數與金鑰，呼叫 Google Cloud Build 構建容器映像檔並推送至 Artifact Registry，更新 Cloud Run 服務資源規格（1Gi 記憶體、1 CPU、0-5 自動水平伸縮），並支援 `--dry-run` 模擬演練與 `--setup-webhook` 自動綁定 Telegram Webhook。
   - **GitLab CI/CD 雲端管線 (`.gitlab-ci.yml`)**：於 `deploy` stage 配置 `deploy-cloud-run` job，整合 Google Cloud SDK，支援手動確認觸發 (`when: manual`) 或 Git Release Tag 自動發布。
 
----
 
-## 📅 4. 兩階段開發里程碑 (Phased Roadmap)
-
-```mermaid
-gantt
-    title PickForMe 兩階段實作時程
-    dateFormat YYYY-MM-DD
-    section Phase A: 實用 MVP (可帶去日本)
-    Neon DB & Schema 建立           :a1, 2026-10-09, 2d
-    Google Places API & 地名轉座標   :a2, 2026-10-11, 2d
-    Tabelog 爬蟲 & 電話實體匹配器     :a3, 2026-10-13, 3d
-    自研 Agent Loop & OpenAI 格式  :a4, 2026-10-16, 3d
-    Telegram Webhook & 訊息編輯更新  :a5, 2026-10-19, 3d
-    預熱 Worker & Cloud Run 部署     :a6, 2026-10-22, 3d
-    
-    section Phase B: 履歷亮點與 Eval
-    GCS 冷層 & Trace 自動封存        :b1, 2026-10-25, 2d
-    跨語言 Embedding 小實驗          :b2, 2026-10-27, 2d
-    餐點萃取 & pgvector 語意檢索    :b3, 2026-10-29, 3d
-    4-Tier Replay Eval 測試集與 CI  :b4, 2026-11-01, 4d
-    README 履歷與 DuckDB 分析報告   :b5, 2026-11-05, 2d
-```
-
----
-
-## 🎯 5. 履歷亮點展現 (README Preview)
-
-```markdown
-### 🌟 Tech Highlights
-1. **Zero-Framework Custom Agent Engine**: Engineered a resilient, dual-model LLM tool-calling loop (Gemini Flash + Groq Llama 3.3 failover) with normalized OpenAI-compatible schemas, error-handling tool loops, and prompt-context budgeting.
-2. **Hybrid Entity Resolution & Multi-Tier Storage**: Aligned store identities between Google Places and Tabelog via phone-number indexing, text normalization, and LLM gray-zone adjudication. Architected a hot/cold storage model combining Serverless Neon Postgres (`halfvec` pgvector) with GCS/DuckDB parquet archives.
-3. **Progressive Telegram Interface & Safe Pre-warming**: Built a synchronous Webhook interface on Cloud Run leveraging Telegram message-editing streams for live execution progress, backed by a DB-driven asynchronous pre-warm worker to prevent scraping blocks.
-4. **Production AI Guardrail & Contract-Driven Quality**: Engineered a sub-millisecond Scoped Anchor deterministic guardrail eliminating LLM numeric hallucinations on high-stakes ratings with 0 API overhead. Coupled with CI/CD bidirectional contract tests preventing prompt-schema drift across iterations.
-5. **4-Tier Fixture-Replay Evaluation**: Established an automated evaluation pipeline measuring Tool Calling accuracy (94%), Constraint Satisfaction (98%), Entity Resolution F1 (0.93), and latency/cost metrics using recorded API fixtures.
-```

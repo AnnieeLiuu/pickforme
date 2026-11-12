@@ -56,7 +56,10 @@
 
 ---
 
-## 四、 建議之資料庫儲存結構 (Postgres `raw_details` JSONB)
+## 四、 建議之資料庫儲存結構 (Postgres 原型參考)
+
+> [!NOTE]
+> 以下 JSON 結構為爬蟲欄位設計初期之原型參考。在現行生產環境資料庫中，實際表格結構以 [`src/db/schema.sql`](file:///src/db/schema.sql) 之 `tabelog_cache` 為準（例如支付方式已正規化為 `supports_paypay` BOOLEAN 與 `credit_cards` JSONB 欄位，並支援 7 天 TTL 快取）。
 
 ```json
 {

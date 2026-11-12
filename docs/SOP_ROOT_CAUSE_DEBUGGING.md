@@ -96,7 +96,7 @@ flowchart TD
 2. **步驟 2：執行 5-Whys 深度溯源**：
    - 追問 5 次為什麼，直到定位出是哪一項「資料合約」、「邊界假設」或「弱型別遺失」缺失。
 3. **步驟 3：副作用矩陣評估 (Blast Radius Assessment)**：
-   - 檢查改動會不會影響下游 State 4、快取相容性、或現有 121 題黃金回歸測試。
+   - 檢查改動會不會影響下游 State 4、快取相容性、或現有全量回歸測試集 (183 tests)。
 4. **步驟 4：合約與型別不變量先行 (Contract & Invariants First)**：
    - 先在 `src/models/` 建立強型別模型，定義不可打破的 System Invariants。
 5. **步驟 5：Red-Green 測試固化與全域驗證**：
