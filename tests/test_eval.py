@@ -69,5 +69,7 @@ def test_reporter_template_decoupling():
 
     assert TEMPLATE_PATH.exists(), f"模板檔案應存在於: {TEMPLATE_PATH}"
     assert TEMPLATE_PATH.name == "river_dashboard.html"
-    assert BASE_DASHBOARD_TEMPLATE.strip().startswith("<style>")
+    assert BASE_DASHBOARD_TEMPLATE.strip().startswith("<!DOCTYPE html>") or BASE_DASHBOARD_TEMPLATE.strip().startswith(
+        "<style>"
+    )
     assert "river-node" in BASE_DASHBOARD_TEMPLATE

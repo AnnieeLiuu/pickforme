@@ -1,3 +1,9 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PickForMe 4-Tier LLMOps 評測與全景河流圖中控台</title>
 <style>
 /* 🌟 全域清爽現代淺色主題 (Apple / Stripe / Linear Clean Light Style) */
 html, body, #frame-content, #frame-header, .header, header {
@@ -335,6 +341,9 @@ html, body, #frame-content, #frame-header, .header, header {
   font-weight: 700;
 }
 </style>
+</head>
+<body>
+
 
 <div class="dashboard-container">
 
@@ -2261,58 +2270,6 @@ function switchCase(caseKey) {
   document.querySelectorAll('.history-item').forEach(item => item.classList.remove('active'));
   const activeItem = document.getElementById('hist-' + caseKey);
   if (activeItem) activeItem.classList.add('active');
-    const bNoloc = document.getElementById('badge-route-reason-noloc');
-    const bMain = document.getElementById('badge-route-reason-main');
-    const bFollowup = document.getElementById('badge-route-reason-followup');
-    if (!bNoloc || !bMain || !bFollowup) return;
-
-    if (activeBranch === 'main') {
-      bNoloc.innerHTML = '⚪ 條件不符: 地點明確非空';
-      bNoloc.style.border = '1px dashed #cbd5e1';
-      bNoloc.style.color = '#64748b';
-      bNoloc.style.background = '#f8fafc';
-
-      bMain.innerHTML = '✅ 命中決策: 搜尋意圖且具備明確區域「神保町」 ➔ 准予深度檢索';
-      bMain.style.border = '1.5px solid #2563eb';
-      bMain.style.color = '#1d4ed8';
-      bMain.style.background = '#eff6ff';
-
-      bFollowup.innerHTML = '⚪ 條件不符: 非追問問句';
-      bFollowup.style.border = '1px dashed #cbd5e1';
-      bFollowup.style.color = '#64748b';
-      bFollowup.style.background = '#f8fafc';
-    } else if (activeBranch === 'noloc') {
-      bNoloc.innerHTML = '✅ 命中決策: location == null ➔ 截流防呆，省 Places 費用';
-      bNoloc.style.border = '1.5px solid #2563eb';
-      bNoloc.style.color = '#1d4ed8';
-      bNoloc.style.background = '#eff6ff';
-
-      bMain.innerHTML = '⚪ 條件不符: 缺乏車站或區域約束';
-      bMain.style.border = '1px dashed #cbd5e1';
-      bMain.style.color = '#64748b';
-      bMain.style.background = '#f8fafc';
-
-      bFollowup.innerHTML = '⚪ 條件不符: 非追問問句';
-      bFollowup.style.border = '1px dashed #cbd5e1';
-      bFollowup.style.color = '#64748b';
-      bFollowup.style.background = '#f8fafc';
-    } else if (activeBranch === 'followup') {
-      bNoloc.innerHTML = '⚪ 條件不符: 非全新無地點提問';
-      bNoloc.style.border = '1px dashed #cbd5e1';
-      bNoloc.style.color = '#64748b';
-      bNoloc.style.background = '#f8fafc';
-
-      bMain.innerHTML = '⚪ 條件不符: 追問現有名單，無需重新檢索';
-      bMain.style.border = '1px dashed #cbd5e1';
-      bMain.style.color = '#64748b';
-      bMain.style.background = '#f8fafc';
-
-      bFollowup.innerHTML = '✅ 命中決策: 追問上一輪推薦名單 ➔ 讀取 Session 記憶直答';
-      bFollowup.style.border = '1.5px solid #2563eb';
-      bFollowup.style.color = '#1d4ed8';
-      bFollowup.style.background = '#eff6ff';
-    }
-  };
 
   if (caseKey === 'case_search') {
     document.getElementById('badge-user-input').innerText = '「神保町車站 飯糰」';
@@ -2757,3 +2714,5 @@ window.onresize = () => {
   updateBypassLine();
 };
 </script>
+</body>
+</html>

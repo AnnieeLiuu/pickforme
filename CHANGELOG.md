@@ -15,6 +15,12 @@
   - **雙模式自由切換 Tab**：新增 `📡 即時線上 (15)` 與 `🎭 架構示範 (7)` 切換標籤，預設載入真實問答，同時保留 7 筆經典情境展示。
   - **FSM 河流圖動態點亮與節點審計穿透**：點擊任一真實問答即動態點亮該次執行所流經的 FSM 節點（包括 0ms QuickPassGate 快篩短路、文化特色導覽直出旁道、Places 800m 階梯檢索與 Tabelog 爬蟲接地），點擊各節點即可在右側審計抽屜查閱真實的 `tool_input`、`tool_output`、步驟耗時與 Telegram 最終推播卡片預覽。
   - **新增可觀測性契約測試 (`tests/test_observability_sync.py`)**：新增 `test_trace_to_river_adapter_integration` 單元測試，保證 Pages 儀表板模板與真實 Trace Payload 之契約永不脫節。
+
+### Fixed
+- **修復 Pages 中控台 HTML5 標準信封與字元編碼截斷 (`src/eval/templates/river_dashboard.html`, `public/index.html`, `tests/test_eval.py`)**：
+  - 補齊標準 `<!DOCTYPE html>` 與 `<meta charset="UTF-8">`，修復先前缺少 HTML5 宣告導致 Chromium 在解析 JS 字串內多位元組 Emoji (`📍` / `🍜` / `🍱`) 時產生 `SyntaxError: Invalid or unexpected token` 阻斷腳本執行的缺陷。
+  - 清理 `switchCase` 函式內部冗餘代碼塊，全面恢復 JS 正常執行與 `window.onload` 自動初始化。
+  - 經 Playwright 實機點擊自動化測試，驗證雙模式切換（即時線上 15 筆 vs 架構示範 7 筆）與各節點審計抽屜穿透皆 100% 正常響應。
 - **架構流程圖語意完整性契約測試與 Hook 守門防護 (`tests/test_docs_mermaid.py`, `.git/hooks/pre-push`)**：
   - 新增 `test_architecture_fsm_mermaid_semantic_consistency` 契約測試：自動掃描 `docs/ARCHITECTURE.md` Section D 之 Mermaid 流程圖，強制驗證必須涵蓋 4 大 State 子圖、地理三場景 (`is_prefecture_level_area` / `is_wide_area_origin`)、消費品類三分支 (`food` / `drink` / `souvenir` / `resolve_card_category`) 與 Scoped Anchor 等核心節點，徹底杜絕「只改文字說明、漏改流程圖」之架構圖漂移。
   - 於 Git Pre-push Hook Step 6 注入 Mermaid 流程圖實質改動檢核與預警。
