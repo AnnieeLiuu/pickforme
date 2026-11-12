@@ -386,3 +386,13 @@ async def test_cross_turn_switch_category_and_direct_recommend():
     assert parsed_direct["intent"] == "search"
     assert parsed_direct["location"] == "金澤"
     assert "お土産" in parsed_direct["cuisine"]
+
+
+@pytest.mark.asyncio
+async def test_fsm_default_wiring_includes_specialty_guide_repo():
+    """驗證 FoodRecommendationFSM 預設接線包含 SpecialtyGuideRepository，確保生產環境具備自動持久化能力"""
+    from src.db.repositories.specialty_guide import SpecialtyGuideRepository
+
+    fsm = FoodRecommendationFSM()
+    assert fsm.cuisine_guide_service is not None
+    assert isinstance(fsm.cuisine_guide_service.guide_repo, SpecialtyGuideRepository)

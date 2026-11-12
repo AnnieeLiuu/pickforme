@@ -15,6 +15,11 @@
   - 徹底根除 `_KANJI_FOLD_MAP` 字元土炮字典，改採 O(1) 雙向別名倒排索引（Inverted Index）；移除 `GooglePlacesClient` 脆弱之 `category_type_map`，全面改由 TextSearch 搜尋專門店。
   - 於 `AGENTS.md` 頒布「🚫 Anti-Hardcoded Mapping」憲章，杜絕 AI 見招拆招硬寫置換字典之壞習慣。
 
+### Fixed
+- **預設 FSM 接線持久化與土炮字典拔除 (`src/agent/pipeline.py`, `src/services/cuisine_guide.py`)**：
+  - 將 `SpecialtyGuideRepository` 納入 `FoodRecommendationFSM` 預設依賴注入接線，確保生產環境 Cloud Run 自動具備 Neon DB 本地名物持久化寫回能力。
+  - 徹底移除 `_KANJI_FOLD_MAP` 硬編碼漢字置換字典，改由別名倒排索引（Inverted Index）動態解析，並新增接線驗證單元測試。
+
 ---
 
 ## [1.3.1] - 2026-11-12

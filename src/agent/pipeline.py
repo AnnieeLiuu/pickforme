@@ -49,6 +49,7 @@ from src.agent.stages.synthesis import (
 from src.agent.trace import AgentTraceLogger
 from src.db.repositories.restaurant import RestaurantRepository
 from src.db.repositories.session import SessionRepository
+from src.db.repositories.specialty_guide import SpecialtyGuideRepository
 from src.db.repositories.vector import VectorRepository
 from src.services.cuisine_guide import LocalSpecialtyGuideService
 from src.services.embedding import EmbeddingService
@@ -94,7 +95,9 @@ class FoodRecommendationFSM:
         self.trace_logger = trace_logger or AgentTraceLogger()
         self.vector_repo = vector_repo or VectorRepository()
         self.embedding_service = embedding_service or EmbeddingService()
-        self.cuisine_guide_service = cuisine_guide_service or LocalSpecialtyGuideService()
+        self.cuisine_guide_service = cuisine_guide_service or LocalSpecialtyGuideService(
+            guide_repo=SpecialtyGuideRepository()
+        )
         self._last_state_4_model: Optional[str] = None
         self._last_state_4_tokens: int = 0
 
