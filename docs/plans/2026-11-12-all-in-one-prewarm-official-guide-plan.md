@@ -139,25 +139,25 @@
 - Modify: `src/worker/prewarm.py:15-150`
 - Test: `tests/test_prewarm_worker_all_in_one.py`
 
-- [ ] **Step 1: Write failing test for All-in-One Prewarm worker**
+- [x] **Step 1: Write failing test for All-in-One Prewarm worker**
   Create `tests/test_prewarm_worker_all_in_one.py` testing that `PrewarmWorker.process_next_job`:
   - Prewarms places + Tabelog restaurants.
   - Concurrently prewarms culture (`food`, `drink`, `souvenir`) with partial failure isolation (culture failure does NOT fail restaurant caching).
   - Emits safe Markdown card under 4096 characters with 20 restaurants count + 3x3 cultural highlights.
   - Sends message via Telegram bot.
 
-- [ ] **Step 2: Run test to confirm failure**
+- [x] **Step 2: Run test to confirm failure**
   Run `pytest tests/test_prewarm_worker_all_in_one.py` and confirm failure.
 
-- [ ] **Step 3: Implement All-in-One workflow in `PrewarmWorker`**
+- [x] **Step 3: Implement All-in-One workflow in `PrewarmWorker`**
   - In `PrewarmWorker.__init__`, inject `llm_client: Optional[LLMClient] = None` and `guide_service: Optional[LocalSpecialtyGuideService] = None`.
   - In `process_next_job()`, execute `guide_service.prewarm_area_culture(area_name)` wrapped in a `try...except` block with logging and fallback.
   - Format compact notification with bullet points, ensuring length $\le 2000$ characters and safe escaping.
 
-- [ ] **Step 4: Verify test passes**
+- [x] **Step 4: Verify test passes**
   Run `pytest tests/test_prewarm_worker_all_in_one.py` and verify 100% pass.
 
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   Commit with message: `feat(worker): upgrade prewarm worker to all-in-one cultural and restaurant caching`
 
 ---
@@ -169,18 +169,18 @@
 - Modify: `CHANGELOG.md`
 - Modify: `tests/test_real_world_regressions.py`
 
-- [ ] **Step 1: Add regression tests in `tests/test_real_world_regressions.py`**
+- [x] **Step 1: Add regression tests in `tests/test_real_world_regressions.py`**
   Add dedicated regression tests:
   - `test_regression_all_in_one_prewarm_flow()`
   - `test_regression_prewarm_cancellation_and_invalid_choice()`
 
-- [ ] **Step 2: Update documentation**
+- [x] **Step 2: Update documentation**
   - Document All-in-One Prewarm flow, wide-area guardrails, and Official Authority Scraper in `docs/ARCHITECTURE.md`.
   - Add unreleased entry in `CHANGELOG.md`.
   - Verify `AGENTS.md` length $\le 106$ physical lines.
 
-- [ ] **Step 3: Run full pre-push verification suite**
+- [x] **Step 3: Run full pre-push verification suite**
   Run `python -m ruff format src/ tests/ && python -m ruff check src/ tests/ && python -m mypy src/ && pytest`.
 
-- [ ] **Step 4: Commit and push**
+- [x] **Step 4: Commit and push**
   Commit and push to remote (`main -> main`).

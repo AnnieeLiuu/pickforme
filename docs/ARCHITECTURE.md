@@ -97,12 +97,26 @@ graph TD
      - 灰色地帶 (0.40 ~ 0.85)：異構店名、日英文夾雜、長品類修飾詞，自動由 Groq Qwen 3.8 27B（<300ms）或 Gemini 3.8 Flash 進行語意判定 (`llm_verify`)。
   3. **匹配失敗兜底**：標註「Tabelog 暫無評分，以 Google 為依據」，確保零幻覺。
 
-### C. 預熱與防封鎖機制 (`src/worker/prewarm.py`)
-- **核心架構共用**：`PrewarmWorker` 與即時查詢 FSM 管線**底層共用同一套 `TabelogScraper` 與 `EntityResolver`**。
-- **效益雙贏**：
-  1. **離峰批量入庫**：以每 2 秒安全間隔自動將熱門商圈（如新宿、澀谷）前 20~50 家名店與 Tabelog 分數、老饕評論寫入 Neon DB。
-  2. **前台 0ms 秒回**：熱門商圈店家在真實用戶查詢時 100% 命中 DB 快取，徹底免除外部爬蟲與 API 延遲。
-- **觸發與推播**：使用者可透過 Telegram 傳送 `/prewarm <地名> [分類]` 直接發起預熱，完成後主動推播 Telegram 通知。
+### C. 全方位預熱 Worker 與官方權威深度爬蟲 (`src/worker/prewarm.py`, `src/services/authority_scraper.py`)
+- **All-in-One 雙軌預熱架構 (Places 20 店快取 + 3D 文化導覽)**：
+  - **核心架構共用**：`PrewarmWorker` 與即時查詢 FSM 管線底層共用同一套 `TabelogScraper`、`EntityResolver` 與 `LocalSpecialtyGuideService`。
+  - **雙軌並行與故障隔離 (Partial Failure Isolation)**：
+    1. 透過 `asyncio.gather` 同步並行執行：軌道 A 抓取並快取商圈前 20 家高評價餐廳與 Tabelog 評分；軌道 B 預熱該區域三維度深度文化導覽 (`food` 名物、`drink` 飲品/地酒、`souvenir` 必買伴手禮)。
+    2. 內建部分故障隔離防護：當官方文化網站超時或剖析失敗時，餐廳快取照常完成並安全降級推播，任務永不中斷崩潰。
+  - **效益雙贏**：
+    1. **離峰批量入庫**：以安全間隔自動將熱門商圈（如札幌、函館、箱根）前 20 家名店與三維度在地文化寫入 Neon DB。
+    2. **前台 0ms 秒回**：熱門商圈在真實用戶查詢（無論是查餐廳還是問文化特色）時 100% 命中 DB 快取，徹底免除外部爬蟲與 API 延遲。
+  - **整合通知卡片**：預熱完成後主動向 Telegram 推播卡片，精選呈現 3 大美食、在地茶酒飲品與必買伴手禮，並附有一鍵複製問句引導。
+- **官方權威深度爬蟲與階梯品質降級 (`src/services/authority_scraper.py`, `src/services/cuisine_guide.py`)**：
+  - **權威域名過濾器 (Official Authority Filter)**：文化深度導覽透過 Yahoo Japan Grounding 檢索時，強制注入限定 `site:lg.jp OR site:or.jp` 語意約束（嚴格鎖定日本各都道府縣廳、市町村役所 `.lg.jp` 及地方觀光推進機構／公益社團法人 `.or.jp`，例如 `city.hakodate.hokkaido.jp`、`hakodate-kankou.com`），徹底杜絕內容農場與商業廣告軟文。
+  - **三階品質備援 (Tiered Fallback)**：
+    1. **Tier 1 (`curated`)**：人工專家深度考據之 JSON 種子資料庫（`config/local_specialties.json`）及資料庫高可信主檔。
+    2. **Tier 2 (`grounding`)**：透過官方權威站點即時深度擷取並經 Pydantic 語意校驗提煉之結構化導覽，驗證後自動寫入 `area_specialty_guides`。
+    3. **Tier 3 (`fallback`)**：長尾生僻地名之啟發式地域知識備援，確保導覽服務 100% 可用。
+  - **SQL 優先級排序保證**：查詢資料庫時採用 `ORDER BY CASE source_tier WHEN 'curated' THEN 1 WHEN 'grounding' THEN 2 ELSE 3 END, id ASC`，確保最高可信度來源永遠優先呈現。
+- **Telegram 廣域預熱防護 (Wide-Area Disambiguation Guardrail, `src/bot/handlers.py`)**：
+  - **廣域主動收斂**：針對未具備具體市/車站之都道府縣級廣域指令（如 `/prewarm 北海道`、`/prewarm 長野`），0ms 攔截 Places 盲搜，主動回傳精選 3 大核心商圈（如札幌、函館、小樽）與「全部 / 取消」互動引導選單。
+  - **雙層工作記憶防卡死**：透過 Working Memory 暫存 `pending_prewarm_options`，支援使用者輸入號碼（`1/2/3`）、`全部` 或 `取消`；若輸入越界數字或轉向正常對話/其他指令，系統自動重置並清除待確認狀態，無縫銜接後續處理，杜絕狀態機卡死風險。
 
 ### D. 完整 Agent 決策、大腦選擇與 4 階段 FSM 流程圖 (Agent Decision & 4-Stage FSM Flowchart)
 

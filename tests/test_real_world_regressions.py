@@ -1965,3 +1965,289 @@ async def test_regression_cross_menu_mutual_exclusion_in_working_memory():
         assert wm2.get("suggested_cuisines") == ["文字燒", "江戶前壽司", "深川飯"]
         assert "suggested_locations" not in wm2
         assert "pending_cuisine" not in wm2
+
+
+# ==============================================================================
+# Case 26: 全方位預熱 Worker (All-in-One Prewarm Flow & Partial Failure Isolation)
+# ==============================================================================
+@pytest.mark.asyncio
+async def test_regression_all_in_one_prewarm_flow():
+    """Case 26: 驗證 All-in-One Prewarm Worker 端到端整合：
+    1. 同步並行執行 Google Places + Tabelog 餐廳快取 (20家) 與官方在地文化深度導覽三維度預熱 (food/drink/souvenir)。
+    2. 驗證完成後推播 Telegram 整合卡片，包含名物料理、在地飲品、必買伴手禮與問答引導語。
+    3. 驗證部分故障隔離 (Partial Failure Isolation)：當文化導覽拋出例外或超時時，餐廳快取照常完成並安全降級推播，任務永不崩潰。
+    """
+    from src.db.repositories.prewarm import PrewarmRepository
+    from src.db.repositories.restaurant import RestaurantRepository
+    from src.services.cuisine_guide import AreaSpecialtyGuide, LocalSpecialtyGuideService, SpecialtyItem
+    from src.services.entity_resolver import EntityResolver
+    from src.services.google_places import GooglePlacesClient
+    from src.services.tabelog_scraper import TabelogScraper
+    from src.worker.prewarm import PrewarmWorker
+
+    # --- 階段 1: 完整雙軌並行成功情境 ---
+    mock_prewarm_repo = AsyncMock(spec=PrewarmRepository)
+    mock_prewarm_repo.get_next_pending_job.return_value = {
+        "id": "job_reg_aio_1",
+        "area_name": "函館",
+        "target_count": 20,
+        "chat_id": 987654,
+    }
+
+    mock_places_client = AsyncMock(spec=GooglePlacesClient)
+    mock_places_client.geocode_location.return_value = (41.7687, 140.7288)
+    mock_places_client.search_nearby.return_value = [
+        {"google_place_id": f"g_reg_{i}", "name": f"函館名店_{i}", "phone": f"0138-00-{i:04d}"} for i in range(20)
+    ]
+
+    mock_scraper = AsyncMock(spec=TabelogScraper)
+    mock_scraper.search_tabelog_candidates.return_value = [
+        {"tabelog_url": "https://tabelog.com/hokkaido/A0105/010501/01000001/", "name_ja": "函館店"}
+    ]
+    mock_scraper.scrape_restaurant_details.return_value = {
+        "tabelog_rating": 3.65,
+        "name_ja": "函館店",
+    }
+
+    mock_resolver = AsyncMock(spec=EntityResolver)
+    mock_resolver.resolve_entity.return_value = {
+        "match_found": True,
+        "candidate": {"tabelog_url": "https://tabelog.com/hokkaido/A0105/010501/01000001/", "tabelog_rating": 3.65},
+        "confidence": 0.95,
+        "match_method": "phone_exact",
+    }
+
+    mock_restaurant_repo = AsyncMock(spec=RestaurantRepository)
+    mock_restaurant_repo.get_by_google_place_id.return_value = None
+
+    sample_culture = {
+        "food": AreaSpecialtyGuide(
+            area_name="函館",
+            category="food",
+            intro="函館開港特色料理：",
+            specialties=[
+                SpecialtyItem(
+                    index=1,
+                    cuisine_name="函館鹽味拉麵",
+                    name_ja="塩ラーメン",
+                    history_and_culture="函館百年開港清湯麵食文化",
+                    flavor_profile="金黃鹽味回甘",
+                ),
+                SpecialtyItem(
+                    index=2,
+                    cuisine_name="小丑漢堡",
+                    name_ja="ラッキーピエロ",
+                    history_and_culture="函館在地傳奇漢堡速食名物",
+                    flavor_profile="酸甜炸雞多汁",
+                ),
+                SpecialtyItem(
+                    index=3,
+                    cuisine_name="活烏賊刺身",
+                    name_ja="イカソーメン",
+                    history_and_culture="津輕海峽晨捕現流烏賊",
+                    flavor_profile="晶瑩鮮甜脆嫩",
+                ),
+            ],
+            source_tier="curated",
+        ),
+        "drink": AreaSpecialtyGuide(
+            area_name="函館",
+            category="drink",
+            intro="函館特色飲品：",
+            specialties=[
+                SpecialtyItem(
+                    index=1,
+                    cuisine_name="函館葡萄酒",
+                    name_ja="函館ワイン",
+                    history_and_culture="道南優良葡萄釀造在地銘酒",
+                    flavor_profile="芳醇果香",
+                ),
+                SpecialtyItem(
+                    index=2,
+                    cuisine_name="美鈴珈琲",
+                    name_ja="美鈴珈琲",
+                    history_and_culture="北海道第一家炭火烘焙咖啡",
+                    flavor_profile="焦香甘醇",
+                ),
+            ],
+            source_tier="curated",
+        ),
+        "souvenir": AreaSpecialtyGuide(
+            area_name="函館",
+            category="souvenir",
+            intro="函館必買伴手禮：",
+            specialties=[
+                SpecialtyItem(
+                    index=1,
+                    cuisine_name="起司舒芙蕾",
+                    name_ja="チーズオムレット",
+                    history_and_culture="北海道牛乳與特級乳酪烘焙",
+                    flavor_profile="綿密如雪入口即化",
+                ),
+                SpecialtyItem(
+                    index=2,
+                    cuisine_name="生烏賊仙貝",
+                    name_ja="いか煎餅",
+                    history_and_culture="整隻烏賊鐵板鐵壓烘烤名產",
+                    flavor_profile="鮮美酥脆",
+                ),
+            ],
+            source_tier="curated",
+        ),
+    }
+
+    mock_guide_service = AsyncMock(spec=LocalSpecialtyGuideService)
+    mock_guide_service.prewarm_area_culture.return_value = sample_culture
+    mock_bot = AsyncMock()
+
+    worker = PrewarmWorker(
+        prewarm_repo=mock_prewarm_repo,
+        places_client=mock_places_client,
+        tabelog_scraper=mock_scraper,
+        entity_resolver=mock_resolver,
+        restaurant_repo=mock_restaurant_repo,
+        guide_service=mock_guide_service,
+        scrape_delay_sec=0,
+        bot=mock_bot,
+    )
+
+    result = await worker.process_next_job()
+    assert result is True
+    assert mock_restaurant_repo.save_restaurant_with_tabelog.call_count == 20
+    mock_guide_service.prewarm_area_culture.assert_called_once_with("函館", llm_client=worker.llm_client)
+    mock_prewarm_repo.update_job_status.assert_called_once_with("job_reg_aio_1", "completed")
+
+    mock_bot.send_message.assert_called_once()
+    msg_args = mock_bot.send_message.call_args[1]
+    assert msg_args["chat_id"] == 987654
+    assert "20 家" in msg_args["text"]
+    assert "• 🍱 特色名物：函館鹽味拉麵、小丑漢堡、活烏賊刺身" in msg_args["text"]
+    assert "• 🍵 在地飲品：函館葡萄酒、美鈴珈琲" in msg_args["text"]
+    assert "• 🎁 必買伴手禮：起司舒芙蕾、生烏賊仙貝" in msg_args["text"]
+    assert "函館 伴手禮" in msg_args["text"]
+
+    # --- 階段 2: 部分故障隔離 (Partial Failure Isolation) ---
+    mock_bot.reset_mock()
+    mock_prewarm_repo.reset_mock()
+    mock_prewarm_repo.get_next_pending_job.return_value = {
+        "id": "job_reg_aio_2",
+        "area_name": "札幌",
+        "target_count": 5,
+        "chat_id": 987654,
+    }
+    mock_places_client.search_nearby.return_value = [
+        {"google_place_id": f"g_sp_{i}", "name": f"札幌名店_{i}", "phone": f"011-00-{i:04d}"} for i in range(5)
+    ]
+    # 模擬文化導覽抓取崩潰 (超時或網路異常)
+    mock_guide_service.prewarm_area_culture.side_effect = RuntimeError("Official portal timeout")
+
+    result_fail = await worker.process_next_job()
+    assert result_fail is True
+    # 餐廳仍照常快取完成，任務狀態仍為 completed
+    mock_prewarm_repo.update_job_status.assert_called_once_with("job_reg_aio_2", "completed")
+    # Telegram 推播降級卡片，無文化行但包含餐廳快取成果，且系統零崩潰
+    mock_bot.send_message.assert_called_once()
+    msg_fail_text = mock_bot.send_message.call_args[1]["text"]
+    assert "已備妥" in msg_fail_text
+    assert "特色名物" not in msg_fail_text
+
+
+# ==============================================================================
+# Case 27: 廣域預熱互動防護與狀態防卡死 (Wide-Area Prewarm Disambiguation & Safe Fallback)
+# ==============================================================================
+@pytest.mark.asyncio
+async def test_regression_prewarm_cancellation_and_invalid_choice():
+    """Case 27: 驗證 Telegram 廣域預熱防護 (/prewarm 北海道)：
+    1. 針對都道府縣級大區域主動觸發分區選單 (1.札幌 / 2.函館 / 3.小樽 / 全部 / 取消)，不盲搜 Places。
+    2. 使用者後續輸入「取消」，乾淨清除 pending_prewarm_options，不建立預熱任務並溫和回覆。
+    3. 再次觸發選單後，若使用者輸入越界號碼 (如 "99") 或普通問句，系統自動清除待確認狀態，
+       安全銜接至正常指令或 Agent 處理，絕不拋出 IndexError 崩潰或卡死對話狀態。
+    """
+    from src.bot.handlers import TelegramBotHandler
+
+    class _InMemorySessionRepo:
+        def __init__(self) -> None:
+            self.wm: dict[str, object] = {}
+
+        async def get_working_memory(self, chat_id: int) -> dict[str, object]:
+            return dict(self.wm)
+
+        async def update_working_memory(self, chat_id: int, **kwargs: object) -> dict[str, object]:
+            if kwargs.get("clear_pending_prewarm") or kwargs.get("pending_prewarm_options") == {}:
+                self.wm.pop("pending_prewarm_options", None)
+            elif kwargs.get("pending_prewarm_options") is not None:
+                self.wm["pending_prewarm_options"] = kwargs["pending_prewarm_options"]
+            return dict(self.wm)
+
+        async def get_session(self, chat_id: int) -> dict[str, object]:
+            return {"working_memory": dict(self.wm)}
+
+        async def get_recent_history(self, chat_id: int, max_turns: int = 3) -> list[dict[str, str]]:
+            return []
+
+        async def add_conversation_turn(self, chat_id: int, user_message: str, assistant_response: str) -> None:
+            pass
+
+    mock_bot = AsyncMock()
+    mock_prewarm_repo = AsyncMock()
+    mock_agent_engine = AsyncMock()
+    mock_agent_engine.run_agent.return_value = "處理完成"
+    session_repo = _InMemorySessionRepo()
+
+    handler = TelegramBotHandler(
+        bot=mock_bot,
+        session_repo=session_repo,  # type: ignore[arg-type]
+        prewarm_repo=mock_prewarm_repo,
+        agent_engine=mock_agent_engine,
+    )
+
+    def _make_update(text: str, uid: int = 100) -> dict[str, object]:
+        return {
+            "update_id": uid,
+            "message": {
+                "message_id": uid,
+                "from": {"id": 12345},
+                "chat": {"id": 12345},
+                "text": text,
+            },
+        }
+
+    with patch("src.config.settings.TELEGRAM_ALLOWED_USER_ID", 0):
+        # 步驟 1: 發送廣域預熱指令
+        await handler.handle_update(_make_update("/prewarm 北海道", uid=1))
+        mock_prewarm_repo.create_job.assert_not_called()
+        wm1 = await session_repo.get_working_memory(12345)
+        assert "pending_prewarm_options" in wm1
+        pending = wm1["pending_prewarm_options"]
+        assert pending["pref"] == "北海道"
+
+        mock_bot.send_message.assert_called_once()
+        sent_text = mock_bot.send_message.call_args[1]["text"]
+        assert "北海道幅員遼闊" in sent_text
+        assert "札幌" in sent_text
+
+        # 步驟 2: 使用者輸入「取消」
+        mock_bot.reset_mock()
+        await handler.handle_update(_make_update("取消", uid=2))
+        mock_prewarm_repo.create_job.assert_not_called()
+        wm2 = await session_repo.get_working_memory(12345)
+        assert "pending_prewarm_options" not in wm2
+        mock_bot.send_message.assert_called_once()
+        assert "已取消預熱任務。" in mock_bot.send_message.call_args[1]["text"]
+
+        # 步驟 3: 再次觸發廣域預熱
+        await handler.handle_update(_make_update("/prewarm 北海道", uid=3))
+        assert "pending_prewarm_options" in (await session_repo.get_working_memory(12345))
+
+        # 步驟 4: 使用者輸入越界號碼 "99" (非合法選單選項 1~3)
+        mock_bot.reset_mock()
+        mock_prewarm_repo.reset_mock()
+        await handler.handle_update(_make_update("99", uid=4))
+
+        # 驗證未建立非法預熱任務
+        mock_prewarm_repo.create_job.assert_not_called()
+        # 驗證狀態已自動被清除，杜絕狀態卡死
+        wm4 = await session_repo.get_working_memory(12345)
+        assert "pending_prewarm_options" not in wm4
+        # 驗證無縫轉交 agent_engine 處理且無崩潰
+        mock_agent_engine.run_agent.assert_called_once()

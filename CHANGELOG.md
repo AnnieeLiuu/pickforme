@@ -7,6 +7,17 @@
 ## [Unreleased]
 
 ### Added
+- **All-in-One 全方位快取預熱與三維度官方權威深度爬蟲 (`src/worker/prewarm.py`, `src/services/authority_scraper.py`, `src/services/cuisine_guide.py`)**：
+  - **All-in-One 雙軌並發快取**：升級 `PrewarmWorker`，以 `asyncio.gather` 同步並行執行商圈前 20 家餐廳與 Tabelog 評分快取，以及在地三大文化維度 (`food` 名物、`drink` 飲品/地酒、`souvenir` 必買伴手禮) 之深度預熱。
+  - **部分故障隔離 (Partial Failure Isolation)**：文化導覽若遇外部網站超時或解析失敗，以獨立 try-except 隔離，確保餐廳資料庫快取照常完成並安全降級推播，任務永不崩潰。
+  - **官方權威深度爬蟲 (`OfficialAuthorityScraper`)**：於 Yahoo Japan Grounding 檢索時強制注入限定 `site:lg.jp OR site:or.jp`，鎖定日本各都道府縣廳、市町村役所與地方觀光推進機構（公益社團法人），徹底排除商業農場文；實裝 `curated` ➔ `grounding` ➔ `fallback` 三階品質降級與 SQL 優先級排序 (`source_tier = 'curated' > 'grounding' > 'fallback'`)。
+  - **豐富型 Telegram 整合卡片**：預熱完成後主動推播精準摘要，呈現 20 家餐廳成果與三維度前 3 大名物亮點，並附帶一鍵複製指令引導。
+- **Telegram 廣域預熱互動防護與對話狀態守門 (`src/bot/handlers.py`, `src/db/repositories/session.py`)**：
+  - **縣級大區主動分流**：針對 `/prewarm <都道府縣>`（如 `/prewarm 北海道`），0ms 攔截 Places 盲搜，即刻回傳 3 大核心商圈（札幌、函館、小樽）與「全部 / 取消」互動選單。
+  - **工作記憶防卡死守門**：透過 Working Memory 暫存 `pending_prewarm_options`，支援點選序號或批次「全部」排入佇列；使用者輸入「取消」乾淨退場；若轉向其他指令或一般問句，系統自動重置清理待確認狀態，絕不卡死對話流。
+- **在地特色導覽種子資料庫冪等同步腳本 (`scripts/seed_specialties_to_db.py`, `src/db/repositories/specialty_guide.py`)**：
+  - 實作 CLI 冪等同步工具，將 `config/local_specialties.json` 中已考據之 4 個核心區域（箱根、輕井澤、金澤、宇治）共 12 筆三維度導覽完整匯入 Neon DB `area_specialty_guides`。
+  - 採用 `ON CONFLICT (area_key, category) DO UPDATE` 策略，支援 `--dry-run` 預覽與全量同步，並於資料庫層落實 `source_tier` 等級管理。
 - **Pages 變更強制 Playwright 實機驗收規範與 JS 語法契約守門 (`AGENTS.md`, `tests/test_observability_sync.py`)**：
   - 在 [`AGENTS.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/AGENTS.md) 全局憲章第 3 條明確納入強制性守門規範：「Pipeline 狀態、Payload、模板或前端邏輯演進時，MUST 同步更新 `src/eval/reporter.py`、重新生成 `public/index.html`，並**強制使用 Playwright 進行瀏覽器實機驗收（確保 0 Console Errors、DOM 元素完整渲染且按鈕點擊交互響應正常）**，嚴禁盲信靜態 HTML 而未經實機瀏覽器驗收」。
   - 在 [`tests/test_observability_sync.py`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/tests/test_observability_sync.py) 新增 `test_dashboard_html_encoding_and_js_syntax` 契約測試，自動調用 Node VM 編譯測試 Dashboard 中的 JavaScript 代碼塊，確保在 Git Pre-push Hook 與 CI 階段即刻攔截任何語法中斷或編碼缺陷。
