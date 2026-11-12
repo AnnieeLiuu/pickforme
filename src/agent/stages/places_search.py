@@ -58,7 +58,7 @@ def is_wide_area_origin(origin_name: Optional[str]) -> bool:
     clean = origin_name.strip()
     if any(clean.endswith(s) for s in ("站", "駅", "Station", "口")):
         return False
-    stripped = re.sub(r"[町村山]$", "", clean).strip()
+    stripped = re.sub(r"(?:[町村山]|(?:溫泉|温泉))$", "", clean).strip()
     return clean in WIDE_AREA_SCENIC_REGIONS or stripped in WIDE_AREA_SCENIC_REGIONS
 
 

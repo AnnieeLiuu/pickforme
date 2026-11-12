@@ -1793,6 +1793,11 @@ def test_regression_transit_text_nearest_station_extraction():
     # 5. 空值或無關文字
     assert extract_nearest_station_from_transit_text("") is None
     assert extract_nearest_station_from_transit_text("無關文字說明") is None
+    # 6. 嚴格防護：公車、開車、計程車絕不誤判為步行
+    assert extract_nearest_station_from_transit_text("強羅駅からバスで15分") is None
+    assert extract_nearest_station_from_transit_text("強羅駅から車で10分") is None
+    assert extract_nearest_station_from_transit_text("強羅駅からタクシーで8分") is None
+    assert extract_nearest_station_from_transit_text("箱根湯本駅よりバスで20分") is None
 
 
 def test_regression_walking_description_wide_area_and_point_to_point():
@@ -1804,10 +1809,16 @@ def test_regression_walking_description_wide_area_and_point_to_point():
     """
     from src.agent.stages.places_search import format_walking_description, is_wide_area_origin
 
-    # 廣域判定
+    # 廣域判定 (含常見溫泉景區後綴)
     assert is_wide_area_origin("箱根") is True
     assert is_wide_area_origin("輕井澤") is True
+    assert is_wide_area_origin("草津溫泉") is True
+    assert is_wide_area_origin("有馬温泉") is True
+    assert is_wide_area_origin("由布院溫泉") is True
+    assert is_wide_area_origin("登別溫泉") is True
+    assert is_wide_area_origin("黑川溫泉") is True
     assert is_wide_area_origin("箱根湯本站") is False  # 具體站點不降級
+    assert is_wide_area_origin("草津溫泉站") is False
     assert is_wide_area_origin("強羅車站") is False
     assert is_wide_area_origin("新宿") is False  # 都心商圈不誤殺
     assert is_wide_area_origin("銀座") is False
@@ -1879,3 +1890,78 @@ def test_regression_foodie_score_distance_penalty_waiver_for_wide_area():
     score_hakone = calculate_foodie_score(hakone_far_store)
     # 3.70 - 0.0 = 3.70
     assert abs(score_hakone - 3.70) < 1e-4
+
+
+@pytest.mark.asyncio
+async def test_regression_cross_menu_mutual_exclusion_in_working_memory():
+    """Finding 1 回歸測試：多輪對話中特色選單與縣級選單之互斥清理。
+    1. 當前輪為縣級反問，Working Memory 含有 suggested_locations 與 pending_cuisine。
+    2. 下一輪使用者轉為詢問特色導覽 (suggested_cuisines)，舊的 suggested_locations 必須被互斥清空。
+    3. 再下一輪使用者輸入「1」，確保能正確導向特色料理，絕不被過期的縣級選單劫持。
+    """
+    from typing import Any
+
+    from src.db.repositories.session import SessionRepository
+
+    captured_payloads: list[dict[str, Any]] = []
+
+    class _MockCur:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            pass
+
+        async def execute(self, sql, params=None):
+            pass
+
+        async def fetchone(self):
+            if captured_payloads:
+                last_p = captured_payloads[-1]
+                return {"last_recommended_ids": last_p}
+            return None
+
+    class _MockConn:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            pass
+
+        async def commit(self):
+            pass
+
+        def cursor(self):
+            return _MockCur()
+
+    class _MockPool:
+        def connection(self):
+            return _MockConn()
+
+    repo = SessionRepository()
+    mock_pool = _MockPool()
+
+    with patch("src.db.repositories.session.get_db_pool", AsyncMock(return_value=mock_pool)):
+        # 步驟 1: 存入縣級選單
+        wm1 = await repo.update_working_memory(
+            chat_id=999,
+            suggested_locations=["靜岡車站", "濱松車站", "沼津港"],
+            pending_cuisine="鰻魚飯",
+        )
+        assert wm1.get("suggested_locations") == ["靜岡車站", "濱松車站", "沼津港"]
+        assert wm1.get("pending_cuisine") == "鰻魚飯"
+        assert "suggested_cuisines" not in wm1
+
+        # 模擬 DB 保存了 wm1
+        captured_payloads.append({"current": [], "accumulated_seen_ids": [], "working_memory": wm1})
+
+        # 步驟 2: 使用者轉為詢問東京特色導覽，存入 suggested_cuisines
+        wm2 = await repo.update_working_memory(
+            chat_id=999,
+            last_location="東京",
+            suggested_cuisines=["文字燒", "江戶前壽司", "深川飯"],
+        )
+        # 驗證互斥清理：舊的 suggested_locations 與 pending_cuisine 必須被清空！
+        assert wm2.get("suggested_cuisines") == ["文字燒", "江戶前壽司", "深川飯"]
+        assert "suggested_locations" not in wm2
+        assert "pending_cuisine" not in wm2

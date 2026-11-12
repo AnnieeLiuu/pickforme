@@ -153,12 +153,16 @@ class SessionRepository:
             "last_location": last_location if last_location is not None else existing_wm.get("last_location"),
             "last_cuisine": last_cuisine if last_cuisine is not None else existing_wm.get("last_cuisine"),
         }
+        # 互斥選單清理：當產生新的「特色料理導覽選單 (suggested_cuisines)」時，清理舊的「縣級選單」；反之亦然
         if suggested_cuisines is not None:
             updated_wm["suggested_cuisines"] = suggested_cuisines
+            updated_wm.pop("suggested_locations", None)
+            updated_wm.pop("pending_cuisine", None)
         if last_explore_category is not None:
             updated_wm["last_explore_category"] = last_explore_category
         if suggested_locations is not None:
             updated_wm["suggested_locations"] = suggested_locations
+            updated_wm.pop("suggested_cuisines", None)
         if pending_cuisine is not None:
             updated_wm["pending_cuisine"] = pending_cuisine
 

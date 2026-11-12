@@ -32,6 +32,10 @@
   - 於 LLM Prompt 注入專屬類別指導語，並同步更新純文字保底模板，防止和菓子老舖與茶房被誤稱為餐廳。
 
 ### Fixed
+- **雙階地理導航邊界缺陷與選單交叉污染修復 (`src/db/repositories/session.py`, `src/services/tabelog_scraper.py`, `src/agent/stages/places_search.py`)**：
+  - 修復 `SessionRepository.update_working_memory` 多輪選單殘留污染：更新 `suggested_cuisines` 時互斥清空 `suggested_locations` 與 `pending_cuisine`，反之亦然，徹底杜絕特色選單遭過期縣級選單劫持。
+  - 修復 `tabelog_scraper` 交通手段正則誤判：嚴格要求具備 `(?:徒歩|歩き|歩いて)` 步行關鍵字，明確排除 `(?:バス|車|タクシー|お車)` 等大眾運輸或開車，杜絕將公車 15 分鐘誤判為步行。
+  - 擴充 `is_wide_area_origin` 正則剝離 `(?:溫泉|温泉)` 後綴，確保「草津溫泉」、「有馬溫泉」、「由布院溫泉」等熱門溫泉勝地能正確識別為廣域景區。
 - **預設 FSM 接線持久化與土炮字典拔除 (`src/agent/pipeline.py`, `src/services/cuisine_guide.py`)**：
   - 將 `SpecialtyGuideRepository` 納入 `FoodRecommendationFSM` 預設依賴注入接線，確保生產環境 Cloud Run 自動具備 Neon DB 本地名物持久化寫回能力。
   - 徹底移除 `_KANJI_FOLD_MAP` 硬編碼漢字置換字典，改由別名倒排索引（Inverted Index）動態解析，並新增接線驗證單元測試。

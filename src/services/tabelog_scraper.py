@@ -16,7 +16,7 @@ USER_AGENTS = [
 ]
 
 STATION_WALK_PATTERN = re.compile(
-    r"([^\s\(\)（）「」]{2,10}?駅(?:[東西南北中央正面地下]*[口出口]*|\s*[A-Za-z0-9]+出口)?)(?:[^\d\n]{0,15}?)?(?:より|から)?\s*(?:徒歩|歩き)?\s*(?:で)?\s*(?:約)?\s*(\d{1,2})\s*分"
+    r"([^\s\(\)（）「」]{2,10}?駅(?:[東西南北中央正面地下]*[口出口]*|\s*[A-Za-z0-9]+出口)?)(?:[^\d\n]{0,15}?)?(?:より|から)?\s*(?:徒歩|歩き|歩いて)\s*(?:で)?\s*(?:約)?\s*(\d{1,2})\s*分"
 )
 STATION_DIST_PATTERN = re.compile(
     r"([^\s\(\)（）「」]{2,10}?駅(?:[東西南北中央正面地下]*[口出口]*|\s*[A-Za-z0-9]+出口)?)(?:[^\d\n]{0,15}?)?(?:約)?\s*(\d{1,4})\s*m"
@@ -37,17 +37,20 @@ def extract_nearest_station_from_transit_text(text: str) -> Optional[str]:
     """從交通手段或搜尋摘要文字中提取最近車站步行描述 (如「從「強羅站」步行約 5 分鐘」)"""
     if not text:
         return None
+    # 優先匹配明確步行關鍵字 (徒歩/歩き/歩いて)
     m_walk = STATION_WALK_PATTERN.search(text)
     if m_walk:
         st = clean_station_name(m_walk.group(1).strip())
         mins = int(m_walk.group(2).strip())
         return f"從「{st}」步行約 {mins} 分鐘"
-    m_dist = STATION_DIST_PATTERN.search(text)
-    if m_dist:
-        st = clean_station_name(m_dist.group(1).strip())
-        meters = int(m_dist.group(2).strip())
-        mins = max(1, round(meters / 80))
-        return f"從「{st}」步行約 {mins} 分鐘"
+    # 次之匹配直線距離米數並折算步行分鐘 (每分鐘約 80 米；嚴格排除バス/車/計程車等非步行交通)
+    if not re.search(r"(?:バス|車|タクシー|お車)", text):
+        m_dist = STATION_DIST_PATTERN.search(text)
+        if m_dist:
+            st = clean_station_name(m_dist.group(1).strip())
+            meters = int(m_dist.group(2).strip())
+            mins = max(1, round(meters / 80))
+            return f"從「{st}」步行約 {mins} 分鐘"
     return None
 
 
