@@ -103,6 +103,76 @@ class TelegramBotHandler:
         if not text:
             return
 
+        # 檢查是否有等待確認的縣級預熱選單 (Wide-Area Disambiguation Guardrail)
+        try:
+            wm = await self.session_repo.get_working_memory(chat_id)
+            pending_prewarm = wm.get("pending_prewarm_options") if isinstance(wm, dict) else None
+        except Exception as e:
+            logger.warning(f"Failed to get working memory in handle_update: {e}")
+            pending_prewarm = None
+
+        if isinstance(pending_prewarm, dict) and pending_prewarm.get("options"):
+            stripped_text = text.strip()
+            lowered_text = stripped_text.lower()
+            if lowered_text in ["取消", "/cancel", "cancel"]:
+                await self.session_repo.update_working_memory(chat_id=chat_id, clear_pending_prewarm=True)
+                await self._send_telegram_message(chat_id, "已取消預熱任務。")
+                return
+
+            options: list[dict[str, str]] = pending_prewarm.get("options", [])  # type: ignore[assignment]
+            if stripped_text in ["全部", "全選"]:
+                created_jobs: list[str] = []
+                for opt in options:
+                    target_loc = opt.get("search_loc") or opt.get("name")
+                    if target_loc:
+                        try:
+                            job_id = await self.prewarm_repo.create_job(
+                                area_name=target_loc, target_count=20, chat_id=chat_id
+                            )
+                            created_jobs.append(f"• **{opt.get('name', target_loc)}** (`{target_loc}`): `{job_id}`")
+                        except Exception as e:
+                            logger.error(f"Failed to create batch prewarm job for '{target_loc}': {e}")
+                await self.session_repo.update_working_memory(chat_id=chat_id, clear_pending_prewarm=True)
+                job_list_str = "\n".join(created_jobs)
+                pref = pending_prewarm.get("pref", "")
+                reply_msg = (
+                    f"♨️ **已成功將「{pref}」全數 {len(created_jobs)} 個商圈排入 Neon 預熱佇列！**\n\n"
+                    f"{job_list_str}\n\n"
+                    f"🎯 **目標數量**：每商圈 20 家高評價餐廳\n"
+                    f"🔄 **狀態**：`pending`（等待背景 Worker 快取）\n"
+                    f"🔔 **推播提醒**：預熱完成時，PickForMe 將自動在此發訊通知您！"
+                )
+                await self._send_telegram_message(chat_id, reply_msg)
+                return
+
+            if stripped_text.isdigit():
+                idx = int(stripped_text) - 1
+                if 0 <= idx < len(options):
+                    opt = options[idx]
+                    target_loc = opt.get("search_loc") or opt.get("name")
+                    if target_loc:
+                        try:
+                            job_id = await self.prewarm_repo.create_job(
+                                area_name=target_loc, target_count=20, chat_id=chat_id
+                            )
+                            reply_msg = (
+                                f"♨️ **已成功將「{opt.get('name', target_loc)}」排入 Neon 預熱佇列！**\n\n"
+                                f"🆔 **任務 ID**：`{job_id}`\n"
+                                f"🎯 **目標數量**：20 家高評價餐廳\n"
+                                f"🔄 **狀態**：`pending`（等待背景 Worker 快取）\n"
+                                f"🔔 **推播提醒**：預熱完成時，PickForMe 將自動在此發訊通知您！\n\n"
+                                f"💡 背景 Worker 將自動為您鎖定該地標，預先抓取 Google Places 與 Tabelog 評分並存入資料庫！"
+                            )
+                            await self._send_telegram_message(chat_id, reply_msg)
+                        except Exception as e:
+                            logger.error(f"Failed to create prewarm job for '{target_loc}': {e}")
+                            await self._send_telegram_message(chat_id, f"❌ 預熱任務建立失敗：{e}")
+                    await self.session_repo.update_working_memory(chat_id=chat_id, clear_pending_prewarm=True)
+                    return
+
+            # 非選單指令或非預期文字：自動清除待確認狀態，無縫轉交後續指令或 Agent 處理 (避免狀態卡死)
+            await self.session_repo.update_working_memory(chat_id=chat_id, clear_pending_prewarm=True)
+
         if text.startswith("/start"):
             await self._send_telegram_message(
                 chat_id,
@@ -155,6 +225,26 @@ class TelegramBotHandler:
                 area = text[len("預熱") :].strip()
 
             if area:
+                from src.agent.stages.intent import is_prefecture_level_area
+
+                is_pref, pref_name, pref_options = is_prefecture_level_area(area)
+                if is_pref and pref_name and pref_options:
+                    await self.session_repo.update_working_memory(
+                        chat_id=chat_id,
+                        pending_prewarm_options={"pref": pref_name, "options": pref_options},
+                    )
+                    lines = [
+                        f"♨️ **{pref_name}幅員遼闊，建議先鎖定特定精準商圈進行預熱快取！**\n",
+                        "請選擇您欲預熱的目標商圈：",
+                    ]
+                    for idx, opt in enumerate(pref_options, 1):
+                        lines.append(f"{idx}️⃣ **{opt['name']}**（{opt['desc']}）")
+                    lines.append(
+                        "\n💡 請直接回覆「1」、「2」、「3」鎖定商圈，或回覆「全部」一次預熱所有商圈；若想放棄請回覆「取消」！"
+                    )
+                    await self._send_telegram_message(chat_id, "\n".join(lines))
+                    return
+
                 try:
                     job_id = await self.prewarm_repo.create_job(area_name=area, target_count=20, chat_id=chat_id)
                     reply_msg = (

@@ -93,7 +93,9 @@ async def test_telegram_handler_prewarm_command():
     from uuid import uuid4
 
     mock_prewarm.create_job.return_value = uuid4()
-    handler = TelegramBotHandler(bot=mock_bot, prewarm_repo=mock_prewarm)
+    mock_session_repo = AsyncMock()
+    mock_session_repo.get_working_memory.return_value = {}
+    handler = TelegramBotHandler(bot=mock_bot, prewarm_repo=mock_prewarm, session_repo=mock_session_repo)
 
     prewarm_update = {
         "update_id": 1004,

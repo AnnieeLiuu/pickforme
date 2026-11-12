@@ -124,6 +124,8 @@ class SessionRepository:
         last_explore_category: Optional[str] = None,
         suggested_locations: Optional[list[str]] = None,
         pending_cuisine: Optional[str] = None,
+        pending_prewarm_options: Optional[dict[str, Any]] = None,
+        clear_pending_prewarm: bool = False,
     ) -> dict[str, Any]:
         """單獨更新 Working Memory (如 explore_cuisine 導覽或縣級反問後保存上下文)"""
         current_stores: list[dict[str, Any]] = []
@@ -165,6 +167,10 @@ class SessionRepository:
             updated_wm.pop("suggested_cuisines", None)
         if pending_cuisine is not None:
             updated_wm["pending_cuisine"] = pending_cuisine
+        if clear_pending_prewarm or pending_prewarm_options == {}:
+            updated_wm.pop("pending_prewarm_options", None)
+        elif pending_prewarm_options is not None:
+            updated_wm["pending_prewarm_options"] = pending_prewarm_options
 
         data_to_store = {
             "current": current_stores,

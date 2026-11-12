@@ -104,7 +104,7 @@
 - Modify: `src/bot/handlers.py:150-200`
 - Test: `tests/test_prewarm_wide_area.py`
 
-- [ ] **Step 1: Write failing test for wide-area prewarm command**
+- [x] **Step 1: Write failing test for wide-area prewarm command**
   Create `tests/test_prewarm_wide_area.py` simulating Telegram `/prewarm`:
   - Input: `/prewarm 北海道` -> Triggers disambiguation prompt listing 1. 札幌 2. 函館 3. 小樽 and prompt for "全部".
   - Input: `1` following prompt -> Triggers prewarm for `札幌` and clears state.
@@ -113,10 +113,10 @@
   - Input: Normal search or command -> Clears prewarm prompt and proceeds normally.
   - Input: `/prewarm 箱根` -> Directly creates prewarm job without disambiguation.
 
-- [ ] **Step 2: Run test to confirm failure**
+- [x] **Step 2: Run test to confirm failure**
   Run `pytest tests/test_prewarm_wide_area.py` and confirm failure.
 
-- [ ] **Step 3: Update `SessionRepository` and `handlers.py`**
+- [x] **Step 3: Update `SessionRepository` and `handlers.py`**
   - In `src/db/repositories/session.py`, update `update_working_memory` signature to accept `pending_prewarm_options: Optional[dict[str, Any]] = None`.
   - In `src/bot/handlers.py`:
     - Check `is_prefecture_level_area(area)` in `/prewarm`. If broad, save `pending_prewarm_options` in `working_memory` and send prompt.
@@ -125,10 +125,10 @@
       - Match `1`, `2`, `3` or `全部` -> dispatch job(s) and clear state.
       - If text is a new command or search query -> clear state and fall through to standard pipeline.
 
-- [ ] **Step 4: Verify test passes**
+- [x] **Step 4: Verify test passes**
   Run `pytest tests/test_prewarm_wide_area.py` and verify 100% pass.
 
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   Commit with message: `feat(bot): add wide area interactive disambiguation and session state to prewarm command`
 
 ---
