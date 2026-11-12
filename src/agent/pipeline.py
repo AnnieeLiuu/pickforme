@@ -269,9 +269,13 @@ class FoodRecommendationFSM:
             # 分支 C2: 探索當地特色美食與飲食文化導覽 (explore_cuisine)
             if intent == "explore_cuisine":
                 explore_loc = str(parsed.get("location") or "").strip()
+                explore_cat = str(parsed.get("explore_category") or "food").strip().lower()
+                if explore_cat not in ("food", "drink", "souvenir"):
+                    explore_cat = "food"
                 t0 = time.time()
                 guide = await self.cuisine_guide_service.get_area_guide(
                     area_name=explore_loc,
+                    category=explore_cat,  # type: ignore[arg-type]
                     llm_client=self.llm_client,
                 )
                 guide_card = self.cuisine_guide_service.render_guide_markdown(guide)
@@ -284,7 +288,8 @@ class FoodRecommendationFSM:
                             res = upd_wm_fn(
                                 chat_id=chat_id,
                                 last_location=guide.area_name,
-                                suggested_cuisines=[item.cuisine_name for item in guide.specialties],
+                                suggested_cuisines=[item.get_search_keyword() for item in guide.specialties],
+                                last_explore_category=guide.category,
                             )
                             if inspect.isawaitable(res):
                                 await res
@@ -294,9 +299,10 @@ class FoodRecommendationFSM:
                 await self.trace_logger.log_step(
                     action_type="explore_cuisine",
                     tool_name="local_specialty_guide",
-                    tool_input={"area": explore_loc, "source_tier": guide.source_tier},
+                    tool_input={"area": explore_loc, "category": guide.category, "source_tier": guide.source_tier},
                     tool_output={
                         "area_name": guide.area_name,
+                        "category": guide.category,
                         "specialties": [item.cuisine_name for item in guide.specialties],
                         "length": len(guide_card),
                     },

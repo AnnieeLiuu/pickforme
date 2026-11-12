@@ -121,6 +121,7 @@ class SessionRepository:
         last_location: Optional[str] = None,
         last_cuisine: Optional[str] = None,
         suggested_cuisines: Optional[list[str]] = None,
+        last_explore_category: Optional[str] = None,
     ) -> dict[str, Any]:
         """單獨更新 Working Memory (如 explore_cuisine 導覽後保存 last_location 與 suggested_cuisines)"""
         current_stores: list[dict[str, Any]] = []
@@ -152,6 +153,8 @@ class SessionRepository:
         }
         if suggested_cuisines is not None:
             updated_wm["suggested_cuisines"] = suggested_cuisines
+        if last_explore_category is not None:
+            updated_wm["last_explore_category"] = last_explore_category
 
         data_to_store = {
             "current": current_stores,

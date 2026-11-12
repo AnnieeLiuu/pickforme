@@ -6,6 +6,15 @@
 
 ## [Unreleased]
 
+### Added
+- **在地三大維度文化探索與 Neon DB 自動寫回生長 (`LocalSpecialtyGuideService`, `area_specialty_guides`)**：
+  - 擴充文化導覽支援「吃 (`food`)」、「喝 (`drink` - 名茶/地酒/喫茶)」、「伴手禮 (`souvenir` - 名菓/禮盒)」三大面向。
+  - 新增金澤（加賀棒茶、能登地酒、長生殿落雁、金箔長崎蛋糕）與宇治（玉露、手刷濃茶、茶蕎麥、茶糰子、濃茶貓舌餅）全套考據資料。
+  - 新增 `SpecialtyGuideRepository` 與 Neon Postgres 資料表 `area_specialty_guides`：Tier 2 Yahoo Grounding 查證之新車站通過品質審查後自動寫回資料庫，未來查詢 0ms / 0 Token 秒回。
+  - 支援跨輪無縫切換（問完「金澤吃什麼」接著問「那喝的呢？」或「有什麼伴手禮？」）與類別自適應之「直接推薦」。
+  - 徹底根除 `_KANJI_FOLD_MAP` 字元土炮字典，改採 O(1) 雙向別名倒排索引（Inverted Index）；移除 `GooglePlacesClient` 脆弱之 `category_type_map`，全面改由 TextSearch 搜尋專門店。
+  - 於 `AGENTS.md` 頒布「🚫 Anti-Hardcoded Mapping」憲章，杜絕 AI 見招拆招硬寫置換字典之壞習慣。
+
 ---
 
 ## [1.3.1] - 2026-11-12

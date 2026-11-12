@@ -90,6 +90,21 @@ CREATE TABLE IF NOT EXISTS review_embeddings (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- 8. 在地特色美食・飲品・伴手禮與飲食文化知識庫 (支援 Tier 1 種子與 Tier 2 自動持久化生長)
+CREATE TABLE IF NOT EXISTS area_specialty_guides (
+    area_key VARCHAR(100) NOT NULL,
+    category VARCHAR(20) NOT NULL DEFAULT 'food',
+    area_name VARCHAR(100) NOT NULL,
+    aliases JSONB DEFAULT '[]'::jsonb,
+    intro TEXT NOT NULL,
+    specialties JSONB NOT NULL,
+    source_tier VARCHAR(20) DEFAULT 'grounding',
+    grounding_snippets JSONB DEFAULT '[]'::jsonb,
+    verified BOOLEAN DEFAULT FALSE,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    PRIMARY KEY (area_key, category)
+);
+
 -- 索引建置
 CREATE INDEX IF NOT EXISTS idx_restaurants_google_id ON restaurants(google_place_id);
 CREATE INDEX IF NOT EXISTS idx_restaurants_phone ON restaurants(phone);
@@ -97,3 +112,5 @@ CREATE INDEX IF NOT EXISTS idx_prewarm_status ON prewarm_jobs(status);
 CREATE INDEX IF NOT EXISTS idx_agent_steps_run_id ON agent_steps(run_id);
 CREATE INDEX IF NOT EXISTS idx_review_restaurant_id ON review_embeddings(restaurant_id);
 CREATE INDEX IF NOT EXISTS idx_review_halfvec ON review_embeddings USING hnsw (embedding halfvec_cosine_ops);
+CREATE INDEX IF NOT EXISTS idx_specialty_guides_category ON area_specialty_guides(category);
+CREATE INDEX IF NOT EXISTS idx_specialty_guides_aliases ON area_specialty_guides USING gin (aliases);

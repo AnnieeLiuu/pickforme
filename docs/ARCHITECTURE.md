@@ -63,6 +63,7 @@ graph TD
 | **`chat_sessions`** | 對話狀態與雙層記憶 (Two-Tier Memory) | 記錄 `last_location` (地理點位)、`last_recommended_ids` JSONB（內含 `current` 當輪推薦、`accumulated_seen_ids` 累積排除黑名單、`working_memory` (`last_cuisine`, `last_location`) 短期工作記憶與 `long_term_preferences` (`dietary_restrictions`, `payment_preferences`) 長期飲食禁忌/支付偏好）、`conversation_history` (保留 3 輪摘要)。 |
 | **`prewarm_jobs`** | 離線預熱任務佇列 | 支援 `SKIP LOCKED` 並行領取，支援 `/prewarm <地名>` 任務狀態與 Telegram 完成推播。 |
 | **`agent_runs` / `agent_steps`** | OTel 格式可觀測性 Trace | 記錄每次 Pipeline 總耗時、Token 消耗、狀態機各步驟的 Tool 輸入/輸出 Payload 與例外訊息。 |
+| **`area_specialty_guides`** | 在地特色美食・飲品・伴手禮知識庫 | `(area_key, category)` 複合主鍵、`aliases` (JSONB GIN 索引)、`intro`、`specialties` (JSONB)、`source_tier` (`manual`/`grounding`)、`grounding_snippets`、`verified` |
 | **`review_embeddings`** | 評論語意向量庫 | 支援 `pgvector` halfvec(768)，供 Phase B 跨語言品項檢索與老饕心得比對。 |
 
 ### 冷層：Google Cloud Storage (GCS) + DuckDB

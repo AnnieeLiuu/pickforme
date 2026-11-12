@@ -10,6 +10,10 @@ class IntentOutput(BaseModel):
     intent: Literal["search", "more", "follow_up", "chitchat", "need_location", "explore_cuisine"] = Field(
         description='意圖分類：搜尋特定餐廳 ("search")、探索當地特色美食與文化 ("explore_cuisine")、換一批/風格轉向 ("more")、追問上一輪店家 ("follow_up")、閒聊 ("chitchat")、缺地點 ("need_location")'
     )
+    explore_category: Optional[Literal["food", "drink", "souvenir"]] = Field(
+        default=None,
+        description='當 intent 為 explore_cuisine 時的探索子類別："food"(特色美食料理)、"drink"(在地飲品/名茶/地酒/喫茶)、"souvenir"(伴手禮/名菓禮盒)。若使用者未特別指定則設為 "food"',
+    )
     location: Optional[str] = Field(
         default=None,
         description="日本地名、車站、商圈或景點名稱（若未提及請設為 null）",
@@ -81,6 +85,7 @@ class FSMRunContext(BaseModel):
     user_message: str
     user_location: Optional[tuple[float, float]] = None
     intent: str = "search"
+    explore_category: Optional[str] = None
     location_name: Optional[str] = None
     coords: Optional[tuple[float, float]] = None
     cuisine: str = "熱門美食"

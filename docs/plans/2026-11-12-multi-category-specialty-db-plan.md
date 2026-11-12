@@ -36,6 +36,7 @@
 
 | # | Decision | Applies to |
 | :---: | :--- | :--- |
+| 1 | **Gate 與 LLM 職責重定界線（業界最佳實踐）**：`QuickPassGate` 絕不對任意自然語句做複雜地名語法抽取，僅保留模式完全固定的短指令：`1`/`2`/`3`、`直接推薦`、以及無地名的純追問句 `那喝的呢？` / `有什麼伴手禮？`。所有包含地名的開放式探索句（如「金澤有什麼喝的」、「京都必買伴手禮」）一律交由 Stage 1 Micro-LLM 結構化解析出 `intent="explore_cuisine"`、`explore_category` 與 `location`，後端再以 `clean_explore_location` 防呆校驗。 | Task 3 |
 | 3 | **Search keyword ≠ display name.** Add `search_keyword_ja: str` to `SpecialtyItem` (e.g. `"加賀棒茶 ほうじ茶"`, `"長生殿 森八"`). `working_memory.suggested_cuisines` stores `search_keyword_ja`; `cuisine_name` (Chinese, may contain `（）`) is display-only. Fallback when absent: `name_ja` with `・` → space. | Task 2, 3 |
 | 4 | **DB fail-open, no hidden I/O in tests.** `LocalSpecialtyGuideService(guide_repo=None)` by default → DB tier skipped. Production wiring (`src/agent/core.py` / handlers) injects `SpecialtyGuideRepository()`. Every repo call wrapped in `asyncio.wait_for(..., timeout=1.5)` + `except Exception` → skip tier. Repo lazily runs `CREATE TABLE IF NOT EXISTS` once per process (class-level flag) and catches `UndefinedTable`; `docs/ARCHITECTURE.md` notes `python -m src.db.init_db`. | Task 1, 2 |
 | 5 | **Single lookup order:** Tier 1 JSON (authoritative) → in-memory cache `(area_key, category)` → Neon DB (`manual` > `grounding`) → Tier 2 Yahoo Grounding (+ write-back) → category-aware fallback (never cached, never persisted). | Task 2 |
@@ -46,7 +47,7 @@
 | 10 | **JSON schema per category.** `{"金澤": {"area_name", "aliases", "categories": {"food": {"intro","specialties"}, "drink": {...}, "souvenir": {...}}}}`; legacy top-level `intro/specialties` treated as `food`. | Task 2 |
 | 11 | **Synthesis wording.** Pass `explore_category` (via `working_memory` → `parsed`) to State 4 so card titles/prompt say 茶寮・喫茶 / 老舖・伴手禮店 instead of 餐廳 when relevant. | Task 3 |
 
-**Gate rule ordering (Task 3):** location-less follow-ups (`那喝的呢？`, `有什麼伴手禮？`) are matched *before* location-bearing explore regexes; all captured locations go through `clean_explore_location()`. Collision checks must keep `新宿 居酒屋`, `京都 抹茶甜點`, `淺草 買伴手禮的店` as `search`.
+**Gate rule ordering (Task 3):** location-less follow-ups (`那喝的呢？`, `有什麼伴手禮？`) are matched in Gate to inherit `working_memory["last_location"]`. Location-bearing queries go directly to Stage 1 LLM. All locations pass through `clean_explore_location()`. Collision checks must keep `新宿 居酒屋`, `京都 抹茶甜點`, `淺草 買伴手禮的店` as `search`.
 
 **Content accuracy:** curated `drink`/`souvenir` entries only state widely documented facts; omit uncertain years. User reviews Kanazawa & Uji entries before merge.
 

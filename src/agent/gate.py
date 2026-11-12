@@ -35,6 +35,13 @@ _COORDS_RE = re.compile(r"^\s*(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)\s*(.*)$")
 _EXPLORE_SPECIALTY_RE = re.compile(
     r"^(?:請問\s*)?(.{2,15}?)(?:車站|駅|站|附近|周邊)?(?:有什麼|有哪些|推薦)?(?:特色美食|特色料理|當地美食|在地美食|代表美食|名物|必吃美食)[？?!！\s]*$"
 )
+# 純追問類別切換（無地名）：如「那喝的呢？」、「有什麼伴手禮？」、「有推薦喝的嗎」
+_EXPLORE_SWITCH_DRINK_RE = re.compile(
+    r"^(?:那|請問)?(?:有什麼|有哪些|有啥|推薦)?(?:喝的|好喝的|特色飲品|飲料|名茶|地酒)呢?[？?!！\s]*$"
+)
+_EXPLORE_SWITCH_SOUVENIR_RE = re.compile(
+    r"^(?:那|請問)?(?:有什麼|有哪些|有啥|推薦|必買)?(?:伴手禮|名產|土產|お土産|みやげ|和菓子|銘菓)呢?[？?!！\s]*$"
+)
 _SELECT_SPECIALTY_INDEX_RE = re.compile(
     r"^(?:選|吃|我要|想吃|那)?\s*第?\s*([123一二三])\s*(?:個|種|類|項|道)?[！!。.\s]*$"
 )
@@ -196,16 +203,42 @@ class QuickPassGate:
             except ValueError:
                 pass
 
-        # 7. Local Specialty Exploration (如「神保町有什麼特色美食？」、「淺草名物」)
+        # 7. Local Specialty Exploration (無地名之跨輪類別切換：優先 0ms 匹配)
+        if _EXPLORE_SWITCH_DRINK_RE.match(text):
+            return GateResult(
+                matched=True,
+                rule_name="explore_switch_drink",
+                parsed_intent={
+                    "intent": "explore_cuisine",
+                    "explore_category": "drink",
+                    "location": None,
+                    "cuisine": None,
+                    "modifier": None,
+                },
+            )
+
+        if _EXPLORE_SWITCH_SOUVENIR_RE.match(text):
+            return GateResult(
+                matched=True,
+                rule_name="explore_switch_souvenir",
+                parsed_intent={
+                    "intent": "explore_cuisine",
+                    "explore_category": "souvenir",
+                    "location": None,
+                    "cuisine": None,
+                    "modifier": None,
+                },
+            )
+
+        # 7.1 常見美食名物問句快篩 (帶地名，若含特殊句型或喝/伴手禮則由 Stage 1 Micro-LLM 全權解析)
         m_explore = _EXPLORE_SPECIALTY_RE.match(text)
         if m_explore:
-            # 地名清洗：剝除口語前綴/尾綴並拒絕疑問詞 (避免「有什麼特色美食」被誤抓 location="有什麼")；
-            # 若清洗後無地名，仍路由為 explore_cuisine，交由 Stage 1 從 working_memory 繼承或反問地點
             return GateResult(
                 matched=True,
                 rule_name="explore_specialty",
                 parsed_intent={
                     "intent": "explore_cuisine",
+                    "explore_category": "food",
                     "location": clean_explore_location(m_explore.group(1)),
                     "cuisine": None,
                     "modifier": None,

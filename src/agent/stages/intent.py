@@ -23,8 +23,8 @@ logger = logging.getLogger(__name__)
 INTENT_PARSER_SYSTEM_PROMPT = f"""你是一位嚴格的日本美食搜尋意圖解析器。請分析使用者的輸入與上下文，並輸出標準 JSON 格式。
 
 可能的 intent 欄位值：
-1. "search": 使用者想尋找美食餐廳。請精準抽取 location (地名/車站/商圈/景點，若未提及請設為 null) 與 cuisine (料理類別/食物核心名詞，例如「壽喜燒」、「拉麵」，嚴禁包含距離或時間詞，若未指定請設為 "熱門人氣美食")。
-2. "explore_cuisine": 使用者詢問某個日本地區「有什麼特色美食」、「當地名物是什麼」、「有什麼代表性料理或飲食文化」等開放式探索問題（尚未指定想吃哪一種具體料理）。請抽取 location。
+1. "search": 使用者想尋找美食餐廳、特定飲品專門店或伴手禮店。請精準抽取 location (地名/車站/商圈/景點，若未提及請設為 null) 與 cuisine (料理類別/食物核心名詞，例如「壽喜燒」、「拉麵」、「抹茶甜點」，嚴禁包含距離或時間詞，若未指定請設為 "熱門人氣美食")。
+2. "explore_cuisine": 使用者詢問某個日本地區「有什麼特色美食」、「有什麼喝的/名茶/地酒」、「必買什麼伴手禮/名菓」等開放式文化探索問題（尚未指定具體店家）。請抽取 location，並將 explore_category 標記為 "food"(美食料理)、"drink"(飲品/茶/酒/喫茶) 或 "souvenir"(伴手禮/名產/名菓)。
 3. "more": 使用者想要「換一批」、「還有更多推薦嗎」、「還有別家嗎」，或是對上一輪推薦提出風格轉向（例如：「我想找更在地的老店」、「有沒有更平價一點的」、「可以接受遠一點走路15分鐘」）。請抽取 modifier (修飾語/新要求，例如 "更在地老店"、"平價"、"走路15分鐘內"，若無請設為 null)。注意：若為 "more" 且使用者未重複輸入地名或料理，請優先從對話歷史的上一輪中繼承 location 與 cuisine！
 4. "follow_up": 使用者針對上一輪推薦的店家追問細節 (例如: "第2家有開嗎", "第一家多少錢", "有沒有信用卡")。請抽取 target_index (整數 1, 2 或 3) 與 question。
 5. "chitchat": 純打招呼、禮貌問候、詢問系統功能或非美食主題。
@@ -161,14 +161,28 @@ async def execute_state_1_intent(
             if callable(wm_fn):
                 wm_res = wm_fn(chat_id)
                 wm = await wm_res if inspect.isawaitable(wm_res) else wm_res
-                if isinstance(wm, dict) and not parsed.get("location") and wm.get("last_location"):
-                    parsed["location"] = wm["last_location"]
-            parsed["cuisine"] = "熱門人氣美食"
+                if isinstance(wm, dict):
+                    if not parsed.get("location") and wm.get("last_location"):
+                        parsed["location"] = wm["last_location"]
+                    last_cat = wm.get("last_explore_category") or "food"
+                    if last_cat == "drink":
+                        parsed["cuisine"] = "人気 カフェ 茶房 日本茶"
+                    elif last_cat == "souvenir":
+                        parsed["cuisine"] = "人気 お土産 和菓子 老舗"
+                    else:
+                        parsed["cuisine"] = "熱門人氣美食"
         except Exception as e:
             logger.warning(f"Failed to resolve direct recommend from working memory: {e}")
+            parsed["cuisine"] = "熱門人氣美食"
 
     # 若為 "explore_cuisine" 且未帶地名，嘗試從 Working Memory 繼承上一輪地名
     if intent == "explore_cuisine":
+        # 地名防呆清洗 (防範 LLM 產生「有什麼/我想找」等口語殘留)
+        if parsed.get("location"):
+            from src.agent.gate import clean_explore_location
+
+            parsed["location"] = clean_explore_location(parsed["location"])
+
         if not parsed.get("location") and chat_id:
             try:
                 wm_fn = getattr(fsm.session_repo, "get_working_memory", None)
@@ -179,6 +193,10 @@ async def execute_state_1_intent(
                         parsed["location"] = wm["last_location"]
             except Exception as e:
                 logger.warning(f"Failed to load working memory for explore_cuisine: {e}")
+
+        if not parsed.get("explore_category"):
+            parsed["explore_category"] = "food"
+
         if not parsed.get("location"):
             parsed["intent"] = "need_location"
         return parsed
