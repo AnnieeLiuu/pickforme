@@ -125,7 +125,7 @@ flowchart TD
         ResolveExploreCat --> CuisineGuide["CuisineGuideService 知識庫導覽<br/>(Neon DB area_specialty_guides ➔ Grounding 備援)"]
         CuisineGuide --> ReturnGuideCard["回傳在地深度導覽選單卡片<br/>(寫入 suggested_cuisines 與 last_explore_category)"] --> EndResponse
 
-        CheckIntent -- "search / more (一般美食檢索)" --> CheckPrefecture{"地理場景 1 判定：是否為縣級超大區域?<br/>is_prefecture_level_area (靜岡/長野/北海道/沖繩)"}
+        CheckIntent -- "search / more (全品類鎖定檢索：吃/喝/伴手禮)" --> CheckPrefecture{"地理場景 1 判定：是否為縣級超大區域?<br/>is_prefecture_level_area (靜岡/長野/北海道/沖繩)"}
         
         %% 場景 1: 縣級超大區域
         CheckPrefecture -- "是 (縣級廣域無具體市/站)" --> DisambiguatePref["策略 A: 縣級主動反問收斂<br/>1. 產出在地分區選單 (如 1.靜岡車站 / 2.濱松 / 3.沼津港)<br/>2. 暫存 suggested_locations & pending_cuisine 於 Working Memory<br/>3. 回傳 Telegram 引導，下輪輸入 1/2/3 或城鎮名無縫接軌"] --> EndResponse
