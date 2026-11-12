@@ -65,7 +65,7 @@ Temporary scripts created in `scratch/` MUST follow: 1. Verify POC in `scratch/`
 Whenever modifying code, schemas, configurations, or business logic, review and update all related docs before completion:
 1. **Zero Doc Drift (零文件滯後)**：Schemas (`schema.sql`)、Config (`config.py`) 或路由變更時，立即同步 [`docs/ARCHITECTURE.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/ARCHITECTURE.md)。
 2. **Mermaid & Diagram Consistency**：保持架構圖與狀態流轉圖與實作 100% 一致。
-3. **Observability & Pages Sync (架構動 Pages 必動)**：Pipeline 狀態、Payload 或演算法演進時，**MUST 同時更新 `src/eval/reporter.py` 並重新生成 GitLab Pages 儀表板 (`public/index.html`)**。
+3. **Observability & Pages Sync (架構動 Pages 必動 ＆ Playwright 實機驗收強制)**：Pipeline 狀態、Payload、模板或前端邏輯演進時，**MUST 同步更新 `src/eval/reporter.py`、重新生成 `public/index.html`，並強制使用 Playwright 進行瀏覽器實機驗收（確保 0 Console Errors、DOM 元素完整渲染且按鈕點擊交互響應正常）**，嚴禁盲信靜態 HTML 而未經實機瀏覽器驗收。
 4. **Active Plan Sync**：在 `docs/plans/` 完成或調整計畫時，同步更新其狀態與架構決策。
 
 ---

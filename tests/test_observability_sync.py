@@ -287,3 +287,72 @@ def test_trace_to_river_adapter_integration(tmp_path: Path) -> None:
     assert "run-live-adapter-001" in content
     assert "靜岡有推薦的吃的嗎" in content
     assert "pickforme-eval-summary-payload" in content
+
+
+def test_dashboard_html_encoding_and_js_syntax(tmp_path: Path) -> None:
+    """Verifies that generated dashboard HTML has valid UTF-8 charset and error-free JavaScript.
+
+    Enforces that:
+    1. HTML begins with <!DOCTYPE html> and contains <meta charset="UTF-8">.
+    2. Main JavaScript block is syntactically valid and passes node vm script compilation.
+    """
+    import shutil
+    import subprocess
+
+    from src.eval.evaluator import CaseEvalResult, EvalSummary
+
+    mock_summary = EvalSummary(
+        total_cases=1,
+        tier1_intent_accuracy=1.0,
+        tier2_entity_f1=1.0,
+        tier3_guardrail_compliance=1.0,
+        tier4_e2e_success_rate=1.0,
+        latency_p50_ms=300,
+        latency_p90_ms=500,
+        latency_avg_ms=350,
+        all_passed_gate=True,
+        case_results=[
+            CaseEvalResult(
+                case_id="eval_syntax_001",
+                category="syntax_check",
+                description="測試語法檢查",
+                user_message="神保町 飯糰",
+                tier1_pass=True,
+                tier2_pass=True,
+                tier3_pass=True,
+                tier4_pass=True,
+                latency_ms=350,
+            )
+        ],
+    )
+
+    output_file = tmp_path / "syntax_check.html"
+    res_path = generate_html_dashboard(
+        summary=mock_summary,
+        output_path=output_file,
+    )
+
+    content = res_path.read_text(encoding="utf-8")
+    assert content.strip().startswith("<!DOCTYPE html>"), "Dashboard MUST start with <!DOCTYPE html>"
+    assert '<meta charset="UTF-8">' in content, "Dashboard MUST include <meta charset='UTF-8'>"
+
+    # 若系統具備 node，進一步驗證 JS 語法編譯無拋錯 (防範 Invalid or unexpected token)
+    node_bin = shutil.which("node")
+    if node_bin:
+        import re
+
+        script_match = re.search(r"<script>(.*?)</script>", content, re.DOTALL)
+        assert script_match is not None, "Dashboard MUST contain main <script> tag"
+        js_code = script_match.group(1)
+
+        result = subprocess.run(
+            [
+                node_bin,
+                "-e",
+                "const vm = require('vm'); let code = ''; process.stdin.on('data', d => code += d); process.stdin.on('end', () => { new vm.Script(code); });",
+            ],
+            input=js_code,
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, f"JavaScript SyntaxError detected in dashboard: {result.stderr}"

@@ -7,6 +7,9 @@
 ## [Unreleased]
 
 ### Added
+- **Pages 變更強制 Playwright 實機驗收規範與 JS 語法契約守門 (`AGENTS.md`, `tests/test_observability_sync.py`)**：
+  - 在 [`AGENTS.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/AGENTS.md) 全局憲章第 3 條明確納入強制性守門規範：「Pipeline 狀態、Payload、模板或前端邏輯演進時，MUST 同步更新 `src/eval/reporter.py`、重新生成 `public/index.html`，並**強制使用 Playwright 進行瀏覽器實機驗收（確保 0 Console Errors、DOM 元素完整渲染且按鈕點擊交互響應正常）**，嚴禁盲信靜態 HTML 而未經實機瀏覽器驗收」。
+  - 在 [`tests/test_observability_sync.py`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/tests/test_observability_sync.py) 新增 `test_dashboard_html_encoding_and_js_syntax` 契約測試，自動調用 Node VM 編譯測試 Dashboard 中的 JavaScript 代碼塊，確保在 Git Pre-push Hook 與 CI 階段即刻攔截任何語法中斷或編碼缺陷。
 - **全鏈路生產技術棧全景圖入庫與架構文件同步 (`docs/assets/`, `docs/ARCHITECTURE.md`)**：
   - 將對齊 JamWithAI 生產級標準的 PickForMe 技術棧圖存入儲存庫：包含完全獨立的向量圖檔 [`docs/assets/production_ai_agent_stack.svg`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/assets/production_ai_agent_stack.svg)、互動式 HTML 預覽檔 [`docs/assets/production_ai_agent_stack.html`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/assets/production_ai_agent_stack.html) 以及原始參考圖 [`docs/assets/production_ai_agent_stack_reference.jpg`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/assets/production_ai_agent_stack_reference.jpg)。
   - 於 [`docs/ARCHITECTURE.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/ARCHITECTURE.md) 第 1 節（系統整體架構）嵌入該圖，完整呈現從 Entry ➔ Agent Core ➔ Data ➔ Quality ➔ Runtime ➔ Ship & Deploy 之全鏈路貫通動線。
