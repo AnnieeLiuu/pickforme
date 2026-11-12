@@ -4,7 +4,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-green.svg)](https://fastapi.tiangolo.com/)
 [![Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Type Checked](https://img.shields.io/badge/mypy-checked-blue.svg)](http://mypy-lang.org/)
-[![Tests](https://img.shields.io/badge/pytest-158%20passed-success.svg)](https://docs.pytest.org/)
+[![Tests](https://img.shields.io/badge/pytest-161%20passed-success.svg)](https://docs.pytest.org/)
 
 > **專案定位**：專為日本旅遊打造的高效能智慧美食 Agent 系統。解決遊客外出時「距離近、評分高、有開門、在地評價真實」的痛點。結合 Google Places API、Tabelog 爬蟲與實體比對器、Neon Serverless Postgres 以及 Telegram Bot 介面。
 
@@ -23,6 +23,7 @@
    - **量化守門 (Gatekeeper)**：嚴格驗證 Tier 1 意圖抽取率 (100%)、Tier 2 實體解析 F1 (1.00)、Tier 3 護欄合規 (100%)，未達標自動阻擋 Merge。
    - **視覺化儀表板**：自動編譯現代深色科技感 HTML 儀表板 (`public/index.html`)，無縫串接 GitLab Pages 自動化發布。
 3. **多輪推薦換批、去重防撞店與自適應擴圈 (Multi-Turn Exploration & Deduplication)**：
+   - **雙層在地特色美食與飲食文化導覽 (`LocalSpecialtyGuideService`)**：不知道該吃什麼時（如詢問「神保町有什麼特色美食？」），結合 Tier 1 考據知識庫與 Tier 2 Yahoo Japan 真實網頁 Grounding 介紹當地 3 大名物與歷史文化故事；下一輪回覆 `1`/`2`/`3` 即可 0ms 鎖定該品類獵店，或回覆「直接推薦」直接挑出周邊最高分餐廳。
    - **已看過店家累積排除**：當使用者詢問「還有更多推薦嗎」或「換一批」時，系統自 `chat_sessions` 自動累積歷史看過之 Place ID，新清單保證不撞店。
    - **偏好修飾詞疊加繼承**：使用者表達「我想找更在地的老店」或「更平價一點」時，自動繼承上一輪地標與料理主軸，並將修飾詞疊加至關鍵字檢索與評論向量重排。
    - **自適應 2500m 擴圈保底**：當原始半徑內候選店家已推薦完畢時，自動擴展搜尋至 2500m，確保旅人不中斷探索。

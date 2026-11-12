@@ -7,8 +7,8 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 class IntentOutput(BaseModel):
     """Stage 1 意圖解析結構化輸出合約 (借鏡 PydanticAI Schema-Driven & Semantic Validation)"""
 
-    intent: Literal["search", "more", "follow_up", "chitchat", "need_location"] = Field(
-        description='意圖分類：搜尋餐廳 ("search")、換一批/風格轉向 ("more")、追問上一輪店家 ("follow_up")、閒聊 ("chitchat")、缺地點 ("need_location")'
+    intent: Literal["search", "more", "follow_up", "chitchat", "need_location", "explore_cuisine"] = Field(
+        description='意圖分類：搜尋特定餐廳 ("search")、探索當地特色美食與文化 ("explore_cuisine")、換一批/風格轉向 ("more")、追問上一輪店家 ("follow_up")、閒聊 ("chitchat")、缺地點 ("need_location")'
     )
     location: Optional[str] = Field(
         default=None,

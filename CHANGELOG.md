@@ -11,6 +11,11 @@
 ## [1.3.0] - 2026-11-11
 
 ### Added
+- **混合雙層日本在地特色美食與飲食文化導覽引擎 (`src/services/cuisine_guide.py`, `config/local_specialties.json`)**：
+  - 支援 `explore_cuisine` 探索意圖（如「神保町有什麼特色美食？」、「淺草名物」）：當使用者尚未決定吃哪種料理時，先為其導覽當地最具代表性的 3 大名物料理與歷史文化背景。
+  - **Tier 1 內建考據知識庫 (`config/local_specialties.json`)**：收錄神保町、淺草、月島、築地、新宿、橫濱、京都祇園、大阪難波、博多等熱門商圈之飲食發源史與名物，0ms 秒回、0 Token 且 100% 零歷史幻覺。
+  - **Tier 2 Yahoo Japan 真實網頁 Grounding**：針對未收錄之冷門日本車站，自動抓取日本網頁真實名物摘要並以 `AreaSpecialtyGuide` Pydantic Schema 結構化提煉，嚴禁模型憑空捏造歷史年份。
+  - **兩階段無縫互動與「直接推薦」快速通道**：導覽卡片整合 `working_memory.suggested_cuisines`，支援下一輪直接輸入 `1` / `2` / `3` 鎖定該特色料理進入 Tabelog 雙源獵店，或輸入「直接推薦」/「隨便」跳過分類直接檢索周邊最高分名店。
 - **Tabelog 雙源獵店與反向種子保送架構 (`src/services/tabelog_scraper.py`, `src/agent/stages/places_search.py`)**：
   - 新增 `TabelogScraper.discover_area_top_stores()`，於 State 2 平行主動獵取指定地區與料理之 Tabelog 高分名店與百名店名單，並反查 Google Places 錨定精準經緯度與步行距離（標記 `tabelog_seed = True`）。
   - 重構 `prefilter_potential_foodie_places()`，賦予 Tabelog 原生種子與百名店 `+10.0` 絕對保送權重，並建立日本在地老店保護曲線（壓平 Google > 4.4 星觀光客店之超額權重），徹底根除「日本 Tabelog 3.7+ 百名店在 Google 僅 3.8 星而在 State 2 遭淘汰」之盲點。

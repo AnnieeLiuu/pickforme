@@ -50,6 +50,7 @@ from src.agent.trace import AgentTraceLogger
 from src.db.repositories.restaurant import RestaurantRepository
 from src.db.repositories.session import SessionRepository
 from src.db.repositories.vector import VectorRepository
+from src.services.cuisine_guide import LocalSpecialtyGuideService
 from src.services.embedding import EmbeddingService
 from src.services.entity_resolver import EntityResolver
 from src.services.google_places import GooglePlacesClient
@@ -82,6 +83,7 @@ class FoodRecommendationFSM:
         trace_logger: Optional[AgentTraceLogger] = None,
         vector_repo: Optional[VectorRepository] = None,
         embedding_service: Optional[EmbeddingService] = None,
+        cuisine_guide_service: Optional[LocalSpecialtyGuideService] = None,
     ):
         self.llm_client = llm_client or LLMClient()
         self.places_client = places_client or GooglePlacesClient()
@@ -92,6 +94,7 @@ class FoodRecommendationFSM:
         self.trace_logger = trace_logger or AgentTraceLogger()
         self.vector_repo = vector_repo or VectorRepository()
         self.embedding_service = embedding_service or EmbeddingService()
+        self.cuisine_guide_service = cuisine_guide_service or LocalSpecialtyGuideService()
         self._last_state_4_model: Optional[str] = None
         self._last_state_4_tokens: int = 0
 
@@ -262,6 +265,49 @@ class FoodRecommendationFSM:
                     total_tokens=self._last_state_4_tokens,
                 )
                 return answer
+
+            # 分支 C2: 探索當地特色美食與飲食文化導覽 (explore_cuisine)
+            if intent == "explore_cuisine":
+                explore_loc = str(parsed.get("location") or "").strip()
+                t0 = time.time()
+                guide = await self.cuisine_guide_service.get_area_guide(
+                    area_name=explore_loc,
+                    llm_client=self.llm_client,
+                )
+                guide_card = self.cuisine_guide_service.render_guide_markdown(guide)
+                latency = int((time.time() - t0) * 1000)
+
+                if chat_id:
+                    try:
+                        upd_wm_fn = getattr(self.session_repo, "update_working_memory", None)
+                        if callable(upd_wm_fn):
+                            res = upd_wm_fn(
+                                chat_id=chat_id,
+                                last_location=guide.area_name,
+                                suggested_cuisines=[item.cuisine_name for item in guide.specialties],
+                            )
+                            if inspect.isawaitable(res):
+                                await res
+                    except Exception as e:
+                        logger.warning(f"Failed to persist explore_cuisine working memory: {e}")
+
+                await self.trace_logger.log_step(
+                    action_type="explore_cuisine",
+                    tool_name="local_specialty_guide",
+                    tool_input={"area": explore_loc, "source_tier": guide.source_tier},
+                    tool_output={
+                        "area_name": guide.area_name,
+                        "specialties": [item.cuisine_name for item in guide.specialties],
+                        "length": len(guide_card),
+                    },
+                    latency_ms=latency,
+                )
+                await self.trace_logger.finish_run(
+                    status="completed",
+                    model_used=f"cuisine_guide:{guide.source_tier}",
+                    total_tokens=0,
+                )
+                return guide_card
 
             # 分支 D: 正式美食推薦 (search / more)
             coords = parsed.get("coords")

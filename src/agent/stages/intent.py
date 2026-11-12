@@ -24,10 +24,11 @@ INTENT_PARSER_SYSTEM_PROMPT = f"""你是一位嚴格的日本美食搜尋意圖�
 
 可能的 intent 欄位值：
 1. "search": 使用者想尋找美食餐廳。請精準抽取 location (地名/車站/商圈/景點，若未提及請設為 null) 與 cuisine (料理類別/食物核心名詞，例如「壽喜燒」、「拉麵」，嚴禁包含距離或時間詞，若未指定請設為 "熱門人氣美食")。
-2. "more": 使用者想要「換一批」、「還有更多推薦嗎」、「還有別家嗎」，或是對上一輪推薦提出風格轉向（例如：「我想找更在地的老店」、「有沒有更平價一點的」、「可以接受遠一點走路15分鐘」）。請抽取 modifier (修飾語/新要求，例如 "更在地老店"、"平價"、"走路15分鐘內"，若無請設為 null)。注意：若為 "more" 且使用者未重複輸入地名或料理，請優先從對話歷史的上一輪中繼承 location 與 cuisine！
-3. "follow_up": 使用者針對上一輪推薦的店家追問細節 (例如: "第2家有開嗎", "第一家多少錢", "有沒有信用卡")。請抽取 target_index (整數 1, 2 或 3) 與 question。
-4. "chitchat": 純打招呼、禮貌問候、詢問系統功能或非美食主題。
-5. "need_location": 使用者想吃特定食物但未提供任何地名，且系統上下文無 GPS 與無歷史地名。
+2. "explore_cuisine": 使用者詢問某個日本地區「有什麼特色美食」、「當地名物是什麼」、「有什麼代表性料理或飲食文化」等開放式探索問題（尚未指定想吃哪一種具體料理）。請抽取 location。
+3. "more": 使用者想要「換一批」、「還有更多推薦嗎」、「還有別家嗎」，或是對上一輪推薦提出風格轉向（例如：「我想找更在地的老店」、「有沒有更平價一點的」、「可以接受遠一點走路15分鐘」）。請抽取 modifier (修飾語/新要求，例如 "更在地老店"、"平價"、"走路15分鐘內"，若無請設為 null)。注意：若為 "more" 且使用者未重複輸入地名或料理，請優先從對話歷史的上一輪中繼承 location 與 cuisine！
+4. "follow_up": 使用者針對上一輪推薦的店家追問細節 (例如: "第2家有開嗎", "第一家多少錢", "有沒有信用卡")。請抽取 target_index (整數 1, 2 或 3) 與 question。
+5. "chitchat": 純打招呼、禮貌問候、詢問系統功能或非美食主題。
+6. "need_location": 使用者想吃特定食物但未提供任何地名，且系統上下文無 GPS 與無歷史地名。
 
 輸出 JSON 結構規範（由 IntentOutput Schema 自動生成）：
 {IntentOutput.build_json_schema_prompt()}
@@ -126,6 +127,46 @@ async def execute_state_1_intent(
                 logger.warning(f"Failed to update long term preferences: {e}")
 
     intent = parsed.get("intent", "search")
+
+    # 處理「特色美食導覽」後的下一輪編號點選 (specialty_index: 1/2/3) 或「直接推薦」(direct_recommend)
+    if chat_id and (parsed.get("specialty_index") is not None or parsed.get("direct_recommend")):
+        try:
+            wm_fn = getattr(fsm.session_repo, "get_working_memory", None)
+            if callable(wm_fn):
+                wm_res = wm_fn(chat_id)
+                wm = await wm_res if inspect.isawaitable(wm_res) else wm_res
+                if isinstance(wm, dict):
+                    if not parsed.get("location") and wm.get("last_location"):
+                        parsed["location"] = wm["last_location"]
+                    if parsed.get("specialty_index") is not None:
+                        idx = int(parsed["specialty_index"]) - 1
+                        suggested = wm.get("suggested_cuisines")
+                        if isinstance(suggested, list) and 0 <= idx < len(suggested):
+                            parsed["cuisine"] = str(suggested[idx])
+                        elif wm.get("last_cuisine"):
+                            parsed["cuisine"] = str(wm["last_cuisine"])
+                        else:
+                            parsed["cuisine"] = "熱門人氣美食"
+                    elif parsed.get("direct_recommend"):
+                        parsed["cuisine"] = "熱門人氣美食"
+        except Exception as e:
+            logger.warning(f"Failed to resolve specialty selection from working memory: {e}")
+
+    # 若為 "explore_cuisine" 且未帶地名，嘗試從 Working Memory 繼承上一輪地名
+    if intent == "explore_cuisine":
+        if not parsed.get("location") and chat_id:
+            try:
+                wm_fn = getattr(fsm.session_repo, "get_working_memory", None)
+                if callable(wm_fn):
+                    wm_res = wm_fn(chat_id)
+                    wm = await wm_res if inspect.isawaitable(wm_res) else wm_res
+                    if isinstance(wm, dict) and wm.get("last_location"):
+                        parsed["location"] = wm["last_location"]
+            except Exception as e:
+                logger.warning(f"Failed to load working memory for explore_cuisine: {e}")
+        if not parsed.get("location"):
+            parsed["intent"] = "need_location"
+        return parsed
 
     # 若為 "more" 且缺少料理或地名，優先從 Working Memory 繼承
     if intent == "more" and chat_id and (not parsed.get("cuisine") or not parsed.get("location")):

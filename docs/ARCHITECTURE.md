@@ -222,7 +222,8 @@ flowchart TD
 - **快取維護與雙層對話記憶 (Cache TTL & Two-Tier Session Memory)**：
   - **7 天 Tabelog 快取 TTL**：Neon DB 快取超過 7 天自動觸發背景爬蟲刷新，平衡評分即時性與抓取頻率。
   - **3 輪對話歷史記憶**：`chat_sessions` 自動保存最近 3 輪對話內容，支援自然語言追問（如「第 2 家有開嗎？」）。
-  - **Two-Tier Memory 雙層記憶架構 (`src/db/repositories/session.py`)**：於 `chat_sessions.last_recommended_ids` JSONB 中同時維護短期工作記憶 `working_memory`（記錄 `last_cuisine` 與 `last_location`，供 `"more"` 換一批無縫繼承）與跨輪長期偏好 `long_term_preferences`（持久化累積 `dietary_restrictions` 飲食禁忌與 `payment_preferences` 支付偏好，並向下相容舊版 List/Dict 格式）。
+  - **Two-Tier Memory 雙層記憶架構 (`src/db/repositories/session.py`)**：於 `chat_sessions.last_recommended_ids` JSONB 中同時維護短期工作記憶 `working_memory`（記錄 `last_cuisine`、`last_location` 與 `suggested_cuisines`，供 `"more"` 換一批及 `explore_cuisine` 在地特色美食導覽後的 `1`/`2`/`3` 或「直接推薦」點選無縫繼承）與跨輪長期偏好 `long_term_preferences`（持久化累積 `dietary_restrictions` 飲食禁忌與 `payment_preferences` 支付偏好，並向下相容舊版 List/Dict 格式）。
+  - **混合雙層在地特色美食與文化導覽 (`src/services/cuisine_guide.py`, `config/local_specialties.json`)**：當使用者提出地區探索意圖 (`explore_cuisine`) 時，優先以 Tier 1 內建考據知識庫 0ms 回應，未命中之長尾日本車站則自動啟動 Tier 2 Yahoo Japan 網頁 Grounding + `AreaSpecialtyGuide` 結構化提煉，兼顧零歷史幻覺與全日本車站覆蓋。
 - **OTel 格式 Trace 可觀測性 (Structured Observability & Trace Deep-Dive)**：
   - 每筆 Agent 執行同步記錄至 Neon `agent_runs` 與 `agent_steps`，量化分析 Model 降級率、Tool Latency (ms) 與 Token 成本。
   - **DuckDB 冷熱雙模歷程透視 CLI (`scripts/analyze_traces.py`)**：支援從冷層 Snappy Parquet 或 Neon DB 熱層一鍵提取近期問答清單，選定特定問答後即可輸出完整「端到端歷程透視報告」，包含提問句、最終回答卡片、中間每個 State 流程節點、個別耗時 (ms) 與精確之 Input/Output JSON 結構。

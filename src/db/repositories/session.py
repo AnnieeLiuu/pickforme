@@ -96,7 +96,7 @@ class SessionRepository:
         return seen
 
     async def get_working_memory(self, chat_id: int) -> dict[str, Any]:
-        """取得 Working Memory (上一輪 last_cuisine 與 last_location)，向下相容舊版格式"""
+        """取得 Working Memory (上一輪 last_cuisine、last_location 與選填 suggested_cuisines)，向下相容舊版格式"""
         default_wm: dict[str, Any] = {"last_cuisine": None, "last_location": None}
         try:
             session = await self.get_session(chat_id)
@@ -114,6 +114,66 @@ class SessionRepository:
                     "last_location": wm.get("last_location"),
                 }
         return default_wm
+
+    async def update_working_memory(
+        self,
+        chat_id: int,
+        last_location: Optional[str] = None,
+        last_cuisine: Optional[str] = None,
+        suggested_cuisines: Optional[list[str]] = None,
+    ) -> dict[str, Any]:
+        """單獨更新 Working Memory (如 explore_cuisine 導覽後保存 last_location 與 suggested_cuisines)"""
+        current_stores: list[dict[str, Any]] = []
+        accumulated_ids: list[str] = []
+        existing_wm = await self.get_working_memory(chat_id)
+        existing_prefs = await self.get_long_term_preferences(chat_id)
+
+        try:
+            session = await self.get_session(chat_id)
+            if isinstance(session, dict):
+                raw = self._parse_raw_recommended_json(session.get("last_recommended_ids"))
+                if isinstance(raw, list):
+                    current_stores = raw
+                    accumulated_ids = [
+                        str(r["google_place_id"]) for r in raw if isinstance(r, dict) and r.get("google_place_id")
+                    ]
+                elif isinstance(raw, dict):
+                    if isinstance(raw.get("current"), list):
+                        current_stores = raw["current"]
+                    if isinstance(raw.get("accumulated_seen_ids"), list):
+                        accumulated_ids = [str(x) for x in raw["accumulated_seen_ids"]]
+        except Exception as e:
+            logger.warning(f"Failed to read existing session in update_working_memory: {e}")
+
+        updated_wm: dict[str, Any] = {
+            **existing_wm,
+            "last_location": last_location if last_location is not None else existing_wm.get("last_location"),
+            "last_cuisine": last_cuisine if last_cuisine is not None else existing_wm.get("last_cuisine"),
+        }
+        if suggested_cuisines is not None:
+            updated_wm["suggested_cuisines"] = suggested_cuisines
+
+        data_to_store = {
+            "current": current_stores,
+            "accumulated_seen_ids": accumulated_ids,
+            "working_memory": updated_wm,
+            "long_term_preferences": existing_prefs,
+        }
+
+        pool = await get_db_pool()
+        sql = """
+            INSERT INTO chat_sessions (chat_id, last_recommended_ids, updated_at)
+            VALUES (%s, %s, NOW())
+            ON CONFLICT (chat_id) DO UPDATE SET
+                last_recommended_ids = EXCLUDED.last_recommended_ids,
+                updated_at = NOW();
+        """
+        async with pool.connection() as conn:
+            async with conn.cursor() as cur:
+                await cur.execute(sql, (chat_id, json.dumps(data_to_store, ensure_ascii=False)))
+                await conn.commit()
+
+        return updated_wm
 
     async def get_long_term_preferences(self, chat_id: int) -> dict[str, list[str]]:
         """取得 Long-Term Preferences (飲食禁忌與支付偏好)，向下相容舊版格式"""

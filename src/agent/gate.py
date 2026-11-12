@@ -32,6 +32,13 @@ _THANKS_RE = re.compile(r"(?i)^(謝謝|感謝|多謝|謝謝你|太感謝了|than
 _FOLLOW_UP_INDEX_RE = re.compile(r"^第?\s*([123一二三])\s*(?:家|間|號店?)(.+)$")
 _PURE_MORE_RE = re.compile(r"^(換一批|還有嗎|還有別家嗎|再推薦幾家|下一批|換別家)[？?!！\s]*$")
 _COORDS_RE = re.compile(r"^\s*(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)\s*(.*)$")
+_EXPLORE_SPECIALTY_RE = re.compile(
+    r"^(?:請問\s*)?(.{2,15}?)(?:車站|駅|站|附近|周邊)?(?:有什麼|有哪些|推薦)?(?:特色美食|特色料理|當地美食|在地美食|代表美食|名物|必吃美食)[？?!！\s]*$"
+)
+_SELECT_SPECIALTY_INDEX_RE = re.compile(
+    r"^(?:選|吃|我要|想吃|那)?\s*第?\s*([123一二三])\s*(?:個|種|類|項|道)?[！!。.\s]*$"
+)
+_DIRECT_RECOMMEND_RE = re.compile(r"^(?:直接推薦|隨便|都可以|不限|不限類型|幫我挑|直接找餐廳)[！!。.\s]*$")
 
 _INDEX_MAP: dict[str, int] = {
     "1": 1,
@@ -150,5 +157,52 @@ class QuickPassGate:
                     )
             except ValueError:
                 pass
+
+        # 7. Local Specialty Exploration (如「神保町有什麼特色美食？」、「淺草名物」)
+        m_explore = _EXPLORE_SPECIALTY_RE.match(text)
+        if m_explore:
+            raw_loc = m_explore.group(1).strip()
+            clean_loc: Optional[str] = None if raw_loc in ("請問", "這裡", "附近", "這邊", "那裡", "日本") else raw_loc
+            if clean_loc:
+                return GateResult(
+                    matched=True,
+                    rule_name="explore_specialty",
+                    parsed_intent={
+                        "intent": "explore_cuisine",
+                        "location": clean_loc,
+                        "cuisine": None,
+                        "modifier": None,
+                    },
+                )
+
+        # 8. Select Specialty Index from Previous Explore Card (如「1」、「選2」、「第3個」)
+        m_sel = _SELECT_SPECIALTY_INDEX_RE.match(text)
+        if m_sel:
+            idx = _INDEX_MAP.get(m_sel.group(1), 1)
+            return GateResult(
+                matched=True,
+                rule_name="select_specialty_index",
+                parsed_intent={
+                    "intent": "search",
+                    "location": None,
+                    "cuisine": None,
+                    "modifier": None,
+                    "specialty_index": idx,
+                },
+            )
+
+        # 9. Direct Recommendation Bypass (如「直接推薦」、「隨便」、「不限類型」)
+        if _DIRECT_RECOMMEND_RE.match(text):
+            return GateResult(
+                matched=True,
+                rule_name="direct_recommend",
+                parsed_intent={
+                    "intent": "search",
+                    "location": None,
+                    "cuisine": "熱門人氣美食",
+                    "modifier": None,
+                    "direct_recommend": True,
+                },
+            )
 
         return GateResult(matched=False)
