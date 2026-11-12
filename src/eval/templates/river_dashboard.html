@@ -436,7 +436,7 @@ html, body, #frame-content, #frame-header, .header, header {
         <div style="font-size: 12px; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 5px;">
           <span>📋 歷史對話與題庫流</span>
         </div>
-        <span style="font-size: 10px; background: #f1f5f9; color: #475569; padding: 2px 6px; border-radius: 4px; font-weight: 600;">共 8 筆記錄</span>
+        <span id="badge-total-count" style="font-size: 10px; background: #f1f5f9; color: #475569; padding: 2px 6px; border-radius: 4px; font-weight: 600;">共 15 筆記錄</span>
       </div>
 
       <!-- 雙模式切換 Tab：線上真實問答 (預設) vs 架構全景示範 (7) -->
@@ -1852,8 +1852,13 @@ function switchDashboardMode(mode) {
   const btnDemo = document.getElementById('btn-mode-demo');
   const boxLive = document.getElementById('container-live-runs');
   const boxDemo = document.getElementById('container-demo-cases');
+  const totalBadge = document.getElementById('badge-total-count');
 
   if (mode === 'live') {
+    if (totalBadge) {
+      const cnt = (window._cachedLiveRuns && window._cachedLiveRuns.length) ? window._cachedLiveRuns.length : 15;
+      totalBadge.innerText = `共 ${cnt} 筆記錄`;
+    }
     if (btnLive) {
       btnLive.style.background = '#2563eb';
       btnLive.style.color = '#ffffff';
@@ -1876,6 +1881,9 @@ function switchDashboardMode(mode) {
       }
     }
   } else {
+    if (totalBadge) {
+      totalBadge.innerText = '共 7 筆記錄';
+    }
     if (btnDemo) {
       btnDemo.style.background = '#2563eb';
       btnDemo.style.color = '#ffffff';
@@ -2037,7 +2045,7 @@ function initLiveDashboard(evalData) {
   const countBadge = document.getElementById('count-live-runs');
   if (countBadge) countBadge.innerText = liveRuns.length;
   const totalBadge = document.getElementById('badge-total-count');
-  if (totalBadge) totalBadge.innerText = `即時同步 (${liveRuns.length})`;
+  if (totalBadge) totalBadge.innerText = `共 ${liveRuns.length} 筆記錄`;
 
   liveRuns.forEach(run => {
     const steps = liveStepsMap[run.run_id] || [];
