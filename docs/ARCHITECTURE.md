@@ -117,9 +117,15 @@ flowchart TD
         QuickPass -- "命中 follow_up_index" --> AnswerDirect["由 chat_sessions 歷史候選資料直接回答<br/>0.5s 秒答，不重複調用 Places"] --> EndResponse
         QuickPass -- "未命中快篩 [Sanitized Context]" --> ParseIntent["Micro-LLM 結構化解析 + Pydantic Self-Correction<br/>(IntentOutput Schema 驗證 + 自動重試自癒)"]
         ParseIntent --> SyncMemory["Two-Tier Memory 雙軌感知與繼承<br/>(1/2/3 優先映射 suggested_locations，次之 suggested_cuisines；或繼承 pending_cuisine)"]
-        SyncMemory --> CheckFollowUp{"是否為追問句?"}
-        CheckFollowUp -- "是追問" --> AnswerDirect
-        CheckFollowUp -- "搜尋 / 換一批" --> CheckPrefecture{"場景 1 判定：是否為縣級超大區域?<br/>is_prefecture_level_area (靜岡/長野/北海道/沖繩)"}
+        SyncMemory --> CheckIntent{"意圖分支判定 (intent)"}
+        CheckIntent -- "follow_up (店號/屬性追問)" --> AnswerDirect
+        
+        %% 探索特色美食/茶飲/伴手禮文化導覽 (explore_cuisine)
+        CheckIntent -- "explore_cuisine (文化導覽)" --> ResolveExploreCat{"探索品類自適應 (explore_category)<br/>• food (正餐名物料理)<br/>• drink (名茶/地酒/咖啡)<br/>• souvenir (伴手禮/銘菓/老舖)"}
+        ResolveExploreCat --> CuisineGuide["CuisineGuideService 知識庫導覽<br/>(Neon DB area_specialty_guides ➔ Grounding 備援)"]
+        CuisineGuide --> ReturnGuideCard["回傳在地深度導覽選單卡片<br/>(寫入 suggested_cuisines 與 last_explore_category)"] --> EndResponse
+
+        CheckIntent -- "search / more (一般美食檢索)" --> CheckPrefecture{"地理場景 1 判定：是否為縣級超大區域?<br/>is_prefecture_level_area (靜岡/長野/北海道/沖繩)"}
         
         %% 場景 1: 縣級超大區域
         CheckPrefecture -- "是 (縣級廣域無具體市/站)" --> DisambiguatePref["策略 A: 縣級主動反問收斂<br/>1. 產出在地分區選單 (如 1.靜岡車站 / 2.濱松 / 3.沼津港)<br/>2. 暫存 suggested_locations & pending_cuisine 於 Working Memory<br/>3. 回傳 Telegram 引導，下輪輸入 1/2/3 或城鎮名無縫接軌"] --> EndResponse
@@ -172,12 +178,20 @@ flowchart TD
         AlignWalk --> S3Done["3 家店家雙平台資料彙整完成<br/>寫入 chat_sessions.last_recommended_ids (Two-Tier Memory)"]
     end
 
-    subgraph State4 ["State 4: 單次合成推薦卡片 (Synthesis, Guardrail & Template Fallback)"]
-        S3Done --> LLMSynthesis["LLMClient 單次生成高美感卡片<br/>(注入景區最近車站保護指引 + 廣域幅員特派員提醒)"]
+    subgraph State4 ["State 4: 推薦卡片合成、品類稱謂自適應與護欄防偽 (src/agent/stages/synthesis.py)"]
+        S3Done --> ResolveCardCat{"消費品類自適應<br/>resolve_card_category(cuisine, category)"}
+        ResolveCardCat -- "food (正餐美食)" --> CatFood["稱謂:「餐廳」<br/>徽章: 🍱 指標推薦餐廳<br/>標準美食排隊/口感點評風格"]
+        ResolveCardCat -- "drink (名茶/地酒/咖啡)" --> CatDrink["稱謂:「茶房／名店」<br/>徽章: 🍵 指標推薦茶房<br/>專屬注入: 焙火、茶湯、咖啡豆香、地酒吟釀點評"]
+        ResolveCardCat -- "souvenir (伴手禮/銘菓)" --> CatSouvenir["稱謂:「老舖／名店」<br/>徽章: 🎁 指標伴手禮老舖<br/>專屬注入: 常溫送禮、包裝、保存期限、名產特色點評"]
+
+        CatFood --> LLMSynthesis["LLMClient 單次生成高美感卡片<br/>(注入品類指引 + 景區最近車站保護指引 + 廣域特派員提醒)"]
+        CatDrink --> LLMSynthesis
+        CatSouvenir --> LLMSynthesis
+
         LLMSynthesis --> CheckLLMResult{"LLM 生成成功?"}
         CheckLLMResult -- "成功 [Deterministic Gate: Scoped Overwrite & In-place Repair]" --> GuardrailCheck["🛡️ Scoped Anchor 區塊錨點護欄 & 原地修復<br/>(0.1ms 數值覆寫與 Code Block 原地修補)"]
-        GuardrailCheck --> FinalCard["輸出零幻覺精選卡片<br/>店名獨立 Code Block + 🚶精準步行/車站指引"]
-        CheckLLMResult -- 失敗 / 空回覆 --> TemplateFallback["純模板引擎自動防護直出<br/>徽章: ⚠️ AI 語意模型連線異常，已為您自動載入直出卡片"]
+        GuardrailCheck --> FinalCard["輸出零幻覺精選卡片<br/>店名獨立 Code Block + 🚶精準步行/車站指引 + 品類自適應稱謂與徽章"]
+        CheckLLMResult -- 失敗 / 空回覆 --> TemplateFallback["純模板引擎自動防護直出 (render_template_fallback_card)<br/>自適應切換 🍱/🍵/🎁 徽章與「餐廳 / 茶房 / 老舖」實體稱謂"]
     end
 
     FinalCard --> EndResponse
@@ -193,6 +207,16 @@ flowchart TD
 | **場景 1：縣級超大區域<br/>(Tier 1 廣域收斂)** | 「靜岡 鰻魚飯」<br/>「長野 蕎麥麵」<br/>「北海道 拉麵」<br/>「沖繩 居酒屋」 | `is_prefecture_level_area(loc) == True`<br/>（命中縣名且無市/區/站具體後綴） | **策略 A：主動反問收斂 (State 1 攔截)**<br/>1. 0ms 攔截 Places 盲搜<br/>2. 回傳分區選單（如 1. 靜岡車站 / 2. 濱松 / 3. 沼津港）<br/>3. Working Memory 暫存 `suggested_locations` 與 `pending_cuisine`<br/>4. 下一輪輸入「1/2/3」或「濱松」自動無縫繼承料理並鎖定檢索 | 「🍱 靜岡幅員遼闊，建議先鎖定具體區域...」<br/>（引導遊客精準定錨，杜絕跨 80 公里瞎搜） |
 | **場景 2：度假景區/多商圈山區<br/>(Tier 2 景區導航)** | 「箱根 蕎麥麵」<br/>「輕井澤 咖啡」<br/>「草津溫泉 壽喜燒」<br/>「日光 豆皮料理」 | `is_wide_area_origin(loc) == True`<br/>（命中景區且尾綴非「站/駅/口」） | **方案 2：景區最近車站提取模式 (State 2/3)**<br/>1. State 2/3 豁免幾何中心距離扣分 (`dist_penalty = 0.0`)，保護偏遠名店<br/>2. State 3 透過 `STATION_WALK_PATTERN` 萃取 Tabelog 交通手段之最近車站<br/>3. `_align_walking_and_station` 格式化步行描述<br/>4. State 4 注入廣域景區特派員提醒 | `🚶 步行距離：從「強羅站」步行約 5 分鐘`<br/>**嚴禁拼接廣域中心點大跨度米數**<br/>（杜絕「從「箱根」步行約 35 分鐘 (2800m)」） |
 | **場景 3：都會商圈 / 具體車站<br/>(標準點對點)** | 「新宿 拉麵」<br/>「銀座 壽司」<br/>「箱根湯本站 懷石」<br/>「強羅車站 豆腐」 | `is_wide_area_origin == False`<br/>且非縣級大區（或具備站點後綴） | **標準階梯半徑搜尋 (State 2/3)**<br/>1. 以精準坐標或站點為起點，實施 800m ➔ 1200m ➔ 1800m 階梯擴圈<br/>2. 嚴格計算距定位點之實際直線距離與物理步程 | `🚶 步行距離：從「新宿」步行約 4 分鐘 (320m)`<br/>`🚶 步行距離：從「箱根湯本站」步行約 3 分鐘 (240m)`<br/>（標準點對點，精準實用） |
+
+### D.2 三大消費品類自適應：吃的、喝的與伴手禮 (Three Consumption Categories: Food, Drink, Souvenir)
+
+為了避免向尋找百年抹茶或銘菓老舖的遊客推薦時出現「這家餐廳...」或關注「候位用餐桌數」等文案語境錯置，系統在 **State 1 導覽探索** 與 **State 4 卡片生成** 中建立了全管線的**三大消費品類自適應機制**：
+
+| 品類代碼 | 中文意涵 | 關鍵字特徵集與辨識邏輯 | State 1 特色導覽行為 (`explore_cuisine`) | State 4 卡片稱謂與指導語 (`resolve_card_category`) | 保底模板徽章與引導語 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`food`** | **吃的<br/>(正餐料理)** | 拉麵、燒肉、壽司、鰻魚飯、居酒屋、天婦羅、懷石料理等正餐美食 | 查詢 Neon DB 在地名物料理（如靜岡鰻魚飯、宇治抹茶蕎麥麵），產出必吃料理選單 | • 實體稱謂：「餐廳」<br/>• 焦點：排隊候位、老饕推薦菜品、Tabelog 評分分析 | 🍱 **已為您精選「熱門料理」指標推薦餐廳如下：**<br/>「若想探索更多餐廳選擇，可隨時告訴我換個商圈！」 |
+| **`drink`** | **喝的<br/>(茶飲・酒・咖啡)** | 茶、咖啡、喫茶、カフェ、地酒、日本酒、酒吧、飲品、飲料、ほうじ茶、抹茶、煎茶、玉露、清酒 | 查詢在地茶文化或特色銘酒（如宇治抹茶、靜岡深蒸茶、新潟地酒），推薦知名茶屋與酒造 | • 實體稱謂：「茶房／名店」<br/>• 專屬指導語：點評著重茶湯焙火香氣、咖啡豆烘焙或地酒吟釀風味，嚴禁套用正餐飯桌術語 | 🍵 **已為您精選「特色茶飲／咖啡」指標推薦茶房如下：**<br/>「若想探索更多茶房或飲品選擇，可隨時告訴我換個商圈！」 |
+| **`souvenir`** | **伴手禮<br/>(名菓・銘菓・禮品)** | 伴手禮、名產、土產、お土産、みやげ、和菓子、銘菓、點心、蛋糕、落雁、煎餅、最中、羊羹、大福 | 查詢在地代表性土產銘菓（如京都生八橋、宇治抹茶點心、靜岡春華堂鰻魚派），產出必買伴手禮清單 | • 實體稱謂：「老舖／名店」<br/>• 專屬指導語：點評著重包裝設計、常溫保存天數、送禮適宜度與百年老舖歷史，杜絕誤稱餐廳 | 🎁 **已為您精選「熱門伴手禮」指標推薦名店如下：**<br/>「若想探索更多伴手禮與銘菓選擇，可隨時告訴我換個商圈！」 |
 
 ### E. Production AI 護欄體系：Agent Harness、確定性數值防偽與防規則漂移 (Agent Harness, Deterministic Guardrails & Contract Testing)
 - **0ms 入口快篩與安全絆線 (`src/agent/gate.py` - `QuickPassGate`)**：
