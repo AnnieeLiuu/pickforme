@@ -111,15 +111,21 @@ flowchart TD
     %% 2. 確定性 4 階段 FSM 狀態機流水線
     CheckType -- "美食搜尋 / 推薦 / 追問" --> FSMInit["FoodRecommendationFSM (src/agent/pipeline.py)"]
 
-    subgraph State1 ["State 1: 0ms QuickPassGate 快篩與意圖解析 (src/agent/gate.py & stages/intent.py)"]
+    subgraph State1 ["State 1: 0ms QuickPassGate 快篩、意圖解析與地理場景判定 (src/agent/stages/intent.py)"]
         FSMInit --> QuickPass["⚡ QuickPassGate 0ms 確定性快篩與安全絆線<br/>(攔截越獄/超長輸入/問候/道謝/店號追問/換一批/座標直搜)"]
         QuickPass -- "命中 Fast-Reply / 安全絆線" --> GateFastReply["0ms 極速秒回 / 安全防護攔截"] --> EndResponse
         QuickPass -- "命中 follow_up_index" --> AnswerDirect["由 chat_sessions 歷史候選資料直接回答<br/>0.5s 秒答，不重複調用 Places"] --> EndResponse
-        QuickPass -- "未命中快篩 [Sanitized Context / Observation Masking]" --> ParseIntent["Micro-LLM 結構化解析 + Pydantic Self-Correction<br/>(IntentOutput Schema 驗證 + 自動重試自癒)"]
-        ParseIntent --> SyncMemory["Two-Tier Memory 雙軌偏好抽取與繼承<br/>(更新 long_term_preferences + 繼承 working_memory)"]
+        QuickPass -- "未命中快篩 [Sanitized Context]" --> ParseIntent["Micro-LLM 結構化解析 + Pydantic Self-Correction<br/>(IntentOutput Schema 驗證 + 自動重試自癒)"]
+        ParseIntent --> SyncMemory["Two-Tier Memory 雙軌感知與繼承<br/>(1/2/3 優先映射 suggested_locations，次之 suggested_cuisines；或繼承 pending_cuisine)"]
         SyncMemory --> CheckFollowUp{"是否為追問句?"}
         CheckFollowUp -- "是追問" --> AnswerDirect
-        CheckFollowUp -- "搜尋 / 換一批" --> CheckCoord{"有無地理座標?"}
+        CheckFollowUp -- "搜尋 / 換一批" --> CheckPrefecture{"場景 1 判定：是否為縣級超大區域?<br/>is_prefecture_level_area (靜岡/長野/北海道/沖繩)"}
+        
+        %% 場景 1: 縣級超大區域
+        CheckPrefecture -- "是 (縣級廣域無具體市/站)" --> DisambiguatePref["策略 A: 縣級主動反問收斂<br/>1. 產出在地分區選單 (如 1.靜岡車站 / 2.濱松 / 3.沼津港)<br/>2. 暫存 suggested_locations & pending_cuisine 於 Working Memory<br/>3. 回傳 Telegram 引導，下輪輸入 1/2/3 或城鎮名無縫接軌"] --> EndResponse
+        
+        %% 場景 2 & 3: 進入座標定錨
+        CheckPrefecture -- "否 (具體城鎮/景區/都會)" --> CheckCoord{"有無地理座標?"}
         CheckCoord -- "無座標" --> Geocode["Google Geocoding API<br/>地名轉 (lat, lng)"]
         CheckCoord -- "已有座標" --> S1Done["鎖定座標與搜尋約束解耦<br/>(resolve_search_constraints 分離料理/距離階梯/風格詞)"]
         Geocode --> S1Done
@@ -128,51 +134,65 @@ flowchart TD
     S1Done -->|"注入 FSMRunContext [Working Memory: accumulated_seen_ids Excluded]"| Progress1["Telegram 狀態推播 1:<br/>🔍 已鎖定 地點，正在搜尋評價優質的 種類 餐廳..."]
 
     subgraph State2 ["State 2: 雙源獵店與智慧階梯搜尋 (Tabelog-First Dual-Source & Ladder Search, src/agent/stages/places_search.py)"]
-        Progress1 --> DualSource["🌐 源頭 A: Tabelog 主動獵取地區高分/百名店 (discover_area_top_stores)<br/>📍 源頭 B: Google Places 第 1 階 800m 搜尋"]
-        DualSource --> CheckCount1{"店家數 >= 3?"}
-        CheckCount1 -- Yes --> S2Select["雙源匯流預篩 Top 種子候選店<br/>(prefilter_potential_foodie_places: Tabelog 種子 100% 優先保送)"]
-        CheckCount1 -- No --> Search1200["第 2 階: 擴大半徑至 1200m"]
-        Search1200 --> CheckCount2{"店家數 >= 3?"}
-        CheckCount2 -- Yes --> S2Select
-        CheckCount2 -- No --> Search1800["第 3 階: 擴大半徑至 1800m (不足再保底 2500m)"]
-        Search1800 --> S2Select
+        Progress1 --> CheckGeoMode{"地理模式判定<br/>is_wide_area_origin(loc)"}
+        
+        %% 場景 2: 廣域景區
+        CheckGeoMode -- "場景 2: 度假名勝/山區<br/>(箱根/輕井澤/草津溫泉/日光)" --> ScenicLadder["方案 2: 景區最近車站模式<br/>幾何中心距離懲罰歸零 (dist_penalty = 0.0)<br/>避免強羅名店因遠離町役場被無辜降權"]
+        
+        %% 場景 3: 都會點對點
+        CheckGeoMode -- "場景 3: 都會商圈 / 具體車站<br/>(新宿/銀座/箱根湯本站)" --> UrbanLadder["標準點對點模式<br/>依物理半徑階梯梯隊搜尋 (800m ➔ 1200m ➔ 1800m)"]
+
+        ScenicLadder --> DualSource["🌐 源頭 A: Tabelog 主動獵取地區高分/百名店 (discover_area_top_stores)<br/>📍 源頭 B: Google Places 階梯搜尋 (800m ➔ 1200m ➔ 1800m)"]
+        UrbanLadder --> DualSource
+        DualSource --> S2Select["雙源匯流預篩 Top 種子候選店<br/>(prefilter_potential_foodie_places: Tabelog 種子 100% 優先保送)"]
     end
 
     S2Select --> Progress2["Telegram 狀態推播 2:<br/>📊 正在彙整 Google 與 Tabelog 雙平台評分卡片..."]
 
-    subgraph State3 ["State 3: Tabelog 平行實體對齊與硬性條件感測 (Parallel Enrichment & Constraint Sensor)"]
+    subgraph State3 ["State 3: Tabelog 交通手段解析、實體對齊與步行指引格式化 (src/agent/stages/enrichment.py)"]
         Progress2 --> ParallelGather["asyncio.gather 平行對齊 3~5 家候選店"]
         
         subgraph PerStore ["每家候選店對齊邏輯"]
             ParallelGather --> CheckCache{"Neon tabelog_cache 快取?"}
-            CheckCache -- "🟢 快取命中 (TTL <= 7天)" --> HitCache["直接載入 Tabelog 評分"]
+            CheckCache -- "🟢 快取命中 (TTL <= 7天)" --> HitCache["直接載入 Tabelog 評分與站點資訊"]
             CheckCache -- "🔴 快取未命中" --> FetchTabelog["TabelogScraper 抓取清單"]
             FetchTabelog --> CheckWaf{"403 WAF 阻擋 / 0筆?"}
             CheckWaf -- "Yes (WAF 觸發)" --> GroundingFallback["啟動 Web Grounding 搜尋備援<br/>(提取官方標準評分、評論數與百名店標章)"]
             CheckWaf -- "No (順利連線)" --> EntityResolver
             GroundingFallback --> EntityResolver["EntityResolver 雙層漏斗對齊<br/>(Tier 1: 0ms 規則快篩 ➔ Tier 2: LLM 模糊裁決)"]
             EntityResolver --> MatchCheck{"比對成功?"}
-            MatchCheck -- Yes --> ScrapeDetail["彙整評分/百名店/URL"] --> SaveCache["寫入 Neon DB tabelog_cache 快取<br/>(後續查詢 0ms 永久命中)"]
+            MatchCheck -- Yes --> ScrapeDetail["解析評分/百名店/交通手段<br/>(STATION_WALK_PATTERN 萃取最近車站步行)"] --> SaveCache["寫入 Neon DB tabelog_cache 快取<br/>(後續查詢 0ms 永久命中)"]
             MatchCheck -- No --> FallbackGoogle["保底：標註「Tabelog 暫無評分，以 Google 為依據」"]
         end
+
+        HitCache --> ConstraintSensor["🎯 Deterministic Constraint Sensor<br/>(apply_deterministic_constraints 硬性飲食禁忌/支付偏好降權)"]
+        SaveCache --> ConstraintSensor
+        FallbackGoogle --> ConstraintSensor
+        ConstraintSensor --> AlignWalk["🚶 雙階地理步行描述對齊 (_align_walking_and_station / format_walking_description)<br/>• 場景 2 (景區): 從「強羅站」步行約 5 分鐘 (嚴禁拼接中心點 2800m 米數，杜絕 Usain Bolt 錯位)<br/>• 場景 3 (都會): 從「新宿」步行約 4 分鐘 (320m)"]
+        AlignWalk --> S3Done["3 家店家雙平台資料彙整完成<br/>寫入 chat_sessions.last_recommended_ids (Two-Tier Memory)"]
     end
 
-    HitCache --> ConstraintSensor["🎯 Deterministic Constraint Sensor<br/>(apply_deterministic_constraints 硬性飲食禁忌/支付偏好降權與重排)"]
-    SaveCache --> ConstraintSensor
-    FallbackGoogle --> ConstraintSensor
-    ConstraintSensor --> S3Done["3 家店家雙平台資料彙整完成<br/>寫入 chat_sessions.last_recommended_ids (Two-Tier Memory)"]
-
     subgraph State4 ["State 4: 單次合成推薦卡片 (Synthesis, Guardrail & Template Fallback)"]
-        S3Done --> LLMSynthesis["LLMClient 單次生成高美感卡片<br/>(Groq ➡️ Gemini ➡️ Ollama Failover)"]
+        S3Done --> LLMSynthesis["LLMClient 單次生成高美感卡片<br/>(注入景區最近車站保護指引 + 廣域幅員特派員提醒)"]
         LLMSynthesis --> CheckLLMResult{"LLM 生成成功?"}
         CheckLLMResult -- "成功 [Deterministic Gate: Scoped Overwrite & In-place Repair]" --> GuardrailCheck["🛡️ Scoped Anchor 區塊錨點護欄 & 原地修復<br/>(0.1ms 數值覆寫與 Code Block 原地修補)"]
-        GuardrailCheck --> FinalCard["輸出零幻覺精選卡片<br/>店名獨立 Code Block + 🚶步行距離"]
+        GuardrailCheck --> FinalCard["輸出零幻覺精選卡片<br/>店名獨立 Code Block + 🚶精準步行/車站指引"]
         CheckLLMResult -- 失敗 / 空回覆 --> TemplateFallback["純模板引擎自動防護直出<br/>徽章: ⚠️ AI 語意模型連線異常，已為您自動載入直出卡片"]
     end
 
     FinalCard --> EndResponse
     TemplateFallback --> EndResponse
 ```
+
+### D.1 三大日本地理檢索場景與狀態流轉 (Three Core Geographic Routing Scenarios)
+
+為了徹底根除「百公里廣域盲搜幾何中心」與「山區景區 5 分鐘走 2.8 公里 (Usain Bolt 錯位)」之長年頑疾，系統在 FSM 狀態機中確立了**三大核心地理場景分流**：
+
+| 場景類型 | 典型輸入範例 | 狀態機判定依據 | 處置策略與流轉邏輯 | 步行指引與輸出效果 |
+| :--- | :--- | :--- | :--- | :--- |
+| **場景 1：縣級超大區域<br/>(Tier 1 廣域收斂)** | 「靜岡 鰻魚飯」<br/>「長野 蕎麥麵」<br/>「北海道 拉麵」<br/>「沖繩 居酒屋」 | `is_prefecture_level_area(loc) == True`<br/>（命中縣名且無市/區/站具體後綴） | **策略 A：主動反問收斂 (State 1 攔截)**<br/>1. 0ms 攔截 Places 盲搜<br/>2. 回傳分區選單（如 1. 靜岡車站 / 2. 濱松 / 3. 沼津港）<br/>3. Working Memory 暫存 `suggested_locations` 與 `pending_cuisine`<br/>4. 下一輪輸入「1/2/3」或「濱松」自動無縫繼承料理並鎖定檢索 | 「🍱 靜岡幅員遼闊，建議先鎖定具體區域...」<br/>（引導遊客精準定錨，杜絕跨 80 公里瞎搜） |
+| **場景 2：度假景區/多商圈山區<br/>(Tier 2 景區導航)** | 「箱根 蕎麥麵」<br/>「輕井澤 咖啡」<br/>「草津溫泉 壽喜燒」<br/>「日光 豆皮料理」 | `is_wide_area_origin(loc) == True`<br/>（命中景區且尾綴非「站/駅/口」） | **方案 2：景區最近車站提取模式 (State 2/3)**<br/>1. State 2/3 豁免幾何中心距離扣分 (`dist_penalty = 0.0`)，保護偏遠名店<br/>2. State 3 透過 `STATION_WALK_PATTERN` 萃取 Tabelog 交通手段之最近車站<br/>3. `_align_walking_and_station` 格式化步行描述<br/>4. State 4 注入廣域景區特派員提醒 | `🚶 步行距離：從「強羅站」步行約 5 分鐘`<br/>**嚴禁拼接廣域中心點大跨度米數**<br/>（杜絕「從「箱根」步行約 35 分鐘 (2800m)」） |
+| **場景 3：都會商圈 / 具體車站<br/>(標準點對點)** | 「新宿 拉麵」<br/>「銀座 壽司」<br/>「箱根湯本站 懷石」<br/>「強羅車站 豆腐」 | `is_wide_area_origin == False`<br/>且非縣級大區（或具備站點後綴） | **標準階梯半徑搜尋 (State 2/3)**<br/>1. 以精準坐標或站點為起點，實施 800m ➔ 1200m ➔ 1800m 階梯擴圈<br/>2. 嚴格計算距定位點之實際直線距離與物理步程 | `🚶 步行距離：從「新宿」步行約 4 分鐘 (320m)`<br/>`🚶 步行距離：從「箱根湯本站」步行約 3 分鐘 (240m)`<br/>（標準點對點，精準實用） |
 
 ### E. Production AI 護欄體系：Agent Harness、確定性數值防偽與防規則漂移 (Agent Harness, Deterministic Guardrails & Contract Testing)
 - **0ms 入口快篩與安全絆線 (`src/agent/gate.py` - `QuickPassGate`)**：
