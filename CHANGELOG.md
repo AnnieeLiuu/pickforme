@@ -7,6 +7,9 @@
 ## [Unreleased]
 
 ### Added
+- **架構流程圖語意完整性契約測試與 Hook 守門防護 (`tests/test_docs_mermaid.py`, `.git/hooks/pre-push`)**：
+  - 新增 `test_architecture_fsm_mermaid_semantic_consistency` 契約測試：自動掃描 `docs/ARCHITECTURE.md` Section D 之 Mermaid 流程圖，強制驗證必須涵蓋 4 大 State 子圖、地理三場景 (`is_prefecture_level_area` / `is_wide_area_origin`)、消費品類三分支 (`food` / `drink` / `souvenir` / `resolve_card_category`) 與 Scoped Anchor 等核心節點，徹底杜絕「只改文字說明、漏改流程圖」之架構圖漂移。
+  - 於 Git Pre-push Hook Step 6 注入 Mermaid 流程圖實質改動檢核與預警。
 - **雙階日本地理導航架構：縣級超大區域主動收斂 (策略 A) + 景區最近車站導引 (方案 2) (`src/agent/stages/`, `src/services/tabelog_scraper.py`)**：
   - **Tier 1 縣級超大區域主動收斂 (策略 A)**：
     - 終結在「靜岡」、「長野」、「北海道」、「沖繩」等百公里廣域對著市公所盲搜之弊端。

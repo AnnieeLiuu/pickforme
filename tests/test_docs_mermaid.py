@@ -76,3 +76,61 @@ def test_markdown_mermaid_diagrams_syntax() -> None:
                 )
 
     assert not violations, "發現 Mermaid 文檔語法錯誤：\n" + "\n".join(f"  ❌ {v}" for v in violations)
+
+
+def test_architecture_fsm_mermaid_semantic_consistency() -> None:
+    """驗證 ARCHITECTURE.md 核心 FSM 流程圖之狀態流轉與分支語意完整性。
+
+    徹底防範「程式碼改了邏輯、文件只補條列文字、卻漏改核心 Mermaid 流程圖」之文檔漂移：
+    1. 必須涵蓋 4 個核心 State 子圖 (State1 ~ State4)
+    2. State 1: 必須包含 QuickPass、文化探索分支 (explore_cuisine / explore_category) 與地理場景 1 (is_prefecture_level_area)
+    3. State 2: 必須包含地理場景 2 (is_wide_area_origin / 景區模式) 與場景 3 (都會模式)
+    4. State 3: 必須包含最近車站萃取 (STATION_WALK_PATTERN)、實體比對與硬性條件感測 (ConstraintSensor)
+    5. State 4: 必須包含消費品類三分支自適應 (resolve_card_category / food / drink / souvenir) 與 Scoped Anchor 護欄
+    """
+    root_dir = Path(__file__).parent.parent
+    arch_file = root_dir / "docs" / "ARCHITECTURE.md"
+    assert arch_file.exists(), "docs/ARCHITECTURE.md 不存在"
+
+    content = arch_file.read_text(encoding="utf-8")
+
+    # 提取 Section D 的 Mermaid 流程圖區塊
+    mermaid_match = re.search(r"### D\. 完整 Agent 決策.*?```mermaid\s+(flowchart TD.*?)\s+```", content, re.DOTALL)
+    assert mermaid_match is not None, "docs/ARCHITECTURE.md 缺少 Section D 的 flowchart TD 流程圖"
+
+    fsm_diagram = mermaid_match.group(1)
+
+    required_keywords = [
+        # 4 大狀態機子圖
+        "subgraph State1",
+        "subgraph State2",
+        "subgraph State3",
+        "subgraph State4",
+        # State 1 核心分支：快篩、探索導覽（吃/喝/伴手禮）、縣級廣域收斂
+        "QuickPass",
+        "explore_cuisine",
+        "explore_category",
+        "is_prefecture_level_area",
+        # State 2 核心分支：地理三場景分流 (度假景區 vs 都會商圈)
+        "is_wide_area_origin",
+        "ScenicLadder",
+        "UrbanLadder",
+        # State 3 核心節點：最近車站提取、實體比對、硬性條件感測
+        "STATION_WALK_PATTERN",
+        "EntityResolver",
+        "ConstraintSensor",
+        "AlignWalk",
+        # State 4 核心節點：三大品類自適應 (吃的/喝的/伴手禮)、Scoped Anchor、模板回退
+        "resolve_card_category",
+        "food",
+        "drink",
+        "souvenir",
+        "GuardrailCheck",
+        "TemplateFallback",
+    ]
+
+    missing = [kw for kw in required_keywords if kw not in fsm_diagram]
+    assert not missing, (
+        "docs/ARCHITECTURE.md Section D Mermaid 流程圖缺少以下關鍵狀態/決策節點，發生流程圖漂移：\n"
+        + "\n".join(f"  ❌ 缺少關鍵字: {m}" for m in missing)
+    )
