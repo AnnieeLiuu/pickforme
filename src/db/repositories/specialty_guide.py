@@ -56,7 +56,7 @@ class SpecialtyGuideRepository:
             logger.warning(f"SpecialtyGuideRepository.ensure_table failed (fail-open): {e}")
 
     async def get_guide(self, area_query: str, category: str = "food") -> Optional[dict[str, Any]]:
-        """依據區域搜尋詞與類別 (food/drink/souvenir) 查詢導覽紀錄 (優先 manual > grounding)"""
+        """依據區域搜尋詞與類別 (food/drink/souvenir) 查詢導覽紀錄 (優先 manual > curated > grounding)"""
         norm_key = (area_query or "").strip().lower()
         if not norm_key:
             return None
@@ -72,7 +72,7 @@ class SpecialtyGuideRepository:
                   LOWER(area_key) = %s
                   OR aliases @> jsonb_build_array(%s::text)
               )
-            ORDER BY CASE WHEN source_tier = 'manual' THEN 1 ELSE 2 END, updated_at DESC
+            ORDER BY CASE WHEN source_tier = 'manual' THEN 1 WHEN source_tier = 'curated' THEN 2 ELSE 3 END, updated_at DESC
             LIMIT 1;
         """
 
