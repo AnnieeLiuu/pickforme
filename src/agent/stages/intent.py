@@ -21,44 +21,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-PREFECTURE_DISAMBIGUATION_MAP: dict[str, list[dict[str, str]]] = {
-    "靜岡": [
-        {"name": "靜岡車站周邊", "desc": "駿府城、靜岡黑關東煮、在地海鮮", "search_loc": "靜岡車站"},
-        {"name": "濱松 / 濱名湖", "desc": "日本鰻魚名產地、濱松煎餃", "search_loc": "濱松車站"},
-        {"name": "沼津港 / 三島 / 熱海", "desc": "沼津直送海鮮丼、三島鰻魚、溫泉街", "search_loc": "沼津港"},
-    ],
-    "静岡": [
-        {"name": "靜岡車站周邊", "desc": "駿府城、靜岡黑關東煮、在地海鮮", "search_loc": "靜岡車站"},
-        {"name": "濱松 / 濱名湖", "desc": "日本鰻魚名產地、濱松煎餃", "search_loc": "濱松車站"},
-        {"name": "沼津港 / 三島 / 熱海", "desc": "沼津直送海鮮丼、三島鰻魚、溫泉街", "search_loc": "沼津港"},
-    ],
-    "長野": [
-        {"name": "長野車站 / 善光寺", "desc": "信州手打蕎麥麵、辛口七味", "search_loc": "長野車站"},
-        {"name": "松本 / 安曇野", "desc": "松本山賊燒、信州和牛、馬肉料理", "search_loc": "松本車站"},
-        {"name": "輕井澤", "desc": "高原文藝喫茶、歐風烘焙、名物釜飯", "search_loc": "輕井澤車站"},
-    ],
-    "北海道": [
-        {"name": "札幌 / 薄野", "desc": "札幌味噌拉麵、成吉思汗烤羊肉、湯咖哩", "search_loc": "札幌車站"},
-        {"name": "函館", "desc": "函館鹽味拉麵、朝市活烏賊海鮮丼", "search_loc": "函館車站"},
-        {"name": "小樽 / 旭川", "desc": "小樽壽司街、旭川醬油拉麵", "search_loc": "小樽車站"},
-    ],
-    "沖繩": [
-        {"name": "那霸市區 / 國際通", "desc": "沖繩麵、石垣牛牛排、島料理居酒屋", "search_loc": "國際通"},
-        {"name": "美國村 / 北谷 / 恩納村", "desc": "美式漢堡、阿古豬涮涮鍋、海景海鮮", "search_loc": "美國村"},
-        {"name": "名護 / 本部", "desc": "本部牛、百年古家岸本食堂", "search_loc": "名護"},
-    ],
-    "沖縄": [
-        {"name": "那霸市區 / 國際通", "desc": "沖繩麵、石垣牛牛排、島料理居酒屋", "search_loc": "國際通"},
-        {"name": "美國村 / 北谷 / 恩納村", "desc": "美式漢堡、阿古豬涮涮鍋、海景海鮮", "search_loc": "美國村"},
-        {"name": "名護 / 本部", "desc": "本部牛、百年古家岸本食堂", "search_loc": "名護"},
-    ],
-}
-
 
 def is_prefecture_level_area(
     location: Optional[str],
 ) -> tuple[bool, Optional[str], Optional[list[dict[str, str]]]]:
-    """判斷地點是否為超大縣級區域且缺乏具體市/車站，需要主動反問收斂 (策略 A)"""
+    """判斷地點是否為超大縣級區域且缺乏具體市/車站，向後相容輔助函式"""
     if not location:
         return False, None, None
     clean = location.strip()
@@ -68,25 +35,32 @@ def is_prefecture_level_area(
 
     # 剝離「縣/県/府」一級行政區後綴 (北海道為固定固有詞不剝離)
     stripped = re.sub(r"[縣県府]$", "", clean).strip()
-    if stripped in PREFECTURE_DISAMBIGUATION_MAP:
-        return True, stripped, PREFECTURE_DISAMBIGUATION_MAP[stripped]
+    if clean.endswith(("縣", "県", "府")) or stripped in ("北海道", "沖繩", "沖縄"):
+        return True, stripped, None
 
     return False, None, None
 
 
-def generate_prefecture_disambiguation_prompt(pref: str, cuisine: Optional[str], options: list[dict[str, str]]) -> str:
-    """生成縣級大區主動反問導引文案"""
-    food_txt = f"「{cuisine}」" if cuisine and cuisine != "熱門人氣美食" else "美食"
+def generate_disambiguation_prompt(loc_str: str, options: list[Any]) -> str:
+    """生成廣域或模糊地點動態引導文案"""
     lines = [
-        f"🍱 **{pref}幅員遼闊（各主要市鎮與車站相距較遠），建議先鎖定具體區域搜尋{food_txt}！**\n",
+        f"🍱 **{loc_str}幅員遼闊或包含多個獨立聚落，建議先鎖定具體區域搜尋！**\n",
         "請問您目前位在哪個區域或靠近哪座車站呢？",
     ]
     for idx, opt in enumerate(options, 1):
-        lines.append(f"{idx}️⃣ **{opt['name']}**（{opt['desc']}）")
-    lines.append(
-        "\n💡 *您可以直接回覆數字（如「1」或「2」），或告訴我具體車站/城鎮名，亦可點擊下方 📎 傳送您的即時位置！*"
-    )
+        name = opt.name if hasattr(opt, "name") else (opt.get("name", "") if isinstance(opt, dict) else str(opt))
+        desc = opt.desc if hasattr(opt, "desc") else (opt.get("desc", "") if isinstance(opt, dict) else "")
+        if desc:
+            lines.append(f"{idx}️⃣ **{name}**（{desc}）")
+        else:
+            lines.append(f"{idx}️⃣ **{name}**")
+    lines.append("\n💡 您可以直接回覆數字（如「1」或「2」），或告訴我具體車站/城鎮名！")
     return "\n".join(lines)
+
+
+def generate_prefecture_disambiguation_prompt(pref: str, cuisine: Optional[str], options: list[dict[str, str]]) -> str:
+    """生成縣級大區主動反問導引文案（向後相容包裝）"""
+    return generate_disambiguation_prompt(pref, options)
 
 
 INTENT_PARSER_SYSTEM_PROMPT = f"""你是一位嚴格的日本美食搜尋意圖解析器。請分析使用者的輸入與上下文，並輸出標準 JSON 格式。
@@ -161,7 +135,8 @@ async def execute_state_1_intent(
         messages.append({"role": "user", "content": user_message})
 
         t0 = time.time()
-        parsed, model, tokens = await fsm.llm_client.call_structured_json(messages, schema=IntentOutput)
+        parsed_raw, model, tokens = await fsm.llm_client.call_structured_json(messages, schema=IntentOutput)
+        parsed = dict(parsed_raw)
         latency = int((time.time() - t0) * 1000)
 
         await fsm.trace_logger.log_step(
@@ -318,17 +293,42 @@ async def execute_state_1_intent(
     loc_str = parsed.get("location")
     resolved_coords: Optional[tuple[float, float]] = parsed.get("coords")
 
-    # 策略 A：縣級/超大區域主動反問收斂 (若未指定具體市鎮/車站，如「靜岡」、「長野」、「北海道」)
-    if intent in ("search", "more") and loc_str and not resolved_coords:
-        is_pref, pref_name, pref_options = is_prefecture_level_area(loc_str)
-        if is_pref and pref_name and pref_options:
+    # 策略 A：動態廣域/多聚落模糊地點主動反問收斂 (由 LLM 世界知識判定，防範硬編碼映射)
+    is_ambiguous = bool(parsed.get("is_location_ambiguous"))
+    suggested_sub_areas = parsed.get("suggested_sub_areas") or []
+
+    if intent in ("search", "more", "need_location") and loc_str and not resolved_coords:
+        if is_ambiguous and len(suggested_sub_areas) >= 2:
+            prompt_text = generate_disambiguation_prompt(loc_str, suggested_sub_areas)
             parsed["intent"] = "need_location"
-            parsed["need_location_prompt"] = generate_prefecture_disambiguation_prompt(
-                pref_name, parsed.get("cuisine"), pref_options
-            )
-            parsed["suggested_locations"] = [opt["search_loc"] for opt in pref_options]
+            parsed["need_location_prompt"] = prompt_text
+            suggested_loc_keys = []
+            for opt in suggested_sub_areas:
+                s_loc = getattr(opt, "search_loc", None) or (opt.get("search_loc") if isinstance(opt, dict) else None)
+                s_name = getattr(opt, "name", None) or (opt.get("name") if isinstance(opt, dict) else str(opt))
+                suggested_loc_keys.append(s_loc or s_name)
+            parsed["suggested_locations"] = suggested_loc_keys
             parsed["pending_cuisine"] = parsed.get("cuisine")
             parsed["coords"] = None
+
+            # 設置 early_response
+            setattr(fsm, "early_response", prompt_text)
+
+            # 更新 Session working memory
+            if chat_id:
+                try:
+                    upd_fn = getattr(fsm.session_repo, "update_working_memory", None)
+                    if callable(upd_fn):
+                        res = upd_fn(
+                            chat_id=chat_id,
+                            suggested_locations=parsed["suggested_locations"],
+                            pending_cuisine=parsed.get("pending_cuisine"),
+                        )
+                        if inspect.isawaitable(res):
+                            await res
+                except Exception as e:
+                    logger.warning(f"Failed to persist disambiguation working memory: {e}")
+
             return parsed
 
     # 優先轉換明確地名為經緯度 (若尚未由 coords_search 提供座標)

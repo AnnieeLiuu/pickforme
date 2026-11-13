@@ -98,6 +98,7 @@ class FoodRecommendationFSM:
         self.cuisine_guide_service = cuisine_guide_service or LocalSpecialtyGuideService(
             guide_repo=SpecialtyGuideRepository()
         )
+        self.early_response: Optional[str] = None
         self._last_state_4_model: Optional[str] = None
         self._last_state_4_tokens: int = 0
 
@@ -215,6 +216,7 @@ class FoodRecommendationFSM:
         on_progress: Optional[Callable[[str], Awaitable[None]]] = None,
     ) -> str:
         """FSM 狀態機執行主入口"""
+        self.early_response = None
         await self.trace_logger.start_run(chat_id=chat_id, user_query=user_message)
 
         try:
@@ -260,6 +262,7 @@ class FoodRecommendationFSM:
             if intent == "need_location":
                 prompt_text = parsed.get("need_location_prompt")
                 if prompt_text:
+                    self.early_response = str(prompt_text)
                     if chat_id and parsed.get("suggested_locations"):
                         try:
                             upd_wm_fn = getattr(self.session_repo, "update_working_memory", None)
