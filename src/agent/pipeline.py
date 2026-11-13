@@ -429,6 +429,9 @@ class FoodRecommendationFSM:
             span_s2 = telemetry.start_span(
                 "search-places", input_data={"keyword": run_ctx.search_keyword, "lat": lat, "lng": lng}
             )
+            span_s2 = telemetry.start_span(
+                "search-places", input_data={"keyword": run_ctx.search_keyword, "lat": lat, "lng": lng}
+            )
             candidates = await self.execute_state_2_places_ladder(
                 lat=lat,
                 lng=lng,
@@ -445,6 +448,9 @@ class FoodRecommendationFSM:
                 return no_cand_msg
 
             # 3. State 3: 3 店家平行 Tabelog 查驗
+            span_s3 = telemetry.start_span(
+                "enrich-restaurants", input_data={"candidates": [c.get("name") for c in candidates]}
+            )
             span_s3 = telemetry.start_span(
                 "enrich-restaurants", input_data={"candidates": [c.get("name") for c in candidates]}
             )
@@ -472,6 +478,9 @@ class FoodRecommendationFSM:
                 )
 
             # 4. State 4: 單輪卡片生成
+            span_s4 = telemetry.start_span(
+                "synthesize-recommendations", input_data={"store_count": len(enriched_stores)}
+            )
             span_s4 = telemetry.start_span(
                 "synthesize-recommendations", input_data={"store_count": len(enriched_stores)}
             )

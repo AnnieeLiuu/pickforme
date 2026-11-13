@@ -1,16 +1,11 @@
 from __future__ import annotations
 
-import contextvars
 import logging
 from typing import Any, Optional
 
 from src.config import settings
 
 logger = logging.getLogger(__name__)
-
-# Task-local / Thread-local context tracking for active trace and span
-_current_trace: contextvars.ContextVar[Optional[Any]] = contextvars.ContextVar("_current_trace", default=None)
-_current_span: contextvars.ContextVar[Optional[Any]] = contextvars.ContextVar("_current_span", default=None)
 
 
 class NoOpSpan:
@@ -19,10 +14,10 @@ class NoOpSpan:
     def __init__(self, name: str = "noop") -> None:
         self.name = name
 
-    def end(self, **kwargs: Any) -> NoOpSpan:
+    def end(self, *args: Any, **kwargs: Any) -> NoOpSpan:
         return self
 
-    def update(self, **kwargs: Any) -> NoOpSpan:
+    def update(self, *args: Any, **kwargs: Any) -> NoOpSpan:
         return self
 
     def span(self, *args: Any, **kwargs: Any) -> NoOpSpan:
@@ -48,11 +43,11 @@ class NoOpSpan:
 
 
 class TelemetryManager:
-    """Production telemetry facade integrating Langfuse with graceful degradation.
+    """Production telemetry facade integrating Langfuse 5.x with graceful degradation.
 
     Strictly satisfies:
     1. Zero live network calls during tests (ENVIRONMENT == 'test' or missing keys).
-    2. ContextVars for non-invasive span propagation without modifying service signatures.
+    2. Uses Langfuse 5.x OpenTelemetry-native observation architecture.
     3. Fail-open resilience: Telemetry failures never affect core business logic.
     """
 
@@ -98,32 +93,32 @@ class TelemetryManager:
         tags: Optional[list[str]] = None,
         metadata: Optional[dict[str, Any]] = None,
     ) -> Any:
-        """Starts a top-level Trace for a user turn or returns a NoOpSpan."""
-        # Always reset active child span when a new trace starts
-        _current_span.set(None)
-
+        """Starts a top-level Trace (as_type='chain') for a user turn or returns a NoOpSpan."""
         client = self._get_client()
         if not client:
-            noop = NoOpSpan(name=name)
-            _current_trace.set(noop)
-            return noop
+            return NoOpSpan(name=name)
 
         try:
-            trace = client.trace(
-                name=name,
+            from langfuse import propagate_attributes
+
+            # Propagate attributes to OpenTelemetry context
+            propagate_attributes(
                 session_id=session_id,
                 user_id=user_id,
-                input=input_data,
                 tags=tags or ["fsm", settings.ENVIRONMENT],
                 metadata=metadata or {},
+            ).__enter__()
+
+            trace = client.start_observation(
+                name=name,
+                as_type="chain",
+                input=input_data,
+                metadata=metadata or {},
             )
-            _current_trace.set(trace)
             return trace
         except Exception as e:
             logger.warning("Error starting Langfuse trace %s: %s", name, e, exc_info=False)
-            noop = NoOpSpan(name=name)
-            _current_trace.set(noop)
-            return noop
+            return NoOpSpan(name=name)
 
     def start_span(
         self,
@@ -131,28 +126,22 @@ class TelemetryManager:
         input_data: Optional[Any] = None,
         metadata: Optional[dict[str, Any]] = None,
     ) -> Any:
-        """Starts a child span under the active span or trace."""
+        """Starts a child span under the active trace context."""
         client = self._get_client()
-        parent = _current_span.get() or _current_trace.get()
-
-        if not client or not parent or isinstance(parent, NoOpSpan):
-            noop = NoOpSpan(name=name)
-            _current_span.set(noop)
-            return noop
+        if not client:
+            return NoOpSpan(name=name)
 
         try:
-            span = parent.span(
+            span = client.start_observation(
                 name=name,
+                as_type="span",
                 input=input_data,
                 metadata=metadata or {},
             )
-            _current_span.set(span)
             return span
         except Exception as e:
             logger.warning("Error starting Langfuse span %s: %s", name, e, exc_info=False)
-            noop = NoOpSpan(name=name)
-            _current_span.set(noop)
-            return noop
+            return NoOpSpan(name=name)
 
     def end_span(
         self,
@@ -163,40 +152,38 @@ class TelemetryManager:
     ) -> None:
         """Ends an active span safely."""
         if not span or isinstance(span, NoOpSpan):
-            _current_span.set(None)
             return
 
         try:
-            kwargs: dict[str, Any] = {}
+            update_kwargs: dict[str, Any] = {}
             if output_data is not None:
-                kwargs["output"] = output_data
+                update_kwargs["output"] = output_data
             if status_message is not None:
-                kwargs["status_message"] = status_message
+                update_kwargs["status_message"] = status_message
             if level is not None:
-                kwargs["level"] = level
-            span.end(**kwargs)
+                update_kwargs["level"] = level
+
+            if update_kwargs:
+                span.update(**update_kwargs)
+            span.end()
         except Exception as e:
             logger.warning("Error ending Langfuse span: %s", e, exc_info=False)
-        finally:
-            _current_span.set(None)
 
     def end_trace(
         self,
         trace: Any,
         output_data: Optional[Any] = None,
     ) -> None:
-        """Updates and concludes the top-level trace."""
+        """Concludes the top-level trace."""
         if not trace or isinstance(trace, NoOpSpan):
-            _current_trace.set(None)
             return
 
         try:
             if output_data is not None:
                 trace.update(output=output_data)
+            trace.end()
         except Exception as e:
             logger.warning("Error concluding Langfuse trace: %s", e, exc_info=False)
-        finally:
-            _current_trace.set(None)
 
     def record_generation(
         self,
@@ -210,11 +197,9 @@ class TelemetryManager:
         status_message: Optional[str] = None,
         latency_ms: Optional[float] = None,
     ) -> None:
-        """Records a model generation observation attached to current active span/trace."""
+        """Records a model generation observation attached to current active trace context."""
         client = self._get_client()
-        parent = _current_span.get() or _current_trace.get()
-
-        if not client or not parent or isinstance(parent, NoOpSpan):
+        if not client:
             return
 
         try:
@@ -222,17 +207,28 @@ class TelemetryManager:
             if latency_ms is not None:
                 metadata["latency_ms"] = latency_ms
 
-            parent.generation(
+            # Map usage dict to Langfuse 5.x usage_details
+            usage_details: Optional[dict[str, int]] = None
+            if usage:
+                usage_details = {
+                    "input": usage.get("input", 0),
+                    "output": usage.get("output", 0),
+                    "total": usage.get("total", 0),
+                }
+
+            gen = client.start_observation(
                 name=name,
+                as_type="generation",
                 model=model,
                 input=prompt,
                 output=completion,
                 model_parameters=model_parameters or {},
-                usage=usage,
-                level=level,
+                usage_details=usage_details,
+                level=level,  # type: ignore[arg-type]
                 status_message=status_message,
                 metadata=metadata,
             )
+            gen.end()
         except Exception as e:
             logger.warning("Error recording Langfuse generation: %s", e, exc_info=False)
 

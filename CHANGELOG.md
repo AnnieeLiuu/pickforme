@@ -6,6 +6,10 @@
 
 ## [Unreleased]
 
+### Fixed
+- **Langfuse 5.x OpenTelemetry 原生觀測架構適配 (`src/services/telemetry.py`)**：
+  - 全面遷移至 Langfuse 5.x 之 OpenTelemetry 原生觀察體系，以 `propagate_attributes` 自動傳遞 `session_id`/`user_id`/`tags`，以 `start_observation(as_type="chain"|"span"|"generation")` 精準生成 Trace、Span 與 Generation，徹底解決舊版 client API 不相容問題。
+
 ### Added
 - **Langfuse 線上可觀測性與即時鏈路追蹤整合 (`src/services/telemetry.py`, `src/agent/pipeline.py`, `src/agent/llm_client.py`, `src/config.py`)**：
   - **遵循 Langfuse 官方最佳實踐 (`github.com/langfuse/skills`)**：以對話輪次為單位建立動詞優先的靜態 Trace (`handle-user-request`)，綁定 `session_id` 與 `user_id`；以靜態 Span（`classify-intent`, `search-places`, `enrich-restaurants`, `synthesize-recommendations`, `handle-chitchat`, `explore-culture`）細緻劃分 4-Stage 狀態機與各分支；底層 LLM 呼叫記錄為 Generation，精準掌握模型降級、Token 消耗（`input`/`output`/`total`）、延遲分佈與壞案例標註。

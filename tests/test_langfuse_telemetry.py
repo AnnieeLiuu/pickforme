@@ -50,14 +50,28 @@ def test_telemetry_enabled_mock_client():
     mock_client = MagicMock()
     mock_trace = MagicMock()
     mock_span = MagicMock()
-    mock_client.trace.return_value = mock_trace
-    mock_trace.span.return_value = mock_span
+    mock_gen = MagicMock()
+
+    def mock_start_observation(name, as_type="span", **kwargs):
+        if as_type == "chain":
+            return mock_trace
+        elif as_type == "generation":
+            return mock_gen
+        return mock_span
+
+    mock_client.start_observation.side_effect = mock_start_observation
 
     mgr = TelemetryManager()
     mgr._client = mock_client
     mgr._initialized = True
 
-    with patch("src.services.telemetry.settings", custom_settings):
+    with (
+        patch("src.services.telemetry.settings", custom_settings),
+        patch("langfuse.propagate_attributes") as mock_propagate,
+    ):
+        mock_ctx = MagicMock()
+        mock_propagate.return_value = mock_ctx
+
         # 1. Start Trace
         trace = mgr.start_trace(
             name="handle-user-request",
@@ -66,20 +80,19 @@ def test_telemetry_enabled_mock_client():
             input_data={"message": "東京拉麵"},
         )
         assert trace == mock_trace
-        mock_client.trace.assert_called_once_with(
+        mock_client.start_observation.assert_called_with(
             name="handle-user-request",
-            session_id="12345",
-            user_id="12345",
+            as_type="chain",
             input={"message": "東京拉麵"},
-            tags=["fsm", "production"],
             metadata={},
         )
 
         # 2. Start Span
         span = mgr.start_span("classify-intent", input_data={"query": "東京拉麵"})
         assert span == mock_span
-        mock_trace.span.assert_called_once_with(
+        mock_client.start_observation.assert_called_with(
             name="classify-intent",
+            as_type="span",
             input={"query": "東京拉麵"},
             metadata={},
         )
@@ -93,19 +106,28 @@ def test_telemetry_enabled_mock_client():
             usage={"input": 10, "output": 20, "total": 30},
             latency_ms=150.5,
         )
-        mock_span.generation.assert_called_once()
-        gen_call_kwargs = mock_span.generation.call_args.kwargs
-        assert gen_call_kwargs["name"] == "llm-call:gemini"
-        assert gen_call_kwargs["model"] == "gemini-2.5-flash"
-        assert gen_call_kwargs["usage"] == {"input": 10, "output": 20, "total": 30}
-        assert gen_call_kwargs["metadata"]["latency_ms"] == 150.5
+        mock_client.start_observation.assert_called_with(
+            name="llm-call:gemini",
+            as_type="generation",
+            model="gemini-2.5-flash",
+            input=[{"role": "user", "content": "hi"}],
+            output='{"intent": "search"}',
+            model_parameters={},
+            usage_details={"input": 10, "output": 20, "total": 30},
+            level="DEFAULT",
+            status_message=None,
+            metadata={"latency_ms": 150.5},
+        )
+        mock_gen.end.assert_called_once()
 
         # 4. End Span & End Trace
         mgr.end_span(span, output_data={"status": "ok"})
-        mock_span.end.assert_called_once_with(output={"status": "ok"})
+        mock_span.update.assert_called_once_with(output={"status": "ok"})
+        mock_span.end.assert_called_once()
 
         mgr.end_trace(trace, output_data="最終卡片")
         mock_trace.update.assert_called_once_with(output="最終卡片")
+        mock_trace.end.assert_called_once()
 
 
 def test_telemetry_fail_open_resilience():
@@ -116,7 +138,7 @@ def test_telemetry_fail_open_resilience():
         LANGFUSE_SECRET_KEY="sk-lf-prod",
     )
     mock_client = MagicMock()
-    mock_client.trace.side_effect = RuntimeError("Network timeout to Langfuse Cloud")
+    mock_client.start_observation.side_effect = RuntimeError("Network timeout to Langfuse Cloud")
 
     mgr = TelemetryManager()
     mgr._client = mock_client
