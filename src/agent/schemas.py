@@ -15,6 +15,23 @@ class SubAreaOption(BaseModel):
     )
 
 
+class AreaDisambiguationOutput(BaseModel):
+    """廣域或模糊地名快速消歧義判定結構化輸出合約"""
+
+    is_location_ambiguous: bool = Field(
+        default=False,
+        description="地點是否為廣域都道府縣、大型海島/地區、或缺乏單一 800m 檢索中心點之模糊區域（例如：靜岡溫泉街、北海道、長野滑雪、九州）",
+    )
+    ambiguity_reason: Optional[str] = Field(
+        default=None,
+        description="若過於廣域模糊，簡要說明原因",
+    )
+    suggested_sub_areas: list[SubAreaOption] = Field(
+        default_factory=list,
+        description="若地點過於廣域模糊，提供 2~3 個最具代表性、且有明確 800m 車站或商圈中心的候選點（含 name, desc, search_loc）",
+    )
+
+
 class IntentOutput(BaseModel):
     """Stage 1 意圖解析結構化輸出合約 (借鏡 PydanticAI Schema-Driven & Semantic Validation)"""
 

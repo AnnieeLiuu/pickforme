@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 import pytest
+from src.agent.core import AgentEngine
 from src.bot.handlers import TelegramBotHandler
 from src.db.repositories.session import SessionRepository
 
@@ -61,6 +62,15 @@ async def test_prewarm_wide_area_prompt_hokkaido():
     mock_prewarm = AsyncMock()
     session_repo = InMemorySessionRepo()
     agent_engine = AsyncMock()
+    agent_engine.disambiguate_area.return_value = (
+        True,
+        "北海道",
+        [
+            {"name": "札幌", "desc": "札幌拉麵", "search_loc": "札幌車站"},
+            {"name": "函館", "desc": "函館海鮮", "search_loc": "函館車站"},
+            {"name": "小樽", "desc": "小樽壽司", "search_loc": "小樽車站"},
+        ],
+    )
 
     handler = TelegramBotHandler(
         bot=mock_bot,
@@ -96,7 +106,7 @@ async def test_prewarm_wide_area_prompt_hokkaido():
 
 @pytest.mark.asyncio
 async def test_prewarm_wide_area_select_option():
-    """Test 2: Following prompt, user inputs '1' -> creates job for 札幌 and clears state."""
+    """Test 2: Following prompt, user inputs '1' -> creates job for 靜岡市區 and clears state."""
     mock_bot = AsyncMock()
     mock_prewarm = AsyncMock()
     mock_worker = AsyncMock()
@@ -104,6 +114,15 @@ async def test_prewarm_wide_area_select_option():
     mock_prewarm.create_job.return_value = uuid4()
     session_repo = InMemorySessionRepo()
     agent_engine = AsyncMock()
+    agent_engine.disambiguate_area.return_value = (
+        True,
+        "靜岡",
+        [
+            {"name": "靜岡市區", "desc": "靜岡車站周邊", "search_loc": "靜岡車站"},
+            {"name": "熱海", "desc": "熱海海景溫泉海鮮", "search_loc": "熱海車站"},
+            {"name": "濱松", "desc": "濱名湖鰻魚飯與濱松餃子", "search_loc": "濱松車站"},
+        ],
+    )
 
     handler = TelegramBotHandler(
         bot=mock_bot,
@@ -149,6 +168,15 @@ async def test_prewarm_wide_area_select_all():
     mock_prewarm.create_job.side_effect = [uuid4(), uuid4(), uuid4()]
     session_repo = InMemorySessionRepo()
     agent_engine = AsyncMock()
+    agent_engine.disambiguate_area.return_value = (
+        True,
+        "北海道",
+        [
+            {"name": "札幌", "desc": "札幌拉麵", "search_loc": "札幌車站"},
+            {"name": "函館", "desc": "函館海鮮", "search_loc": "函館車站"},
+            {"name": "小樽", "desc": "小樽壽司", "search_loc": "小樽車站"},
+        ],
+    )
 
     handler = TelegramBotHandler(
         bot=mock_bot,
@@ -193,6 +221,15 @@ async def test_prewarm_wide_area_cancel():
     mock_prewarm = AsyncMock()
     session_repo = InMemorySessionRepo()
     agent_engine = AsyncMock()
+    agent_engine.disambiguate_area.return_value = (
+        True,
+        "長野",
+        [
+            {"name": "長野市區", "desc": "善光寺、長野站", "search_loc": "長野車站"},
+            {"name": "松本", "desc": "松本城、信州蕎麥麵", "search_loc": "松本車站"},
+            {"name": "輕井澤", "desc": "度假村、法式料理", "search_loc": "輕井澤車站"},
+        ],
+    )
 
     handler = TelegramBotHandler(
         bot=mock_bot,
@@ -224,6 +261,24 @@ async def test_prewarm_wide_area_fallback_on_new_command_or_query():
     mock_prewarm = AsyncMock()
     session_repo = InMemorySessionRepo()
     agent_engine = AsyncMock()
+    agent_engine.disambiguate_area.side_effect = [
+        (
+            True,
+            "北海道",
+            [
+                {"name": "札幌", "desc": "札幌拉麵", "search_loc": "札幌車站"},
+                {"name": "函館", "desc": "函館海鮮", "search_loc": "函館車站"},
+            ],
+        ),
+        (
+            True,
+            "靜岡",
+            [
+                {"name": "靜岡市區", "desc": "靜岡車站", "search_loc": "靜岡車站"},
+                {"name": "熱海", "desc": "熱海溫泉", "search_loc": "熱海車站"},
+            ],
+        ),
+    ]
     agent_engine.run_agent.return_value = "推薦的新宿燒肉店家..."
 
     handler = TelegramBotHandler(
@@ -270,6 +325,7 @@ async def test_prewarm_regular_area_direct_creation():
     mock_prewarm.create_job.return_value = uuid4()
     session_repo = InMemorySessionRepo()
     agent_engine = AsyncMock()
+    agent_engine.disambiguate_area.return_value = (False, "箱根", [])
 
     handler = TelegramBotHandler(
         bot=mock_bot,
@@ -343,3 +399,130 @@ async def test_session_repository_update_working_memory_pending_prewarm():
         with patch.object(repo, "get_session", AsyncMock(return_value={"last_recommended_ids": captured_payloads[-1]})):
             wm_cleared = await repo.update_working_memory(chat_id=888, clear_pending_prewarm=True)
             assert "pending_prewarm_options" not in wm_cleared
+
+
+@pytest.mark.asyncio
+async def test_prewarm_wide_area_shizuoka_onsen():
+    """Test 7: /prewarm 靜岡溫泉街 dynamically disambiguates into 熱海/修善寺 options."""
+    mock_bot = AsyncMock()
+    mock_prewarm = AsyncMock()
+    session_repo = InMemorySessionRepo()
+    agent_engine = AsyncMock()
+    agent_engine.disambiguate_area.return_value = (
+        True,
+        "靜岡溫泉街",
+        [
+            {"name": "熱海溫泉街", "desc": "海景布丁", "search_loc": "熱海溫泉"},
+            {"name": "修善寺溫泉街", "desc": "古湯蕎麥麵", "search_loc": "修善寺"},
+        ],
+    )
+    handler = TelegramBotHandler(
+        bot=mock_bot,
+        session_repo=session_repo,  # type: ignore[arg-type]
+        prewarm_repo=mock_prewarm,
+        agent_engine=agent_engine,
+    )
+    with patch("src.config.settings.TELEGRAM_ALLOWED_USER_ID", 0):
+        await handler.handle_update(_create_update("/prewarm 靜岡溫泉街", update_id=701))
+
+    mock_prewarm.create_job.assert_not_called()
+    wm = await session_repo.get_working_memory(12345)
+    assert "pending_prewarm_options" in wm
+    pending = wm["pending_prewarm_options"]
+    assert pending["pref"] == "靜岡溫泉街"
+    assert len(pending["options"]) == 2
+    mock_bot.send_message.assert_called_once()
+    sent_text = mock_bot.send_message.call_args[1]["text"]
+    assert "熱海溫泉街" in sent_text
+    assert "修善寺溫泉街" in sent_text
+
+
+@pytest.mark.asyncio
+async def test_prewarm_wide_area_fail_open_on_timeout_or_error():
+    """Test 8: If disambiguate_area times out or raises exception, fail open to direct creation."""
+    mock_bot = AsyncMock()
+    mock_prewarm = AsyncMock()
+    mock_worker = AsyncMock()
+    mock_worker.process_next_job.return_value = True
+    mock_prewarm.create_job.return_value = uuid4()
+    session_repo = InMemorySessionRepo()
+    agent_engine = AsyncMock()
+    agent_engine.disambiguate_area.side_effect = TimeoutError("LLM call timed out")
+
+    handler = TelegramBotHandler(
+        bot=mock_bot,
+        session_repo=session_repo,  # type: ignore[arg-type]
+        prewarm_repo=mock_prewarm,
+        agent_engine=agent_engine,
+        prewarm_worker=mock_worker,
+    )
+    with patch("src.config.settings.TELEGRAM_ALLOWED_USER_ID", 0):
+        await handler.handle_update(_create_update("/prewarm 熊本", update_id=801))
+        await asyncio.sleep(0)
+
+    mock_prewarm.create_job.assert_called_once_with(area_name="熊本", target_count=20, chat_id=12345)
+    mock_worker.process_next_job.assert_called_once()
+    wm = await session_repo.get_working_memory(12345)
+    assert "pending_prewarm_options" not in wm
+
+
+@pytest.mark.asyncio
+async def test_agent_engine_disambiguate_area_ambiguous():
+    """Test AgentEngine.disambiguate_area correctly parses structured LLM output for ambiguous concepts."""
+    llm_client = AsyncMock()
+    llm_client.call_structured_json.return_value = (
+        {
+            "is_location_ambiguous": True,
+            "ambiguity_reason": "靜岡縣內溫泉眾多且分散",
+            "suggested_sub_areas": [
+                {"name": "熱海溫泉街", "desc": "海景布丁", "search_loc": "熱海溫泉"},
+                {"name": "修善寺溫泉街", "desc": "古湯蕎麥麵", "search_loc": "修善寺"},
+            ],
+        },
+        "test-model",
+        50,
+    )
+    engine = AgentEngine(llm_client=llm_client)
+    is_ambig, area_name, options = await engine.disambiguate_area("靜岡溫泉街")
+
+    assert is_ambig is True
+    assert area_name == "靜岡溫泉街"
+    assert len(options) == 2
+    assert options[0]["name"] == "熱海溫泉街"
+    assert options[0]["search_loc"] == "熱海溫泉"
+    assert options[1]["name"] == "修善寺溫泉街"
+
+
+@pytest.mark.asyncio
+async def test_agent_engine_disambiguate_area_unambiguous():
+    """Test AgentEngine.disambiguate_area returns unambiguous for specific spot."""
+    llm_client = AsyncMock()
+    llm_client.call_structured_json.return_value = (
+        {
+            "is_location_ambiguous": False,
+            "ambiguity_reason": None,
+            "suggested_sub_areas": [],
+        },
+        "test-model",
+        20,
+    )
+    engine = AgentEngine(llm_client=llm_client)
+    is_ambig, area_name, options = await engine.disambiguate_area("箱根湯本")
+
+    assert is_ambig is False
+    assert area_name == "箱根湯本"
+    assert options == []
+
+
+@pytest.mark.asyncio
+async def test_agent_engine_disambiguate_area_fail_open_on_exception():
+    """Test AgentEngine.disambiguate_area safely catches exceptions and returns fail-open default."""
+    llm_client = AsyncMock()
+    llm_client.call_structured_json.side_effect = RuntimeError("Service unavailable")
+
+    engine = AgentEngine(llm_client=llm_client)
+    is_ambig, area_name, options = await engine.disambiguate_area("九州")
+
+    assert is_ambig is False
+    assert area_name == "九州"
+    assert options == []

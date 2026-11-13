@@ -245,20 +245,24 @@ class TelegramBotHandler:
                 area = text[len("預熱") :].strip()
 
             if area:
-                from src.agent.stages.intent import is_prefecture_level_area
+                try:
+                    is_ambig, ambig_name, ambig_options = await self.agent_engine.disambiguate_area(area)
+                except Exception as e:
+                    logger.warning(f"Disambiguation failed for '{area}', falling open: {e}")
+                    is_ambig, ambig_name, ambig_options = False, area, []
 
-                is_pref, pref_name, pref_options = is_prefecture_level_area(area)
-                if is_pref and pref_name and pref_options:
+                if is_ambig and ambig_options and len(ambig_options) >= 2:
+                    target_name = ambig_name or area
                     await self.session_repo.update_working_memory(
                         chat_id=chat_id,
-                        pending_prewarm_options={"pref": pref_name, "options": pref_options},
+                        pending_prewarm_options={"pref": target_name, "options": ambig_options},
                     )
                     lines = [
-                        f"♨️ **{pref_name}幅員遼闊，建議先鎖定特定精準商圈進行預熱快取！**\n",
+                        f"♨️ **{target_name}幅員遼闊或包含多個獨立商圈，建議先鎖定特定精準商圈進行預熱快取！**\n",
                         "請選擇您欲預熱的目標商圈：",
                     ]
-                    for idx, opt in enumerate(pref_options, 1):
-                        lines.append(f"{idx}️⃣ **{opt['name']}**（{opt['desc']}）")
+                    for idx, opt in enumerate(ambig_options, 1):
+                        lines.append(f"{idx}️⃣ **{opt['name']}**（{opt.get('desc', '')}）")
                     lines.append(
                         "\n💡 請直接回覆「1」、「2」、「3」鎖定商圈，或回覆「全部」一次預熱所有商圈；若想放棄請回覆「取消」！"
                     )
