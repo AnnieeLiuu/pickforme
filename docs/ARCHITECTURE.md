@@ -148,10 +148,10 @@ flowchart TD
         CuisineGuide --> ReturnGuideCard["回傳在地深度導覽選單卡片<br/>(寫入 suggested_cuisines 與 last_explore_category)"] --> EndResponse
         ReturnGuideCard -.->|"下一輪輸入「1」或「手刷濃茶」或「和菓子」<br/>(由 SyncMemory 雙軌感知自動繼承)"| ParseIntent
 
-        CheckIntent -- "search / more (全品類鎖定檢索：吃/喝/伴手禮)" --> CheckPrefecture{"地理場景 1 判定：是否為縣級超大區域?<br/>is_prefecture_level_area (靜岡/長野/北海道/沖繩)"}
+        CheckIntent -- "search / more (全品類鎖定檢索：吃/喝/伴手禮)" --> CheckPrefecture{"地理場景 1 判定：是否為廣域或模糊地點?<br/>is_location_ambiguous (靜岡/長野/北海道/靜岡溫泉街)"}
         
-        %% 場景 1: 縣級超大區域
-        CheckPrefecture -- "是 (縣級廣域無具體市/站)" --> DisambiguatePref["策略 A: 縣級主動反問收斂<br/>1. 產出在地分區選單 (如 1.靜岡車站 / 2.濱松 / 3.沼津港)<br/>2. 暫存 suggested_locations & pending_cuisine 於 Working Memory<br/>3. 回傳 Telegram 引導，下輪輸入 1/2/3 或城鎮名無縫接軌"] --> EndResponse
+        %% 場景 1: 廣域或跨聚落模糊區域
+        CheckPrefecture -- "是 (廣域或跨聚落無單一 800m 中心)" --> DisambiguatePref["策略 A: LLM 動態主動反問收斂 (suggested_sub_areas)<br/>1. 微型 LLM 動態產出在地子商圈選單 (如熱海/修善寺或靜岡車站/濱松)<br/>2. 暫存 suggested_locations & pending_cuisine 於 Working Memory<br/>3. 回傳 Telegram 引導，下輪輸入 1/2/3 或城鎮名無縫接軌"] --> EndResponse
         DisambiguatePref -.->|"下一輪輸入「1/2/3」或城鎮名<br/>(由 SyncMemory 雙軌感知自動繼承)"| ParseIntent
         
         %% 場景 2 & 3: 進入座標定錨
@@ -228,7 +228,7 @@ flowchart TD
 
 | 場景類型 | 典型輸入範例 | 狀態機判定依據 | 處置策略與流轉邏輯 | 步行指引與輸出效果 |
 | :--- | :--- | :--- | :--- | :--- |
-| **場景 1：縣級超大區域<br/>(Tier 1 廣域收斂)** | 「靜岡 鰻魚飯」<br/>「長野 蕎麥麵」<br/>「北海道 拉麵」<br/>「沖繩 居酒屋」 | `is_prefecture_level_area(loc) == True`<br/>（命中縣名且無市/區/站具體後綴） | **策略 A：主動反問收斂 (State 1 攔截)**<br/>1. 0ms 攔截 Places 盲搜<br/>2. 回傳分區選單（如 1. 靜岡車站 / 2. 濱松 / 3. 沼津港）<br/>3. Working Memory 暫存 `suggested_locations` 與 `pending_cuisine`<br/>4. 下一輪輸入「1/2/3」或「濱松」自動無縫繼承料理並鎖定檢索 | 「🍱 靜岡幅員遼闊，建議先鎖定具體區域...」<br/>（引導遊客精準定錨，杜絕跨 80 公里瞎搜） |
+| **場景 1：廣域與模糊多聚落區域<br/>(Tier 1 LLM 動態消歧義收斂)** | 「靜岡 鰻魚飯」<br/>「長野 蕎麥麵」<br/>「北海道 拉麵」<br/>「靜岡溫泉街」<br/>「長野滑雪」 | `is_location_ambiguous == True`<br/>（微型 LLM 世界知識動態判定，非硬編碼字典） | **策略 A：主動反問收斂 (State 1 攔截)**<br/>1. 0 額外網路延遲（與意圖解析同次單一 Prompt 產出）<br/>2. 微型 LLM 動態產出 2~3 個具代表性具體子商圈選單（如 1. 靜岡車站 / 2. 濱松 / 3. 沼津港；或 1. 熱海溫泉街 / 2. 修善寺溫泉街）<br/>3. Working Memory 暫存 `suggested_locations` 與 `pending_cuisine`<br/>4. 下一輪輸入「1/2/3」或城鎮名自動無縫繼承料理並鎖定檢索<br/>5. 若 LLM 逾時或無子商圈，啟動 Fail-Open 安全直通 | 「🍱 靜岡幅員遼闊，建議先鎖定具體區域...」<br/>（引導遊客精準定錨，杜絕跨 80 公里瞎搜市中心） |
 | **場景 2：度假景區/多商圈山區<br/>(Tier 2 景區導航)** | 「箱根 蕎麥麵」<br/>「輕井澤 咖啡」<br/>「草津溫泉 壽喜燒」<br/>「日光 豆皮料理」 | `is_wide_area_origin(loc) == True`<br/>（命中景區且尾綴非「站/駅/口」） | **方案 2：景區最近車站提取模式 (State 2/3)**<br/>1. State 2/3 豁免幾何中心距離扣分 (`dist_penalty = 0.0`)，保護偏遠名店<br/>2. State 3 透過 `STATION_WALK_PATTERN` 萃取 Tabelog 交通手段之最近車站<br/>3. `_align_walking_and_station` 格式化步行描述<br/>4. State 4 注入廣域景區特派員提醒 | `🚶 步行距離：從「強羅站」步行約 5 分鐘`<br/>**嚴禁拼接廣域中心點大跨度米數**<br/>（杜絕「從「箱根」步行約 35 分鐘 (2800m)」） |
 | **場景 3：都會商圈 / 具體車站<br/>(標準點對點)** | 「新宿 拉麵」<br/>「銀座 壽司」<br/>「箱根湯本站 懷石」<br/>「強羅車站 豆腐」 | `is_wide_area_origin == False`<br/>且非縣級大區（或具備站點後綴） | **標準階梯半徑搜尋 (State 2/3)**<br/>1. 以精準坐標或站點為起點，實施 800m ➔ 1200m ➔ 1800m 階梯擴圈<br/>2. 嚴格計算距定位點之實際直線距離與物理步程 | `🚶 步行距離：從「新宿」步行約 4 分鐘 (320m)`<br/>`🚶 步行距離：從「箱根湯本站」步行約 3 分鐘 (240m)`<br/>（標準點對點，精準實用） |
 

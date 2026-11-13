@@ -106,11 +106,11 @@ def test_architecture_fsm_mermaid_semantic_consistency() -> None:
         "subgraph State2",
         "subgraph State3",
         "subgraph State4",
-        # State 1 核心分支：快篩、探索導覽（吃/喝/伴手禮）、縣級廣域收斂
+        # State 1 核心分支：快篩、探索導覽（吃/喝/伴手禮）、廣域模糊動態收斂
         "QuickPass",
         "explore_cuisine",
         "explore_category",
-        "is_prefecture_level_area",
+        "is_location_ambiguous",
         # State 2 核心分支：地理三場景分流 (度假景區 vs 都會商圈)
         "is_wide_area_origin",
         "ScenicLadder",

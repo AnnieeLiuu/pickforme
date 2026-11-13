@@ -7,6 +7,9 @@
 ## [Unreleased]
 
 ### Added
+- **微型 LLM 動態地理歧義消解與多聚落子商圈解析 (`src/agent/schemas.py`, `src/agent/stages/intent.py`, `src/agent/core.py`, `src/bot/handlers.py`)**：
+  - **Dynamic LLM-driven Disambiguation**：升級 `IntentOutput` 與 `INTENT_PARSER_SYSTEM_PROMPT`，由微型 LLM 世界知識在單一推理回合中（0 額外網路延遲）動態判定廣域或模糊多聚落區域（如「靜岡溫泉街」、「北海道」、「長野滑雪」、「九州」），自動產出 2~3 個具代表性具體子商圈（含 `name`、`desc`、`search_loc`），回傳互動式選單並存入 Working Memory。
+  - **雙軌 Prewarm 門面解耦與容錯直通 (Fail-Open)**：在 `AgentEngine` 增設 `disambiguate_area` 門面方法並賦予 2 秒超時防護，Telegram `/prewarm` 指令於大區域或模糊地名時自動提示互動式選單；若遇 LLM 逾時或異常則安全降級 (fail-open) 照常排入預熱，杜絕例外崩潰。
 - **FastAPI Webhook 背景非同步派發 PrewarmWorker (`src/bot/handlers.py`, `tests/test_prewarm_wide_area.py`)**：
   - 在 Telegram Bot Handler 建立預熱任務後，自動透過 `asyncio.create_task` 派發 `PrewarmWorker.process_next_job()` 在背景執行，徹底解決無獨立常駐 Worker 時任務卡在 `pending` 的問題，預熱完成自動發送 Telegram 推播卡片。
 - **All-in-One 全方位快取預熱與三維度官方權威深度爬蟲 (`src/worker/prewarm.py`, `src/services/authority_scraper.py`, `src/services/cuisine_guide.py`)**：
@@ -31,6 +34,11 @@
   - **雙模式自由切換 Tab**：新增 `📡 即時線上 (15)` 與 `🎭 架構示範 (7)` 切換標籤，預設載入真實問答，同時保留 7 筆經典情境展示。
   - **FSM 河流圖動態點亮與節點審計穿透**：點擊任一真實問答即動態點亮該次執行所流經的 FSM 節點（包括 0ms QuickPassGate 快篩短路、文化特色導覽直出旁道、Places 800m 階梯檢索與 Tabelog 爬蟲接地），點擊各節點即可在右側審計抽屜查閱真實的 `tool_input`、`tool_output`、步驟耗時與 Telegram 最終推播卡片預覽。
   - **新增可觀測性契約測試 (`tests/test_observability_sync.py`)**：新增 `test_trace_to_river_adapter_integration` 單元測試，保證 Pages 儀表板模板與真實 Trace Payload 之契約永不脫節。
+
+### Changed
+- **徹底廢除硬編碼行政區字典並恪守防膨脹憲章 (`src/agent/stages/intent.py`, `docs/ARCHITECTURE.md`)**：
+  - **Eradication of Hardcoded Mapping**：徹底移除 `PREFECTURE_DISAMBIGUATION_MAP` 靜態字典，全面恪守 `AGENTS.md` 憲章中「嚴禁硬編碼跨語言異體字或同義字字典，必須採倒排索引動態構建或交由語言模型/外部標準 API 解析」之鐵則。
+  - **向後相容過渡橋接**：保留輕量化 `is_prefecture_level_area` 輔助函式，確保既有模組與呼叫端平滑過渡。
 
 ### Fixed
 - **修復 Pages 中控台總記錄筆數徽章動態連動 (`src/eval/templates/river_dashboard.html`, `public/index.html`)**：

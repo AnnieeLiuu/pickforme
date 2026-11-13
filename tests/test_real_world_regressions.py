@@ -1691,7 +1691,21 @@ async def test_regression_prefecture_disambiguation_menu_and_working_memory():
     fsm = FoodRecommendationFSM(
         llm_client=MagicMock(
             call_structured_json=AsyncMock(
-                return_value=({"intent": "search", "location": "靜岡", "cuisine": "鰻魚飯"}, "mock", 10)
+                return_value=(
+                    {
+                        "intent": "search",
+                        "location": "靜岡",
+                        "cuisine": "鰻魚飯",
+                        "is_location_ambiguous": True,
+                        "suggested_sub_areas": [
+                            {"name": "靜岡車站周邊", "desc": "駿府城、黑關東煮", "search_loc": "靜岡車站"},
+                            {"name": "濱松 / 濱名湖", "desc": "鰻魚名產地", "search_loc": "濱松車站"},
+                            {"name": "沼津港 / 熱海", "desc": "海鮮、溫泉街", "search_loc": "沼津港"},
+                        ],
+                    },
+                    "mock",
+                    10,
+                )
             )
         ),
         places_client=MagicMock(geocode_location=AsyncMock(return_value=None)),
@@ -2192,6 +2206,15 @@ async def test_regression_prewarm_cancellation_and_invalid_choice():
     mock_prewarm_repo = AsyncMock()
     mock_agent_engine = AsyncMock()
     mock_agent_engine.run_agent.return_value = "處理完成"
+    mock_agent_engine.disambiguate_area.return_value = (
+        True,
+        "北海道",
+        [
+            {"name": "札幌", "desc": "拉麵", "search_loc": "札幌車站"},
+            {"name": "函館", "desc": "海鮮", "search_loc": "函館車站"},
+            {"name": "小樽", "desc": "壽司", "search_loc": "小樽車站"},
+        ],
+    )
     session_repo = _InMemorySessionRepo()
 
     handler = TelegramBotHandler(
@@ -2251,3 +2274,84 @@ async def test_regression_prewarm_cancellation_and_invalid_choice():
         assert "pending_prewarm_options" not in wm4
         # 驗證無縫轉交 agent_engine 處理且無崩潰
         mock_agent_engine.run_agent.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_regression_llm_dynamic_area_disambiguation_shizuoka_onsen():
+    """Case 28: 驗證無靜態字典之動態 LLM 廣域概念反問 (例如「靜岡溫泉街」)：
+    1. 當使用者輸入廣域或包含多個獨立聚落之概念詞（如「靜岡溫泉街」），微型 LLM 動態輸出
+       is_location_ambiguous=True 與 suggested_sub_areas（例如熱海溫泉街、修善寺溫泉街），
+       絕不依賴寫死字典，亦不盲搜靜岡市中心車站。
+    2. State 1 FSM 攔截搜尋、設定 early_response，並將具體子區域存入 working memory。
+    3. AgentEngine.disambiguate_area Facade 同樣能無縫由 LLM 世界知識動態拆解並解析選項。
+    """
+    from src.agent.core import AgentEngine
+
+    # 1. 測試 FSM State 1 自然語言搜尋情境
+    repo = MagicMock()
+    repo.get_working_memory = AsyncMock(return_value={})
+    repo.update_working_memory = AsyncMock(return_value={})
+    mock_llm_json = AsyncMock(
+        return_value=(
+            {
+                "intent": "search",
+                "location": "靜岡溫泉街",
+                "cuisine": "熱門人氣美食",
+                "is_location_ambiguous": True,
+                "ambiguity_reason": "靜岡縣內並無單一「靜岡溫泉街」，伊豆半島各溫泉聚落（熱海、修善寺）相距甚遠無單一檢索中心。",
+                "suggested_sub_areas": [
+                    {"name": "熱海溫泉街", "desc": "海景、溫泉布丁、海鮮", "search_loc": "熱海溫泉"},
+                    {"name": "修善寺溫泉街", "desc": "百年古湯、竹林小徑", "search_loc": "修善寺溫泉"},
+                ],
+            },
+            "mock-llm",
+            15,
+        )
+    )
+
+    fsm = FoodRecommendationFSM(
+        llm_client=MagicMock(call_structured_json=mock_llm_json),
+        places_client=MagicMock(geocode_location=AsyncMock(return_value=None)),
+        session_repo=repo,
+        trace_logger=MagicMock(log_step=AsyncMock(), start_run=AsyncMock(), finish_run=AsyncMock()),
+    )
+
+    parsed = await fsm.execute_state_1_intent("靜岡溫泉街", None, [], chat_id=888)
+    assert parsed["intent"] == "need_location"
+    assert "need_location_prompt" in parsed
+    prompt = parsed["need_location_prompt"]
+    assert "靜岡溫泉街" in prompt
+    assert "熱海溫泉街" in prompt
+    assert "修善寺溫泉街" in prompt
+    # 確保 search_loc 鎖定為溫泉商圈，而非靜岡車站市中心
+    assert parsed.get("suggested_locations") == ["熱海溫泉", "修善寺溫泉"]
+    assert getattr(fsm, "early_response", None) == prompt
+
+    # 2. 測試 AgentEngine.disambiguate_area 獨立門面
+    mock_facade_llm = MagicMock()
+    mock_facade_llm.call_structured_json = AsyncMock(
+        return_value=(
+            {
+                "is_location_ambiguous": True,
+                "ambiguity_reason": "包含熱海與修善寺等多個獨立溫泉聚落",
+                "suggested_sub_areas": [
+                    {"name": "熱海溫泉街", "desc": "海景、溫泉布丁", "search_loc": "熱海溫泉"},
+                    {"name": "修善寺溫泉街", "desc": "百年古湯、竹林", "search_loc": "修善寺溫泉"},
+                ],
+            },
+            "mock-llm",
+            10,
+        )
+    )
+    engine = AgentEngine(
+        tool_executor=MagicMock(),
+        trace_logger=MagicMock(),
+        llm_client=mock_facade_llm,
+    )
+
+    is_ambig, norm, opts = await engine.disambiguate_area("靜岡溫泉街")
+    assert is_ambig is True
+    assert norm == "靜岡溫泉街"
+    assert len(opts) == 2
+    assert opts[0]["name"] == "熱海溫泉街"
+    assert opts[1]["name"] == "修善寺溫泉街"
