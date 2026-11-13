@@ -80,6 +80,10 @@ INTENT_PARSER_SYSTEM_PROMPT = f"""你是一位嚴格的日本美食搜尋意圖�
    邊界原則：
    - 凡指涉食品、甜點、糕點、飲品或地酒名產之伴手禮（如「抹茶甜點伴手禮」、「生八橋伴手禮」），屬於 "explore_cuisine" 或 "search"，嚴禁判為 non_food。
    - 美食主題景點（如「新橫濱拉麵博物館」、「啤酒博物館」、「築地市場」）屬於 "search" 或 "explore_cuisine"，嚴禁判為 non_food。
+8. "out_of_region": 使用者想尋找的地點、城市或國家不在日本境內（例如：台北、首爾、香港、紐約、巴黎、倫敦、曼谷、上海、新加坡、台南、台中、高雄等非日本地區）。請抽取 location，並將 intent 設為 "out_of_region"（即使使用者想吃的料理是拉麵或壽司，只要目標地點非日本即屬此類）。
+   邊界與消歧義原則：
+   - 異國料理防誤殺：若料理名稱包含外國名詞（如「台灣牛肉麵」、「韓式烤肉」、「美式漢堡」、「泰式料理」），但目標地點位於日本境內（如「新宿 台灣料理」、「東京 韓式烤肉」）或未指名地點，屬於合法的日本美食搜尋，絕對嚴禁判定為 out_of_region，必須判為 "search"（如 cuisine="台灣料理", location="新宿"）。
+   - 漢字同名地名消歧義：台日之間少數漢字同名地名（如「松山」、「板橋」、「三重」、「中山」），若問句無任何境外特徵詞（如「松山 鯛魚飯」、「板橋 拉麵」、「三重縣 燒肉」），預設視為日本境內地點（判定為 "search"）；只有在問句明確包含境外特徵詞（如「台北松山」、「新北板橋」、「捷運中山站」、「夜市」）時，才判為 "out_of_region"。
 
 地點模糊度判定規則 (is_location_ambiguous)：
 - 若 location 過於廣域（如都道府縣「北海道」、「長野」、「靜岡」；整座大島/大區如「九州」、「四國」；或缺乏單一 800m 徒步檢索中心點之跨多市鎮廣域名詞如「靜岡溫泉街」、「長野滑雪」、「東京老街」），請將 is_location_ambiguous 設為 true，並於 ambiguity_reason 簡述原因，同時於 suggested_sub_areas 提供 2~3 個最具代表性、各具特色的具體子商圈或城鎮名（含 name、desc、search_loc）。
@@ -307,6 +311,17 @@ async def execute_state_1_intent(
             f"如果您想品嚐當地的道地料理、排隊拉麵、燒肉或特色小吃，歡迎隨時告訴我地點與想吃的種類！"
         )
         setattr(fsm, "early_response", parsed["non_food_prompt"])
+        return parsed
+
+    # 若判定為非日本境外地點 (out_of_region)，立即提早返回，杜絕 downstream geocoding 與 need_location 覆寫
+    if intent == "out_of_region":
+        loc_hint = parsed.get("location") or "該地區"
+        parsed["out_of_region_prompt"] = (
+            f"🍱 抱歉！我是專注於**日本美食與特色餐廳**的特派員 PickForMe。\n\n"
+            f"您查詢的「{loc_hint}」不在日本境內，目前我暫時無法提供當地的餐廳推薦喔！\n\n"
+            f"💡 請告訴我你想在哪個**日本城市、車站或商圈**尋找美食（例如：東京、大阪、京都、福岡、札幌、沖繩）？"
+        )
+        setattr(fsm, "early_response", parsed["out_of_region_prompt"])
         return parsed
 
     loc_str = parsed.get("location")

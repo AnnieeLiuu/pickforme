@@ -260,6 +260,20 @@ class FoodRecommendationFSM:
                 telemetry.end_trace(trace, output_data=non_food_res)
                 return non_food_res
 
+            # 分支 0.6: 非日本境外地點 (out_of_region) 0ms 地理護欄果斷拒絕
+            if intent == "out_of_region":
+                out_of_region_res = str(
+                    parsed.get("out_of_region_prompt")
+                    or "🍱 抱歉！我是專注於日本美食的特派員 PickForMe，目前僅支援日本境內的美食推薦喔！"
+                )
+                await self.trace_logger.finish_run(
+                    status="completed",
+                    model_used="out_of_region_guardrail",
+                    total_tokens=0,
+                )
+                telemetry.end_trace(trace, output_data=out_of_region_res)
+                return out_of_region_res
+
             # 分支 A: 純閒聊 / 非美食問題
             if intent == "chitchat":
                 span_cc = telemetry.start_span("handle-chitchat", input_data={"message": user_message})

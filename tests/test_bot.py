@@ -114,3 +114,45 @@ async def test_telegram_handler_prewarm_command():
         args = mock_bot.send_message.call_args[1]
         assert "新宿御苑" in args["text"]
         assert "排入 Neon 預熱佇列" in args["text"]
+
+
+@pytest.mark.asyncio
+async def test_telegram_handler_location_guard_japan_and_non_japan():
+    mock_bot = AsyncMock()
+    mock_session_repo = AsyncMock()
+    handler = TelegramBotHandler(bot=mock_bot, session_repo=mock_session_repo)
+
+    # 1. 境外定位 (台北: 25.033, 121.565) -> 阻斷不入庫
+    taipei_update = {
+        "update_id": 1005,
+        "message": {
+            "message_id": 5,
+            "from": {"id": 100},
+            "chat": {"id": 100},
+            "location": {"latitude": 25.033, "longitude": 121.565},
+        },
+    }
+    with patch("src.config.settings.TELEGRAM_ALLOWED_USER_ID", 0):
+        await handler.handle_update(taipei_update)
+        mock_session_repo.update_location.assert_not_called()
+        mock_bot.send_message.assert_called_once()
+        assert "不在日本國境內" in mock_bot.send_message.call_args[1]["text"]
+
+    mock_bot.reset_mock()
+    mock_session_repo.reset_mock()
+
+    # 2. 日本境內定位 (東京: 35.6812, 139.7671) -> 正常更新入庫
+    tokyo_update = {
+        "update_id": 1006,
+        "message": {
+            "message_id": 6,
+            "from": {"id": 100},
+            "chat": {"id": 100},
+            "location": {"latitude": 35.6812, "longitude": 139.7671},
+        },
+    }
+    with patch("src.config.settings.TELEGRAM_ALLOWED_USER_ID", 0):
+        await handler.handle_update(tokyo_update)
+        mock_session_repo.update_location.assert_called_once_with(chat_id=100, lat=35.6812, lng=139.7671)
+        mock_bot.send_message.assert_called_once()
+        assert "已成功接收並記錄您的定位資訊" in mock_bot.send_message.call_args[1]["text"]

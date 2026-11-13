@@ -43,8 +43,9 @@ class IntentOutput(BaseModel):
         "need_location",
         "explore_cuisine",
         "non_food",
+        "out_of_region",
     ] = Field(
-        description='意圖分類：搜尋特定餐廳 ("search")、探索當地特色美食與文化 ("explore_cuisine")、換一批/風格轉向 ("more")、追問上一輪店家 ("follow_up")、閒聊 ("chitchat")、缺地點 ("need_location")、非餐飲購物服務 ("non_food")'
+        description='意圖分類：搜尋特定餐廳 ("search")、探索當地特色美食與文化 ("explore_cuisine")、換一批/風格轉向 ("more")、追問上一輪店家 ("follow_up")、閒聊 ("chitchat")、缺地點 ("need_location")、非餐飲購物服務 ("non_food")、非日本境外地點 ("out_of_region")'
     )
     non_food_item: Optional[str] = Field(
         default=None,

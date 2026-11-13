@@ -4,6 +4,7 @@ from typing import Any, Optional, Set
 
 from src.agent.core import AgentEngine
 from src.agent.devops import DevOpsSubagent
+from src.agent.gate import is_in_japan_bounds
 from src.config import settings
 from src.db.repositories.prewarm import PrewarmRepository
 from src.db.repositories.session import SessionRepository
@@ -107,6 +108,15 @@ class TelegramBotHandler:
         if location:
             lat = float(location.get("latitude", 0.0))
             lng = float(location.get("longitude", 0.0))
+            if not is_in_japan_bounds(lat, lng):
+                await self._send_telegram_message(
+                    chat_id,
+                    f"📍 收到您的定位資訊 (經緯度: {lat:.4f}, {lng:.4f})。\n\n"
+                    "🍱 抱歉！我是專注於日本美食的特派員 PickForMe，您目前的定位不在日本國境內，"
+                    "目前無法使用當前位置推薦附近的日本餐廳喔！\n\n"
+                    "💡 您可以直接輸入日本的地名或車站（例如「新宿 拉麵」、「京都 壽喜燒」），我將為您精選當地美食！",
+                )
+                return
             await self.session_repo.update_location(chat_id=chat_id, lat=lat, lng=lng)
             await self._send_telegram_message(
                 chat_id,

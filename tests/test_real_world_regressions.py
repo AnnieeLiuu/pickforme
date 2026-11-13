@@ -2580,3 +2580,97 @@ async def test_case_32_operating_hours_late_night_constraint_and_badges():
     score_a = calculate_foodie_score(filtered[0])
     score_b = calculate_foodie_score(filtered[1])
     assert score_a > score_b  # 3.70 > 3.85 - 0.45
+
+
+# ==============================================================================
+# Case 33: 非日本境外地點地理護欄 (out_of_region)
+# ==============================================================================
+@pytest.mark.asyncio
+async def test_case_33_out_of_region_guardrail_pipeline():
+    """Case 33.1: 境外地點「台北 拉麵」0ms 阻斷與 0 Downstream 調用
+
+    [真實痛點] 使用者輸入「台北 拉麵」時，系統搜尋了台灣台北店家，
+    Entity Resolver 還誤將台北「一真亭」比對至東京大久保已閉店的「一真亭」，
+    且合成卡片出現「建議備足日圓現鈔」與「建議備足台幣現鈔」的矛盾。
+    [防禦標準]
+    1. State 1 意圖解析標記 intent="out_of_region"，抽取 location="台北"。
+    2. FSM Pipeline 在 State 1 提早返回，0 Places API、0 Tabelog、0 Stage 4 LLM 調用。
+    3. 回覆明確指出「台北」不在日本境內，並溫和引導至日本城市/車站。
+    """
+    from src.agent.schemas import IntentOutput
+
+    mock_llm = MagicMock()
+    mock_llm.call_structured_json = AsyncMock(
+        return_value=(
+            IntentOutput(
+                intent="out_of_region",
+                location="台北",
+                cuisine="拉麵",
+            ),
+            "gpt-4o-mini",
+            20,
+        )
+    )
+    mock_llm.call_text = AsyncMock()
+
+    mock_places = MagicMock()
+    mock_places.geocode_location = AsyncMock()
+    mock_places.search_nearby_ladder = AsyncMock()
+
+    mock_tabelog = MagicMock()
+    mock_resolver = MagicMock()
+    mock_session_repo = MagicMock()
+    mock_session_repo.get_session = AsyncMock(return_value=None)
+    mock_session_repo.get_working_memory = AsyncMock(return_value={})
+
+    fsm = FoodRecommendationFSM(
+        llm_client=mock_llm,
+        places_client=mock_places,
+        tabelog_scraper=mock_tabelog,
+        entity_resolver=mock_resolver,
+        session_repo=mock_session_repo,
+        trace_logger=MagicMock(log_step=AsyncMock(), start_run=AsyncMock(), finish_run=AsyncMock()),
+    )
+
+    reply = await fsm.run_pipeline(chat_id=1202194852, user_message="台北 拉麵")
+
+    assert "台北" in reply
+    assert "不在日本境內" in reply
+    assert "日本" in reply
+
+    # 確保 0 downstream API 調用
+    mock_places.geocode_location.assert_not_called()
+    mock_places.search_nearby_ladder.assert_not_called()
+    mock_tabelog.get_restaurant_details.assert_not_called()
+    mock_llm.call_text.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_case_33_out_of_region_coords_gate_and_bounds():
+    """Case 33.2: 經緯度座標邊界檢驗與 QuickPassGate 0ms 境外攔截
+
+    [真實痛點] 使用者傳送境外 GPS 座標（如台北 25.03, 121.56 或首爾 37.56, 126.97）。
+    [防禦標準]
+    1. is_in_japan_bounds 正確放行日本四島/琉球/與那國島，並精準排除台灣與朝鮮半島。
+    2. QuickPassGate 命中 out_of_region_coords，0ms 秒回且不寫入 DB。
+    """
+    from src.agent.gate import QuickPassGate, is_in_japan_bounds
+
+    # 1. 座標極值與邊界檢驗
+    assert is_in_japan_bounds(35.68, 139.76) is True  # 東京
+    assert is_in_japan_bounds(26.21, 127.68) is True  # 那霸 (沖繩)
+    assert is_in_japan_bounds(24.45, 122.98) is True  # 與那國島 (日本最西端)
+    assert is_in_japan_bounds(45.41, 141.67) is True  # 稚內 (北海道最北)
+
+    # 境外座標應精準排除
+    assert is_in_japan_bounds(25.03, 121.56) is False  # 台北 (經度 < 122.0)
+    assert is_in_japan_bounds(22.31, 114.16) is False  # 香港
+    assert is_in_japan_bounds(37.56, 126.97) is False  # 首爾 (朝鮮半島排除區間)
+    assert is_in_japan_bounds(35.18, 129.07) is False  # 釜山 (朝鮮半島排除區間)
+    assert is_in_japan_bounds(40.71, -74.00) is False  # 紐約
+
+    # 2. QuickPassGate 0ms 秒回
+    gate_res = QuickPassGate().evaluate("25.033, 121.565 拉麵")
+    assert gate_res.matched is True
+    assert gate_res.rule_name == "out_of_region_coords"
+    assert "不在日本國境內" in (gate_res.fast_reply or "")

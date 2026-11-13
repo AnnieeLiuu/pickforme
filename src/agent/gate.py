@@ -23,6 +23,20 @@ GREETING_REPLY = (
     "您好！我是您的日本美食推薦助手 🍱 請告訴我您想在哪個日本地區尋找什麼料理？（例如：「新宿 拉麵」或「京都 壽喜燒」）"
 )
 THANKS_REPLY = "不客氣！祝您在日本有美好的用餐體驗 🍽️ 若還想找其他餐廳或換一批推薦，隨時告訴我喔！"
+OUT_OF_REGION_COORDS_REPLY = (
+    "🍱 抱歉！我是專注於日本美食的特派員 PickForMe。您提供的經緯度座標不在日本國境內，目前僅支援日本境內的美食搜尋喔！"
+)
+
+
+def is_in_japan_bounds(lat: float, lng: float) -> bool:
+    """判定經緯度是否在日本國境範圍內 (含極南沖繩/與那國島至極北北海道，並排除朝鮮半島)"""
+    if not (20.0 <= lat <= 46.0 and 122.0 <= lng <= 154.0):
+        return False
+    # 排除落入矩形內的朝鮮半島/中俄邊界區間 (緯度 34.5~43.0, 經度 124.0~129.5)
+    if 34.5 <= lat <= 43.0 and 124.0 <= lng <= 129.5:
+        return False
+    return True
+
 
 _INJECTION_RE = re.compile(
     r"(?i)(ignore\s+(all\s+)?previous\s+instructions|system\s+prompt|無視先前的指令|忽略上述指令)"
@@ -181,13 +195,13 @@ class QuickPassGate:
                 },
             )
 
-        # 6. Direct Coordinates Search (日本國境座標範圍: 20.0<=lat<=46.0, 122.0<=lng<=154.0)
+        # 6. Direct Coordinates Search (日本國境座標判定)
         m_coords = _COORDS_RE.match(text)
         if m_coords:
             try:
                 lat = float(m_coords.group(1))
                 lng = float(m_coords.group(2))
-                if 20.0 <= lat <= 46.0 and 122.0 <= lng <= 154.0:
+                if is_in_japan_bounds(lat, lng):
                     cuisine = m_coords.group(3).strip() or "熱門人氣美食"
                     return GateResult(
                         matched=True,
@@ -199,6 +213,12 @@ class QuickPassGate:
                             "modifier": None,
                             "coords": (lat, lng),
                         },
+                    )
+                else:
+                    return GateResult(
+                        matched=True,
+                        rule_name="out_of_region_coords",
+                        fast_reply=OUT_OF_REGION_COORDS_REPLY,
                     )
             except ValueError:
                 pass

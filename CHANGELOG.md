@@ -7,6 +7,10 @@
 ## [Unreleased]
 
 ### Added
+- **非日本境外地點地理邊界護欄 (Non-Japan Out-of-Region Guardrail) (`src/agent/schemas.py`, `src/agent/stages/intent.py`, `src/agent/pipeline.py`, `src/agent/gate.py`, `src/bot/handlers.py`, `tests/test_real_world_regressions.py`)**：
+  - **Case 33 境外地理阻斷與 0ms 早期返回**：針對「台北 拉麵」、「首爾 烤肉」、「香港 點心」等非日本境內地點搜尋，於 `IntentOutput` 擴充 `intent="out_of_region"`；State 1 判定後立即短路返回，徹底杜絕下游 Google Places 境外查詢、防範 Tabelog Entity Resolver 跨國幻覺比對（如誤將台北一真亭對應至東京已閉店之一真亭），保證 0 Places API、0 Tabelog Scraper 與 0 第二道 LLM 消耗。
+  - **異國料理防誤殺與漢字同名消歧義 (Contrastive Prompting)**：提示詞明確區隔「在日外國菜」（如「新宿 台灣料理」、「東京 韓式烤肉」屬於正常 `search`，嚴禁判為境外）與「同名漢字地名」（如松山、板橋、三重預設為日本，僅在附帶境外特徵詞如「台北松山」時才判為 `out_of_region`）。
+  - **國境經緯度與 Telegram 定位防禦 (`is_in_japan_bounds`)**：確立日本國境經緯度判定（含極南沖繩/與那國島至極北北海道，並精準排除落於矩形內的朝鮮半島區間）；QuickPassGate 對境外座標 0ms 秒回；Telegram 原生地理位置訊息（📎 傳送定位）在境外時拒絕寫入 DB 並發送親切防禦指引。
 - **多店橫向對比、行程停靠站識別與營業狀態防踩雷整合 (`src/agent/schemas.py`, `src/agent/stages/intent.py`, `src/services/google_places.py`, `src/agent/stages/enrichment.py`, `src/agent/stages/synthesis.py`)**：
   - **Case 30 多店橫向對比 (Multi-Store Comparison)**：`IntentOutput` 擴充 `target_indices: list[int]`，支援「比較 1 跟 2」、「1 跟 3 哪家比較好」等跨店追問；自動從對話 Session 記憶體撈出候選店家資料，由 LLM 生成條理分明的對照矩陣（風味口感、預算、排隊步程、客群建議）。
   - **Case 31 行程停靠站與多地名精準定錨 (Itinerary Stopover Anchoring)**：於意圖提示詞中注入行程分析原則，當句子出現起訖與中途停靠（如「從東京搭新幹線去京都，在名古屋轉車吃鰻魚」），精準定錨用餐中停地 `location="名古屋"`，杜絕起點終點誤奪。
