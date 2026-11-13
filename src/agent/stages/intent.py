@@ -67,9 +67,13 @@ INTENT_PARSER_SYSTEM_PROMPT = f"""你是一位嚴格的日本美食搜尋意圖�
 
 可能的 intent 欄位值：
 1. "search": 使用者想尋找美食餐廳、特定飲品專門店或食品伴手禮店。請精準抽取 location (地名/車站/商圈/景點，若未提及請設為 null) 與 cuisine (料理類別/食物核心名詞，例如「壽喜燒」、「拉麵」、「抹茶甜點」，嚴禁包含距離或時間詞，若未指定請設為 "熱門人氣美食")。
+   行程停靠站規則：若句子包含從起點到終點之轉乘/停留用餐語句（例如「從東京去京都，在名古屋轉車吃鰻魚」或「搭新幹線去大阪，在名古屋中停」），請明確將用餐/中停地設為 location（如 "名古屋"），切勿誤設為出發地或目的地！
+   時間約束抽取：若提及「宵夜/深夜/夜食」，請設 time_constraint="late_night"；若提及「早餐/早點/早午餐」，設 time_constraint="breakfast"；若提及「現在/營業中/現在有開嗎」，設 time_constraint="now"。
 2. "explore_cuisine": 使用者詢問某個日本地區「有什麼特色美食」、「有什麼喝的/名茶/地酒」、「必買什麼伴手禮/名菓」等開放式文化探索問題（尚未指定具體店家）。請抽取 location，並將 explore_category 標記為 "food"(美食料理)、"drink"(飲品/茶/酒/喫茶) 或 "souvenir"(伴手禮/名產/名菓)。
 3. "more": 使用者想要「換一批」、「還有更多推薦嗎」、「還有別家嗎」，或是對上一輪推薦提出風格轉向（例如：「我想找更在地的老店」、「有沒有更平價一點的」、「可以接受遠一點走路15分鐘」）。請抽取 modifier (修飾語/新要求，例如 "更在地老店"、"平價"、"走路15分鐘內"，若無請設為 null)。注意：若為 "more" 且使用者未重複輸入地名或料理，請優先從對話歷史的上一輪中繼承 location 與 cuisine！
-4. "follow_up": 使用者針對上一輪推薦的店家追問細節 (例如: "第2家有開嗎", "第一家多少錢", "有沒有信用卡")。請抽取 target_index (整數 1, 2 或 3) 與 question。
+4. "follow_up": 使用者針對上一輪推薦的店家追問細節 (例如: "第2家有開嗎", "第一家多少錢")，或是要求比較多個店家 (例如: "比較 1 跟 2", "1 跟 3 哪家比較好", "第一家跟第二家差在哪")。
+   - 若為單店追問，請填入 target_index 與 target_indices=[target_index]。
+   - 若為多店對比，請填入 target_indices（例如 [1, 2] 或 [1, 3]）與 question。
 5. "chitchat": 純打招呼、禮貌問候或詢問系統自身功能。
 6. "need_location": 使用者想吃特定食物但未提供任何地名，且系統上下文無 GPS 與無歷史地名。
 7. "non_food": 使用者詢問或尋找「非餐飲/非美食/非食品伴手禮」的實體商品購物或生活服務（例如：眼鏡/配鏡、服飾/球鞋、藥妝、電器/相機、剪髮/理髮沙龍、純飯店住宿或景點門票）。請抽取 non_food_item (例如「眼鏡」、「藥妝」、「球鞋」)。
@@ -404,7 +408,63 @@ async def execute_follow_up(
     if not recommended_stores:
         return "抱歉，目前找不到您上一輪詢問的推薦紀錄，請問您今天想在何處吃什麼美食呢？"
 
-    target_idx = (parsed_intent.get("target_index") or 1) - 1
+    target_indices = parsed_intent.get("target_indices") or []
+    if not target_indices and parsed_intent.get("target_index") is not None:
+        target_indices = [parsed_intent["target_index"]]
+
+    # 多店橫向對比分支 (如「比較 1 跟 2」)
+    if len(target_indices) >= 2:
+        valid_stores: list[tuple[int, dict[str, Any]]] = []
+        for idx in target_indices:
+            pos = idx - 1
+            if 0 <= pos < len(recommended_stores):
+                valid_stores.append((idx, recommended_stores[pos]))
+
+        if len(valid_stores) >= 2:
+            store_descs = []
+            store_names = []
+            for num, s in valid_stores:
+                s_name = s.get("name_ja") or s.get("name") or f"第 {num} 家"
+                store_names.append(s_name)
+                store_descs.append(f"### 選手 {num}：{s_name}\n{json.dumps(s, ensure_ascii=False, indent=2)}")
+
+            messages = [
+                {
+                    "role": "system",
+                    "content": (
+                        "你是一位客觀、專業的日本美食評鑑特派員。使用者正在要求對比上一輪推薦名單中的多家店家。\n"
+                        "請根據所提供的店家資料，進行條理分明、直觀好懂的多面向對照比較：\n"
+                        "1. 🍱 風味特色與口感差異\n"
+                        "2. 💰 預算價位與 CP 值\n"
+                        "3. 🚶 交通步行與排隊狀況\n"
+                        "4. 💡 總結推薦：針對不同情境（如想吃清淡/濃郁、趕時間/放慢享受）明確建議選哪一家。"
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": f"使用者問題：{user_message}\n候選店家資訊：\n" + "\n\n".join(store_descs),
+                },
+            ]
+            try:
+                t0 = time.time()
+                reply, model, tokens = await fsm.llm_client.call_text(messages)
+                fsm._last_state_4_model = model
+                fsm._last_state_4_tokens = tokens
+                ans = reply.strip()
+                latency = int((time.time() - t0) * 1000)
+                await fsm.trace_logger.log_step(
+                    action_type="follow_up_comparison",
+                    tool_name="llm_follow_up_comparison",
+                    tool_input={"message": user_message, "compared_stores": store_names},
+                    tool_output={"response": ans, "length": len(ans)},
+                    latency_ms=latency,
+                )
+                return ans
+            except Exception as e:
+                logger.warning(f"Failed to generate multi-store comparison: {e}")
+
+    # 單店追問分支
+    target_idx = (target_indices[0] if target_indices else (parsed_intent.get("target_index") or 1)) - 1
     if target_idx < 0 or target_idx >= len(recommended_stores):
         target_idx = 0
 

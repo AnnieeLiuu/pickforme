@@ -70,11 +70,19 @@ class IntentOutput(BaseModel):
         default=None,
         ge=1,
         le=3,
-        description="當 intent 為 follow_up 時，追問的店家序號（整數 1, 2 或 3，若未指定特定序號則為 null）",
+        description="當 intent 為 follow_up 時，追問的單一店家序號（整數 1, 2 或 3，若未指定特定序號則為 null）",
+    )
+    target_indices: list[int] = Field(
+        default_factory=list,
+        description="當 intent 為 follow_up 且涉及多店對比或追問時的店家序號清單（如 [1, 2] 表示比較第 1 家與第 2 家）",
     )
     question: Optional[str] = Field(
         default=None,
         description="當 intent 為 follow_up 時，使用者追問的具體問題內容",
+    )
+    time_constraint: Optional[Literal["late_night", "breakfast", "now"]] = Field(
+        default=None,
+        description='使用者時間或營業狀態約束："late_night"(宵夜/深夜，22:00後)、"breakfast"(早餐/早午餐，10:30前)、"now"(現在/營業中)。若未提及請設為 null',
     )
     dietary_restrictions: list[str] = Field(
         default_factory=list,
@@ -111,9 +119,17 @@ class IntentOutput(BaseModel):
         if self.intent == "search" and not self.cuisine:
             self.cuisine = "熱門人氣美食"
 
-        # 3. 若為 follow_up，必須至少具備 target_index 或 question，否則觸發 Reflection 自癒重試
-        if self.intent == "follow_up" and self.target_index is None and not self.question:
-            raise ValueError("When intent is 'follow_up', either 'target_index' (1-3) or 'question' must be provided.")
+        # 3. 雙向維護 target_index 與 target_indices
+        if self.target_index is not None and not self.target_indices:
+            self.target_indices = [self.target_index]
+        elif self.target_indices and self.target_index is None:
+            self.target_index = self.target_indices[0]
+
+        # 4. 若為 follow_up，必須至少具備 target_index/target_indices 或 question，否則觸發 Reflection 自癒重試
+        if self.intent == "follow_up" and self.target_index is None and not self.target_indices and not self.question:
+            raise ValueError(
+                "When intent is 'follow_up', either 'target_indices' (e.g. [1, 2]), 'target_index' (1-3) or 'question' must be provided."
+            )
 
         return self
 
@@ -143,6 +159,7 @@ class FSMRunContext(BaseModel):
     cuisine: str = "熱門美食"
     modifier: Optional[str] = None
     search_keyword: str = "熱門美食"
+    time_constraint: Optional[str] = None
     radii_ladder: list[int] = Field(default_factory=lambda: [800, 1200, 1800])
     style_tag: Optional[str] = None
     exclude_place_ids: set[str] = Field(default_factory=set)

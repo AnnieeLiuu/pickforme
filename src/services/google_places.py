@@ -42,6 +42,7 @@ class GooglePlacesClient:
                 "places.userRatingCount,"
                 "places.formattedAddress,"
                 "places.regularOpeningHours,"
+                "places.currentOpeningHours,"
                 "places.paymentOptions,"
                 "places.googleMapsUri,"
                 "places.reviews"
@@ -100,6 +101,7 @@ class GooglePlacesClient:
                 "places.userRatingCount,"
                 "places.formattedAddress,"
                 "places.regularOpeningHours,"
+                "places.currentOpeningHours,"
                 "places.paymentOptions,"
                 "places.googleMapsUri,"
                 "places.reviews"
@@ -182,8 +184,18 @@ class GooglePlacesClient:
         # 優先取國內電話，若無取國際電話
         phone = item.get("nationalPhoneNumber") or item.get("internationalPhoneNumber") or ""
 
-        opening_hours = item.get("regularOpeningHours", {})
-        open_now = opening_hours.get("openNow", True)
+        current_hours = item.get("currentOpeningHours") or {}
+        regular_hours = item.get("regularOpeningHours") or {}
+        open_now: Optional[bool] = None
+        if "openNow" in current_hours:
+            open_now = bool(current_hours.get("openNow"))
+        elif "openNow" in regular_hours:
+            open_now = bool(regular_hours.get("openNow"))
+
+        weekday_descriptions = (
+            current_hours.get("weekdayDescriptions") or regular_hours.get("weekdayDescriptions") or []
+        )
+        periods = current_hours.get("periods") or regular_hours.get("periods") or []
 
         reviews_list: list[dict[str, Any]] = []
         for r in item.get("reviews", []):
@@ -225,6 +237,8 @@ class GooglePlacesClient:
             "google_rating": item.get("rating"),
             "user_ratings_total": item.get("userRatingCount"),
             "open_now": open_now,
+            "weekday_descriptions": weekday_descriptions,
+            "periods": periods,
             "payment_options": payment_options,
             "accepts_credit_cards": accepts_credit_cards,
             "accepts_cash_only": accepts_cash_only,

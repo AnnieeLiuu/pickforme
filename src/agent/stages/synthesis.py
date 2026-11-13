@@ -111,6 +111,15 @@ def resolve_card_category(cuisine: str = "", category: Optional[str] = None) -> 
     return "food"
 
 
+def format_operating_hours(open_now: Optional[bool]) -> str:
+    """格式化營業狀態標籤"""
+    if open_now is True:
+        return "營業中"
+    elif open_now is False:
+        return "⚠️ 今日已打烊 / 公休"
+    return "以店家當日公告為準"
+
+
 def render_template_fallback_card(
     stores: list[dict[str, Any]],
     cuisine: str,
@@ -159,6 +168,7 @@ def render_template_fallback_card(
         lines.append(f"### {rank_badge} 精選推薦 {idx}：`{name}`")
         if walk_desc:
             lines.append(f"🚶 **步行距離**：{walk_desc}")
+        lines.append(f"⏰ **營業狀態**：{format_operating_hours(s.get('open_now'))}")
         if rating_src == "Tabelog" and t_rating:
             lines.append(f"⭐️ **Tabelog 評分**：{t_rating:.2f} 分 ({s.get('review_count', 0)} 則評價)")
         else:
@@ -344,6 +354,7 @@ async def execute_state_4_synthesis(
             f"- 排名徽章: {rank_badge}\n"
             f"- 店名(日文)：{s.get('name_ja') or s.get('name')}\n"
             f"- 步行距離：{walk_str}\n"
+            f"- 營業狀態：{format_operating_hours(s.get('open_now'))}\n"
             f"- 評分來源：{s.get('rating_source')}\n"
             f"- Tabelog 評分：{s.get('tabelog_rating')}\n"
             f"- Google 評分：{s.get('google_rating') or s.get('rating')}\n"

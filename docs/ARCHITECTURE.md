@@ -204,7 +204,7 @@ flowchart TD
             MatchCheck -- No --> FallbackGoogle["保底：標註「Tabelog 暫無評分，以 Google 為依據」"]
         end
 
-        HitCache --> ConstraintSensor["🎯 Deterministic Constraint Sensor<br/>(apply_deterministic_constraints 硬性飲食禁忌/支付偏好降權)"]
+        HitCache --> ConstraintSensor["🎯 Deterministic Constraint Sensor<br/>(apply_deterministic_constraints: 硬性飲食禁忌 / 支付偏好 / 宵夜·早餐營業狀態降權)"]
         SaveCache --> ConstraintSensor
         FallbackGoogle --> ConstraintSensor
         ConstraintSensor --> AlignWalk["🚶 雙階地理步行描述對齊 (_align_walking_and_station / format_walking_description)<br/>• 場景 2 (景區): 從「強羅站」步行約 5 分鐘 (嚴禁拼接中心點 2800m 米數，杜絕 Usain Bolt 錯位)<br/>• 場景 3 (都會): 從「新宿」步行約 4 分鐘 (320m)"]
@@ -331,7 +331,12 @@ flowchart TD
 - **高內聚低耦合架構解耦 (Modular FSM & Facade Orchestrator)**：
   - **狀態機管線與 Harness 模組化 (`src/agent/stages/`、`src/agent/gate.py`、`src/agent/schemas.py`)**：徹底根除單一巨大檔案 (God File)，`FoodRecommendationFSM` (`src/agent/pipeline.py`) 作為 Facade 調度器，協同 `gate.py` (`QuickPassGate` 0ms 入口快篩)、`schemas.py` (Pydantic v2 結構化合約與偏好抽取器) 與四大階段子模組：`stages/intent.py` (意圖、雙層記憶繼承與多輪追問)、`stages/places_search.py` (階梯擴圈與預篩)、`stages/enrichment.py` (Tabelog 雙平台並行補全、Deterministic Constraint Sensor 與老饕重排)、`stages/synthesis.py` (卡片合成與 Scoped Anchor 護欄)。
   - **前後端表現層分離 (`src/eval/templates/`)**：將 2,200+ 行之互動式 Dashboard HTML/CSS/JS 抽離至獨立模板檔，評估腳本僅專注於資料計算與填充，落實關注點分離 (Separation of Concerns)。
-- **資安防護與存取控制 (Security & Access Control)**：
+- **多店橫向對比與行程停靠站識別 (`src/agent/stages/intent.py`)**：
+  - **跨店對照評鑑 (Multi-Store Comparison)**：支援使用者針對上一輪名單提出「比較 1 跟 2」、「1 跟 3 哪家比較好」等複選對比，由 `IntentOutput.target_indices` 承載，自動自 Session 記憶體撈出多店候選資料，輸出風味、CP 值與排隊情境之綜合對比矩陣。
+  - **行程中停定錨 (Itinerary Stopover Anchoring)**：於意圖模型中建立行程分析原則，當句子出現「從 A 去 B，中停 C 轉車吃美食」時，精準定錨用餐地 `location="C"`，杜絕起點終點誤奪。
+- **營業時間與即時防踩雷體系 (`src/services/google_places.py`, `src/agent/stages/enrichment.py`, `src/agent/stages/synthesis.py`)**：
+  - **Google Places 營業時段感知**：Places Client 全面納入 `currentOpeningHours` 與 `regularOpeningHours`，解析 `open_now` 與平日營業時段。
+  - **情境時段硬性懲罰 (Deterministic Hours Sensor)**：當查詢帶有「宵夜/深夜」、「早餐」或「現在有開」等時間約束時，若店家明確標註打烊 (`open_now is False`) 則給予 `-0.45` 懲罰；若無資料則保護不扣分。卡片排版同步注入 `⏰ 營業狀態` 徽章。
   - **Telegram Webhook Secret Token 驗證**：要求驗證 `X-Telegram-Bot-Api-Secret-Token` 標頭，防止惡意流量觸發 Cloud Run。
   - **白名單過濾**：以 `TELEGRAM_ALLOWED_USER_ID` 限制存取權限。
   - **GitLab Secret Detection**：引入 CI 密鑰洩漏檢測模板，確保 API Keys 不外洩。

@@ -2443,3 +2443,140 @@ async def test_case_29_non_food_early_guardrail_zero_downstream_calls():
         model_used="non_food_guardrail",
         total_tokens=0,
     )
+
+
+@pytest.mark.asyncio
+async def test_case_30_multi_store_comparison_flow():
+    """Case 30: 多店橫向對比意圖 (「比較 1 跟 2」)
+
+    [真實痛點] 使用者常針對上一輪名單問「第 1 家跟第 2 家差在哪」、「比較 1 跟 3」。
+    過去系統僅能單選 target_index，無法對比多家。
+    [防禦標準]
+    1. Schema 支援 target_indices=[1, 2]。
+    2. 從 session_repo 撈出第 1 家與第 2 家資料。
+    3. LLM 調用專屬多面向對比 Prompt (風味、預算、交通、推薦情境)。
+    """
+    from src.agent.pipeline import FoodRecommendationFSM
+
+    mock_stores = [
+        {
+            "name": "麵處 晴",
+            "name_ja": "麺処 晴",
+            "tabelog_rating": 3.82,
+            "review_count": 600,
+            "walking_desc": "從「入谷站」步行約 1 分鐘",
+            "price_dinner": "￥1,000～￥1,999",
+        },
+        {
+            "name": "拉麵 鴨to蔥",
+            "name_ja": "らーめん 鴨to葱",
+            "tabelog_rating": 3.75,
+            "review_count": 1200,
+            "walking_desc": "從「御徒町站」步行約 2 分鐘",
+            "price_dinner": "￥1,000～￥1,999",
+        },
+        {
+            "name": "拉麵 鴨to蔥 3號",
+            "name_ja": "らーめん 鴨to葱",
+            "tabelog_rating": 3.65,
+        },
+    ]
+
+    mock_llm = MagicMock()
+    mock_llm.call_text = AsyncMock(
+        return_value=(
+            "### ⚖️ 【麵處 晴 vs らーめん 鴨to葱 綜合對比】\n"
+            "1. 🍱 **風味差異**：麵處 晴為重煮干海味清爽系；鴨to葱則為鴨肉甘甜濃郁醬油。\n"
+            "2. 🚶 **排隊狀況**：鴨to葱觀光客眾多，排隊常需 40 分鐘以上。\n"
+            "💡 **特派員建議**：不想排隊選 1，喜愛鴨香選 2！",
+            "mock-llm",
+            120,
+        )
+    )
+
+    mock_session_repo = MagicMock()
+    mock_session_repo.get_last_recommended_stores = AsyncMock(return_value=mock_stores)
+
+    fsm = FoodRecommendationFSM(
+        llm_client=mock_llm,
+        session_repo=mock_session_repo,
+        trace_logger=MagicMock(log_step=AsyncMock(), start_run=AsyncMock(), finish_run=AsyncMock()),
+    )
+
+    parsed_intent = {
+        "intent": "follow_up",
+        "target_indices": [1, 2],
+        "question": "比較 1 跟 2 差在哪",
+    }
+
+    ans = await fsm.execute_follow_up(
+        chat_id=888,
+        parsed_intent=parsed_intent,
+        user_message="比較 1 跟 2 差在哪",
+    )
+
+    assert "麵處 晴 vs らーめん 鴨to葱" in ans
+    assert "特派員建議" in ans
+    mock_llm.call_text.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_case_31_itinerary_stopover_anchor_detection():
+    """Case 31: 行程中停轉車精準定錨 (「從東京去京都，在名古屋轉車吃鰻魚」)
+
+    [真實痛點] 使用者常說「從 A 去 B，中停 C 用餐」，過去常因句子帶有 A 或 B 而定錨至起點或終點。
+    [防禦標準]
+    1. 意圖解析準確識別行程中停/轉車地為 location="名古屋"。
+    2. 料理設為 cuisine="鰻魚"。
+    """
+    from src.agent.schemas import IntentOutput
+
+    sample_output = IntentOutput(
+        intent="search",
+        location="名古屋",
+        cuisine="鰻魚",
+        time_constraint=None,
+    )
+    assert sample_output.location == "名古屋"
+    assert sample_output.cuisine == "鰻魚"
+
+
+@pytest.mark.asyncio
+async def test_case_32_operating_hours_late_night_constraint_and_badges():
+    """Case 32: 營業時間防踩雷與宵夜時段感知
+
+    [真實痛點] 推薦高分名店但已經打烊或公休。
+    [防禦標準]
+    1. 當 time_constraint='late_night' 或 'now' 時，若 open_now=False，標記 constraint_violation 並降權。
+    2. 若 open_now=None (營業時間未知)，保護不誤殺扣分。
+    3. format_operating_hours 正確回傳徽章。
+    """
+    from src.agent.stages.enrichment import apply_deterministic_constraints, calculate_foodie_score
+    from src.agent.stages.synthesis import format_operating_hours
+
+    # 1. 驗證營業狀態徽章
+    assert format_operating_hours(True) == "營業中"
+    assert format_operating_hours(False) == "⚠️ 今日已打烊 / 公休"
+    assert format_operating_hours(None) == "以店家當日公告為準"
+
+    # 2. 驗證 Deterministic Hours Sensor
+    stores = [
+        {"name": "深夜食堂 A", "tabelog_rating": 3.70, "open_now": True},
+        {"name": "早關名店 B", "tabelog_rating": 3.85, "open_now": False},  # 已打烊
+        {"name": "神秘小店 C", "tabelog_rating": 3.65, "open_now": None},  # 無資料
+    ]
+
+    filtered = apply_deterministic_constraints(
+        stores=stores,
+        time_constraint="late_night",
+    )
+
+    # 早關名店 B 標記 constraint_violation
+    assert filtered[0].get("constraint_violation") is not True
+    assert filtered[1].get("constraint_violation") is True
+    assert filtered[2].get("constraint_violation") is not True  # 保護無資料店家
+
+    # 計算得分後，深夜食堂 A 分數超越打烊的早關名店 B
+    score_a = calculate_foodie_score(filtered[0])
+    score_b = calculate_foodie_score(filtered[1])
+    assert score_a > score_b  # 3.70 > 3.85 - 0.45

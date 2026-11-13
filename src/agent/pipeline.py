@@ -424,6 +424,7 @@ class FoodRecommendationFSM:
                 cuisine=cuisine,
                 modifier=modifier,
                 search_keyword=search_keyword,
+                time_constraint=parsed.get("time_constraint"),
                 radii_ladder=radii_ladder,
                 style_tag=style_tag,
                 exclude_place_ids=exclude_ids,
@@ -440,9 +441,6 @@ class FoodRecommendationFSM:
                     await on_progress(f"🧭 正在為您鎖定 {target_desc} 並檢索週邊熱門美食與食べログ評分...")
 
             # 2. State 2: 候選店家智慧階梯檢索 (含去重排除與自適應擴圈)
-            span_s2 = telemetry.start_span(
-                "search-places", input_data={"keyword": run_ctx.search_keyword, "lat": lat, "lng": lng}
-            )
             span_s2 = telemetry.start_span(
                 "search-places", input_data={"keyword": run_ctx.search_keyword, "lat": lat, "lng": lng}
             )
@@ -465,9 +463,6 @@ class FoodRecommendationFSM:
             span_s3 = telemetry.start_span(
                 "enrich-restaurants", input_data={"candidates": [c.get("name") for c in candidates]}
             )
-            span_s3 = telemetry.start_span(
-                "enrich-restaurants", input_data={"candidates": [c.get("name") for c in candidates]}
-            )
             enriched_stores = await self.execute_state_3_parallel_tabelog(candidates, area_hint=run_ctx.location_name)
 
             # 3.2 Deterministic Constraint Sensor: 根據當輪 modifier 與長期偏好進行硬性條件降權與重排
@@ -475,6 +470,7 @@ class FoodRecommendationFSM:
                 enriched_stores,
                 modifier=run_ctx.modifier,
                 preferences=run_ctx.long_term_preferences,
+                time_constraint=run_ctx.time_constraint,
             )
             if any(s.get("constraint_violation") is True for s in enriched_stores):
                 enriched_stores = self.rank_and_select_top_stores(enriched_stores, top_k=len(enriched_stores))

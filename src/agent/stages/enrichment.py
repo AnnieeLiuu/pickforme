@@ -114,8 +114,9 @@ def apply_deterministic_constraints(
     stores: list[dict[str, Any]],
     modifier: Optional[str] = None,
     preferences: Optional[dict[str, Any]] = None,
+    time_constraint: Optional[str] = None,
 ) -> list[dict[str, Any]]:
-    """Deterministic Constraint Sensor: 根據當輪 modifier 與長期偏好對明確違反硬性條件的店家標記降權"""
+    """Deterministic Constraint Sensor: 根據當輪 modifier、長期偏好與時間/營業狀態對明確違反硬性條件的店家標記降權"""
     if not stores:
         return []
 
@@ -134,8 +135,16 @@ def apply_deterministic_constraints(
         extracted = extract_preferences_from_text(modifier)
         payment_reqs.update(extracted.get("payment_preferences", []))
         dietary_reqs.update(extracted.get("dietary_restrictions", []))
+        # 若 modifier 包含宵夜/早餐關鍵字且未傳入 time_constraint，自動啟動時間感知
+        if not time_constraint:
+            if any(k in modifier for k in ("宵夜", "深夜", "半夜")):
+                time_constraint = "late_night"
+            elif any(k in modifier for k in ("早餐", "早午餐", "早點")):
+                time_constraint = "breakfast"
+            elif any(k in modifier for k in ("現在有開", "現在開著", "營業中")):
+                time_constraint = "now"
 
-    if not payment_reqs and not dietary_reqs:
+    if not payment_reqs and not dietary_reqs and not time_constraint:
         return stores
 
     for store in stores:
@@ -163,6 +172,12 @@ def apply_deterministic_constraints(
             violated = True
         if "不吃辣" in dietary_reqs and any(k in store_name for k in ("激辛", "麻辣", "担々", "擔擔", "辛")):
             violated = True
+
+        # 3. 營業時間與即時營業狀態檢驗 (Deterministic Hours Sensor)
+        # 嚴格守門：只有在明確標註已打烊/今日公休 (open_now is False) 時才懲罰；若無資料 (open_now is None) 則保護不扣分
+        if time_constraint in ("now", "late_night", "breakfast"):
+            if store.get("open_now") is False:
+                violated = True
 
         if violated:
             store["constraint_violation"] = True

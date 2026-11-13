@@ -7,6 +7,10 @@
 ## [Unreleased]
 
 ### Added
+- **多店橫向對比、行程停靠站識別與營業狀態防踩雷整合 (`src/agent/schemas.py`, `src/agent/stages/intent.py`, `src/services/google_places.py`, `src/agent/stages/enrichment.py`, `src/agent/stages/synthesis.py`)**：
+  - **Case 30 多店橫向對比 (Multi-Store Comparison)**：`IntentOutput` 擴充 `target_indices: list[int]`，支援「比較 1 跟 2」、「1 跟 3 哪家比較好」等跨店追問；自動從對話 Session 記憶體撈出候選店家資料，由 LLM 生成條理分明的對照矩陣（風味口感、預算、排隊步程、客群建議）。
+  - **Case 31 行程停靠站與多地名精準定錨 (Itinerary Stopover Anchoring)**：於意圖提示詞中注入行程分析原則，當句子出現起訖與中途停靠（如「從東京搭新幹線去京都，在名古屋轉車吃鰻魚」），精準定錨用餐中停地 `location="名古屋"`，杜絕起點終點誤奪。
+  - **Case 32 營業時間與即時防踩雷 (Operating Hours Sensor)**：Places Client 納入 `currentOpeningHours` 與 `regularOpeningHours`；於 Deterministic Constraint Sensor 中加入 `time_constraint`（宵夜、早餐、現在）硬性判定；若店家明確已打烊 (`open_now is False`) 則降權扣分，並於推薦卡片注入 `⏰ 營業狀態：營業中 / ⚠️ 今日已打烊 / 公休` 徽章。
 - **非餐飲購物與生活服務 0ms 領域邊界果斷拒絕守門 (`src/agent/schemas.py`, `src/agent/stages/intent.py`, `src/agent/pipeline.py`, `tests/test_real_world_regressions.py`)**：
   - **Case 29 迴歸防禦**：針對「東京 眼鏡」、「新宿 藥妝」、「原宿 球鞋」等非餐飲購物查詢，於 `IntentOutput` 擴充 `intent="non_food"` 與 `non_food_item` 抽取，徹底將非食品實體購物與生活服務自 `chitchat` 與 `search` 剝離。
   - **0ms Early Return 防穿透**：在 State 1 意圖判定為 `non_food` 時立即提早返回，杜絕後續 Google Places Geocoding 地名洩漏、避免無座標被誤覆寫為 `need_location`，且完全不調用第二道 LLM Chitchat 陪聊，直接秒級提供親切且堅定的領域導正訊息。
