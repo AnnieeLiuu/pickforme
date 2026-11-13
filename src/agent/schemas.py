@@ -4,6 +4,17 @@ from typing import Any, Literal, Optional
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
+class SubAreaOption(BaseModel):
+    """廣域模糊地名之具體子商圈/候選點建議"""
+
+    name: str = Field(description="子商圈、市鎮或特色商圈名稱（例如「熱海溫泉街」）")
+    desc: str = Field(default="", description="特色亮點簡述（例如「海景、溫泉布丁」）")
+    search_loc: Optional[str] = Field(
+        default=None,
+        description="送往 Google Places 檢索之具體地名或地標（若為 None 則使用 name）",
+    )
+
+
 class IntentOutput(BaseModel):
     """Stage 1 意圖解析結構化輸出合約 (借鏡 PydanticAI Schema-Driven & Semantic Validation)"""
 
@@ -43,6 +54,18 @@ class IntentOutput(BaseModel):
     payment_preferences: list[str] = Field(
         default_factory=list,
         description='支付方式偏好清單（如 ["credit_card", "paypay"]）',
+    )
+    is_location_ambiguous: bool = Field(
+        default=False,
+        description="地點是否過於廣域、模糊或缺乏單一 800m 檢索中心點（例如都道府縣、整座海島、或者跨多市鎮之概念名詞如「靜岡溫泉街」、「長野滑雪」、「北海道」）",
+    )
+    ambiguity_reason: Optional[str] = Field(
+        default=None,
+        description="判定地點模糊之原因簡述",
+    )
+    suggested_sub_areas: list[SubAreaOption] = Field(
+        default_factory=list,
+        description="若地點過於廣域模糊，請提供 2~3 個最具代表性的具體子商圈或城鎮名（含 name、desc、search_loc）",
     )
 
     @model_validator(mode="after")

@@ -99,6 +99,10 @@ INTENT_PARSER_SYSTEM_PROMPT = f"""你是一位嚴格的日本美食搜尋意圖�
 5. "chitchat": 純打招呼、禮貌問候、詢問系統功能或非美食主題。
 6. "need_location": 使用者想吃特定食物但未提供任何地名，且系統上下文無 GPS 與無歷史地名。
 
+地點模糊度判定規則 (is_location_ambiguous)：
+- 若 location 過於廣域（如都道府縣「北海道」、「長野」、「靜岡」；整座大島/大區如「九州」、「四國」；或缺乏單一 800m 徒步檢索中心點之跨多市鎮廣域名詞如「靜岡溫泉街」、「長野滑雪」、「東京老街」），請將 is_location_ambiguous 設為 true，並於 ambiguity_reason 簡述原因，同時於 suggested_sub_areas 提供 2~3 個最具代表性、各具特色的具體子商圈或城鎮名（含 name、desc、search_loc）。
+- 若為單一具體車站、街區、商圈或明確景點地標（例如「箱根湯本」、「熱海車站」、「新宿歌舞伎町」、「淺草雷門」），請將 is_location_ambiguous 設為 false，且 suggested_sub_areas 設為 []。
+
 輸出 JSON 結構規範（由 IntentOutput Schema 自動生成）：
 {IntentOutput.build_json_schema_prompt()}
 只輸出純 JSON 字串，不要包含任何多餘文字。"""
