@@ -2355,3 +2355,91 @@ async def test_regression_llm_dynamic_area_disambiguation_shizuoka_onsen():
     assert len(opts) == 2
     assert opts[0]["name"] == "熱海溫泉街"
     assert opts[1]["name"] == "修善寺溫泉街"
+
+
+@pytest.mark.asyncio
+async def test_case_29_non_food_early_guardrail_zero_downstream_calls():
+    """Case 29: 非餐飲購物/生活服務 (眼鏡、球鞋、藥妝) 0ms 領域邊界果斷拒絕
+
+    [真實觸發案例] 使用者輸入「東京 眼鏡」，過去因缺乏 non_food 意圖，
+    系統將「眼鏡」誤當作 cuisine，後續盲目執行 Places 與 Tabelog 查驗，最後才發現是理髮沙龍或眼鏡店。
+
+    [防禦標準]
+    1. State 1 結構化解析精準輸出 intent="non_food" 與 non_food_item。
+    2. 0ms Early Return: 絕對不調用 places_client.geocode_location (杜絕地名 geocode 洩漏)。
+    3. run_pipeline 立即結案: 絕對不調用 search_nearby、Tabelog Scraper 或第二道 LLM chitchat。
+    4. 邊界保護: 食品伴手禮與拉麵博物館等美食設施嚴禁誤判為 non_food。
+    """
+    from src.agent.pipeline import FoodRecommendationFSM
+
+    mock_llm = MagicMock()
+    # 模擬 Micro-LLM 解析「東京 眼鏡」
+    mock_llm.call_structured_json = AsyncMock(
+        return_value=(
+            {
+                "intent": "non_food",
+                "location": "東京",
+                "cuisine": None,
+                "non_food_item": "眼鏡",
+                "modifier": None,
+                "question": None,
+                "target_index": None,
+                "dietary_restrictions": [],
+                "payment_preferences": [],
+                "is_location_ambiguous": False,
+                "ambiguity_reason": None,
+                "suggested_sub_areas": [],
+            },
+            "mock-llm",
+            20,
+        )
+    )
+    mock_llm.call_text = AsyncMock()
+
+    mock_places = MagicMock()
+    mock_places.geocode_location = AsyncMock()
+    mock_places.search_nearby = AsyncMock()
+    mock_places.search_by_text = AsyncMock()
+
+    mock_scraper = MagicMock()
+    mock_scraper.discover_area_top_stores = AsyncMock()
+    mock_scraper.search_tabelog_candidates = AsyncMock()
+
+    mock_logger = MagicMock(
+        log_step=AsyncMock(),
+        start_run=AsyncMock(),
+        finish_run=AsyncMock(),
+    )
+
+    fsm = FoodRecommendationFSM(
+        llm_client=mock_llm,
+        places_client=mock_places,
+        tabelog_scraper=mock_scraper,
+        entity_resolver=MagicMock(),
+        restaurant_repo=MagicMock(),
+        session_repo=MagicMock(),
+        trace_logger=mock_logger,
+    )
+
+    # 1. 執行 run_pipeline
+    reply = await fsm.run_pipeline(chat_id=123, user_message="東京 眼鏡")
+
+    # 2. 驗證果斷拒答文案
+    assert "專門為您尋找日本美食與餐廳" in reply
+    assert "眼鏡" in reply
+    assert "暫無提供" in reply or "餐飲美食" in reply
+
+    # 3. 嚴格斷言：0 外部下游 API 調用
+    mock_places.geocode_location.assert_not_called()
+    mock_places.search_nearby.assert_not_called()
+    mock_places.search_by_text.assert_not_called()
+    mock_scraper.discover_area_top_stores.assert_not_called()
+    mock_scraper.search_tabelog_candidates.assert_not_called()
+    mock_llm.call_text.assert_not_called()  # 杜絕 2nd LLM 閒聊陪聊
+
+    # 4. 驗證 trace 正確結案
+    mock_logger.finish_run.assert_awaited_with(
+        status="completed",
+        model_used="non_food_guardrail",
+        total_tokens=0,
+    )

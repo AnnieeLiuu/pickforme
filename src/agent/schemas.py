@@ -35,8 +35,20 @@ class AreaDisambiguationOutput(BaseModel):
 class IntentOutput(BaseModel):
     """Stage 1 意圖解析結構化輸出合約 (借鏡 PydanticAI Schema-Driven & Semantic Validation)"""
 
-    intent: Literal["search", "more", "follow_up", "chitchat", "need_location", "explore_cuisine"] = Field(
-        description='意圖分類：搜尋特定餐廳 ("search")、探索當地特色美食與文化 ("explore_cuisine")、換一批/風格轉向 ("more")、追問上一輪店家 ("follow_up")、閒聊 ("chitchat")、缺地點 ("need_location")'
+    intent: Literal[
+        "search",
+        "more",
+        "follow_up",
+        "chitchat",
+        "need_location",
+        "explore_cuisine",
+        "non_food",
+    ] = Field(
+        description='意圖分類：搜尋特定餐廳 ("search")、探索當地特色美食與文化 ("explore_cuisine")、換一批/風格轉向 ("more")、追問上一輪店家 ("follow_up")、閒聊 ("chitchat")、缺地點 ("need_location")、非餐飲購物服務 ("non_food")'
+    )
+    non_food_item: Optional[str] = Field(
+        default=None,
+        description="當 intent 為 non_food 時，使用者提及的非餐飲物品或服務名稱（例如「眼鏡」、「球鞋」、「藥妝」、「理髮」）",
     )
     explore_category: Optional[Literal["food", "drink", "souvenir"]] = Field(
         default=None,

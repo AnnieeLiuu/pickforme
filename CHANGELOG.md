@@ -6,6 +6,12 @@
 
 ## [Unreleased]
 
+### Added
+- **非餐飲購物與生活服務 0ms 領域邊界果斷拒絕守門 (`src/agent/schemas.py`, `src/agent/stages/intent.py`, `src/agent/pipeline.py`, `tests/test_real_world_regressions.py`)**：
+  - **Case 29 迴歸防禦**：針對「東京 眼鏡」、「新宿 藥妝」、「原宿 球鞋」等非餐飲購物查詢，於 `IntentOutput` 擴充 `intent="non_food"` 與 `non_food_item` 抽取，徹底將非食品實體購物與生活服務自 `chitchat` 與 `search` 剝離。
+  - **0ms Early Return 防穿透**：在 State 1 意圖判定為 `non_food` 時立即提早返回，杜絕後續 Google Places Geocoding 地名洩漏、避免無座標被誤覆寫為 `need_location`，且完全不調用第二道 LLM Chitchat 陪聊，直接秒級提供親切且堅定的領域導正訊息。
+  - **文化名產與美食設施邊界保護**：嚴格規範食品伴手禮（如「抹茶甜點名菓」）與美食體驗設施（如「拉麵博物館」）繼續走標準文化探索與美食檢索，杜絕誤殺。
+
 ### Fixed
 - **Langfuse 5.x OpenTelemetry 原生觀測架構適配 (`src/services/telemetry.py`)**：
   - 全面遷移至 Langfuse 5.x 之 OpenTelemetry 原生觀察體系，以 `propagate_attributes` 自動傳遞 `session_id`/`user_id`/`tags`，以 `start_observation(as_type="chain"|"span"|"generation")` 精準生成 Trace、Span 與 Generation，徹底解決舊版 client API 不相容問題。

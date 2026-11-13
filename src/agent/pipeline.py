@@ -246,6 +246,20 @@ class FoodRecommendationFSM:
                 telemetry.end_trace(trace, output_data=fast_res)
                 return fast_res
 
+            # 分支 0.5: 非美食/非餐飲購物服務 (non_food) 0ms 領域邊界果斷拒絕
+            if intent == "non_food":
+                non_food_res = str(
+                    parsed.get("non_food_prompt")
+                    or "🍱 抱歉！我是專門為您尋找日本美食與餐廳的特派員 PickForMe，目前僅支援日本餐飲、咖啡甜點與在地名產推薦喔！"
+                )
+                await self.trace_logger.finish_run(
+                    status="completed",
+                    model_used="non_food_guardrail",
+                    total_tokens=0,
+                )
+                telemetry.end_trace(trace, output_data=non_food_res)
+                return non_food_res
+
             # 分支 A: 純閒聊 / 非美食問題
             if intent == "chitchat":
                 span_cc = telemetry.start_span("handle-chitchat", input_data={"message": user_message})

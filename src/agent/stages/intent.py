@@ -66,12 +66,16 @@ def generate_prefecture_disambiguation_prompt(pref: str, cuisine: Optional[str],
 INTENT_PARSER_SYSTEM_PROMPT = f"""你是一位嚴格的日本美食搜尋意圖解析器。請分析使用者的輸入與上下文，並輸出標準 JSON 格式。
 
 可能的 intent 欄位值：
-1. "search": 使用者想尋找美食餐廳、特定飲品專門店或伴手禮店。請精準抽取 location (地名/車站/商圈/景點，若未提及請設為 null) 與 cuisine (料理類別/食物核心名詞，例如「壽喜燒」、「拉麵」、「抹茶甜點」，嚴禁包含距離或時間詞，若未指定請設為 "熱門人氣美食")。
+1. "search": 使用者想尋找美食餐廳、特定飲品專門店或食品伴手禮店。請精準抽取 location (地名/車站/商圈/景點，若未提及請設為 null) 與 cuisine (料理類別/食物核心名詞，例如「壽喜燒」、「拉麵」、「抹茶甜點」，嚴禁包含距離或時間詞，若未指定請設為 "熱門人氣美食")。
 2. "explore_cuisine": 使用者詢問某個日本地區「有什麼特色美食」、「有什麼喝的/名茶/地酒」、「必買什麼伴手禮/名菓」等開放式文化探索問題（尚未指定具體店家）。請抽取 location，並將 explore_category 標記為 "food"(美食料理)、"drink"(飲品/茶/酒/喫茶) 或 "souvenir"(伴手禮/名產/名菓)。
 3. "more": 使用者想要「換一批」、「還有更多推薦嗎」、「還有別家嗎」，或是對上一輪推薦提出風格轉向（例如：「我想找更在地的老店」、「有沒有更平價一點的」、「可以接受遠一點走路15分鐘」）。請抽取 modifier (修飾語/新要求，例如 "更在地老店"、"平價"、"走路15分鐘內"，若無請設為 null)。注意：若為 "more" 且使用者未重複輸入地名或料理，請優先從對話歷史的上一輪中繼承 location 與 cuisine！
 4. "follow_up": 使用者針對上一輪推薦的店家追問細節 (例如: "第2家有開嗎", "第一家多少錢", "有沒有信用卡")。請抽取 target_index (整數 1, 2 或 3) 與 question。
-5. "chitchat": 純打招呼、禮貌問候、詢問系統功能或非美食主題。
+5. "chitchat": 純打招呼、禮貌問候或詢問系統自身功能。
 6. "need_location": 使用者想吃特定食物但未提供任何地名，且系統上下文無 GPS 與無歷史地名。
+7. "non_food": 使用者詢問或尋找「非餐飲/非美食/非食品伴手禮」的實體商品購物或生活服務（例如：眼鏡/配鏡、服飾/球鞋、藥妝、電器/相機、剪髮/理髮沙龍、純飯店住宿或景點門票）。請抽取 non_food_item (例如「眼鏡」、「藥妝」、「球鞋」)。
+   邊界原則：
+   - 凡指涉食品、甜點、糕點、飲品或地酒名產之伴手禮（如「抹茶甜點伴手禮」、「生八橋伴手禮」），屬於 "explore_cuisine" 或 "search"，嚴禁判為 non_food。
+   - 美食主題景點（如「新橫濱拉麵博物館」、「啤酒博物館」、「築地市場」）屬於 "search" 或 "explore_cuisine"，嚴禁判為 non_food。
 
 地點模糊度判定規則 (is_location_ambiguous)：
 - 若 location 過於廣域（如都道府縣「北海道」、「長野」、「靜岡」；整座大島/大區如「九州」、「四國」；或缺乏單一 800m 徒步檢索中心點之跨多市鎮廣域名詞如「靜岡溫泉街」、「長野滑雪」、「東京老街」），請將 is_location_ambiguous 設為 true，並於 ambiguity_reason 簡述原因，同時於 suggested_sub_areas 提供 2~3 個最具代表性、各具特色的具體子商圈或城鎮名（含 name、desc、search_loc）。
@@ -289,6 +293,17 @@ async def execute_state_1_intent(
                         parsed["location"] = wm["last_location"]
         except Exception as e:
             logger.warning(f"Failed to load working memory for more intent: {e}")
+
+    # 若判定為非餐飲購物/生活服務 (non_food)，立即提早返回，杜絕 downstream geocoding 與 need_location 覆寫
+    if intent == "non_food":
+        item_hint = parsed.get("non_food_item") or "此類商品或生活服務"
+        parsed["non_food_prompt"] = (
+            f"🍱 抱歉！我是專門為您尋找日本美食與餐廳的特派員 PickForMe。\n\n"
+            f"目前我僅專注於日本各地的**餐飲美食、咖啡甜點、特色茶飲/地酒與名產伴手禮**，暫無提供「{item_hint}」等非餐飲購物或生活服務的推薦喔！\n\n"
+            f"如果您想品嚐當地的道地料理、排隊拉麵、燒肉或特色小吃，歡迎隨時告訴我地點與想吃的種類！"
+        )
+        setattr(fsm, "early_response", parsed["non_food_prompt"])
+        return parsed
 
     loc_str = parsed.get("location")
     resolved_coords: Optional[tuple[float, float]] = parsed.get("coords")

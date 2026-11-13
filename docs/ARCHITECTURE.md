@@ -149,6 +149,7 @@ flowchart TD
         ParseIntent --> SyncMemory["Two-Tier Memory 雙軌感知與繼承<br/>(1/2/3 優先映射 suggested_locations，次之 suggested_cuisines；或繼承 pending_cuisine)"]
         SyncMemory --> CheckIntent{"意圖分支判定 (intent)"}
         CheckIntent -- "follow_up (店號/屬性追問)" --> AnswerDirect
+        CheckIntent -- "non_food (非餐飲購物/生活服務)" --> RejectNonFood["🛡️ 0ms 領域邊界果斷拒答<br/>(「我是美食特派員，目前僅支援餐飲美食...」)"] --> EndResponse
         
         %% 探索特色美食/茶飲/伴手禮文化導覽 (explore_cuisine)
         CheckIntent -- "explore_cuisine (文化導覽)" --> ResolveExploreCat{"探索品類自適應 (explore_category)<br/>• food (正餐名物料理)<br/>• drink (名茶/地酒/咖啡)<br/>• souvenir (伴手禮/銘菓/老舖)"}
