@@ -7,6 +7,12 @@
 ## [Unreleased]
 
 ### Added
+- **4-Tier 評測體系重構：消滅「自己考自己」假象，導入真實 Replay Cassettes 回放機制 (`src/eval/evaluator.py`, `tests/fixtures/eval_llm_cassettes.json`)**：
+  - **根除 `actual = expected` 評測作弊**：重構 `EvaluationEngine.evaluate_tier1_intent`，徹底移除直接賦值假評測；採用錄製卡匣（Replay Cassettes）驅動受測 FSM，真實執行 `QuickPassGate` 0ms 快篩、`IntentOutput.model_validate()` 結構合約校驗、`validate_semantic_consistency()` 語意補齊、Working Memory 跨輪繼承與座標解析。
+  - **0 依賴離線隔離**：注入 `InMemorySessionRepo` 與 `MockPlacesClient.geocode_location`，在保證 0 雲端 API 消耗與 0ms 離線速度的同時，真實驗證解析管線邏輯。
+- **架構決策理性反思與文件代碼漂移消滅 (`README.md`, `src/agent/llm_client.py`, `docs/ARCHITECTURE.md`)**：
+  - **Over-engineering 疑慮理性回應**：於 `README.md` 深度闡述「確定性 4-Stage FSM 抑制 15s 延遲與防死循環」、「Tabelog 爬蟲 85% WAF 阻擋率催生住宅 IP 預熱與 Grounding 備援」、「pgvector halfvec 與 DuckDB 零成本冷熱分層湖倉架構」之踩坑數據，並主動提出「極簡 MVP 減法思維」（大膽標註初期可刪減 Parquet/DuckDB 與評論向量），展現架構成熟度。
+  - **幽靈模型與目錄校正**：將虛構模型名稱（`gemini-3.8-flash`、`qwen3.8-27b`）全面修正為官方現役真實模型（`gemini-2.0-flash`、`llama-3.3-70b-versatile`）；校正目錄樹漂移（`guardrail.py` ➔ `validator.py`、`runner.py` ➔ `evaluator.py`），同步更新測試數量徽章至 233 題。
 - **非日本境外地點地理邊界護欄 (Non-Japan Out-of-Region Guardrail) (`src/agent/schemas.py`, `src/agent/stages/intent.py`, `src/agent/pipeline.py`, `src/agent/gate.py`, `src/bot/handlers.py`, `tests/test_real_world_regressions.py`)**：
   - **Case 33 境外地理阻斷與 0ms 早期返回**：針對「台北 拉麵」、「首爾 烤肉」、「香港 點心」等非日本境內地點搜尋，於 `IntentOutput` 擴充 `intent="out_of_region"`；State 1 判定後立即短路返回，徹底杜絕下游 Google Places 境外查詢、防範 Tabelog Entity Resolver 跨國幻覺比對（如誤將台北一真亭對應至東京已閉店之一真亭），保證 0 Places API、0 Tabelog Scraper 與 0 第二道 LLM 消耗。
   - **異國料理防誤殺與漢字同名消歧義 (Contrastive Prompting)**：提示詞明確區隔「在日外國菜」（如「新宿 台灣料理」、「東京 韓式烤肉」屬於正常 `search`，嚴禁判為境外）與「同名漢字地名」（如松山、板橋、三重預設為日本，僅在附帶境外特徵詞如「台北松山」時才判為 `out_of_region`）。

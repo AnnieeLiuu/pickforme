@@ -19,8 +19,8 @@ graph TD
     Gate -->|"0ms Fast-Reply / 結構化路由"| FSM["⚙️ 自研 4 階段狀態機 (FoodRecommendationFSM)"]
 
     subgraph LLMTier ["🧠 多級 LLM 推論核心 (LLMClient + Pydantic Self-Correction)"]
-        Groq["🥇 Groq qwen3.8-27b (0.7s 極速主力)"]
-        Gemini["🥈 Gemini 3.8 Flash (429 自動備援)"]
+        Groq["🥇 Groq llama-3.3-70b (0.7s 極速主力)"]
+        Gemini["🥈 Gemini 2.0 Flash (429 自動備援)"]
         Ollama["🥉 本機 Ollama qwen2.5 (離線保底)"]
         Groq -.->|429/異常降級| Gemini
         Gemini -.->|離線降級| Ollama

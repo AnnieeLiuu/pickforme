@@ -143,7 +143,7 @@ class LLMClient:
         """嘗試使用雲端 Groq 多模型"""
         if not settings.GROQ_API_KEY:
             return None
-        for fallback_model in ["qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b"]:
+        for fallback_model in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "qwen-2.5-32b"]:
             try:
                 msg_resp, tokens = await self._call_openai_compatible_api(
                     url=GROQ_OPENAI_URL,
@@ -172,12 +172,12 @@ class LLMClient:
             msg_resp, tokens = await self._call_openai_compatible_api(
                 url=GEMINI_OPENAI_URL,
                 api_key=settings.GEMINI_API_KEY,
-                model="gemini-3.8-flash",
+                model="gemini-2.0-flash",
                 messages=messages,
                 response_format=response_format,
                 timeout=30.0,
             )
-            return str(msg_resp.get("content", "")), "gemini-3.8-flash", tokens
+            return str(msg_resp.get("content", "")), "gemini-2.0-flash", tokens
         except Exception as e:
             logger.warning(f"Primary Gemini Flash LLM call failed: {e}. Attempting failover...")
             errors.append(f"Gemini: {e}")

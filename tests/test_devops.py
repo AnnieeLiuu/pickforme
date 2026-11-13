@@ -11,7 +11,7 @@ async def test_devops_subagent_run_diagnosis():
     mock_agent_engine.call_llm_with_failover = AsyncMock(
         return_value=(
             {"content": "### 1. 🛠️ 現狀診斷摘要\n系統運作正常，DB 連線良好。"},
-            "gemini-3.8-flash",
+            "gemini-2.0-flash",
             150,
         )
     )
@@ -25,5 +25,5 @@ async def test_devops_subagent_run_diagnosis():
     report = await devops.run_diagnosis("@debug 幫我排查伺服器")
 
     assert "PickForMe" in report
-    assert "gemini-3.8-flash" in report
+    assert "gemini-2.0-flash" in report
     assert "系統運作正常" in report

@@ -1,0 +1,226 @@
+{
+  "eval_001": {
+    "intent": "search",
+    "location": "新宿歌舞伎町",
+    "cuisine": "拉麵",
+    "modifier": "深夜營業/清爽",
+    "target_index": null,
+    "target_indices": [],
+    "time_constraint": "late_night",
+    "is_location_ambiguous": false,
+    "suggested_sub_areas": []
+  },
+  "eval_002": {
+    "intent": "search",
+    "location": "橫濱",
+    "cuisine": "壽喜燒",
+    "modifier": null,
+    "target_index": null,
+    "target_indices": [],
+    "time_constraint": null,
+    "is_location_ambiguous": false,
+    "suggested_sub_areas": []
+  },
+  "eval_003": {
+    "intent": "search",
+    "location": "池袋",
+    "cuisine": "拉麵",
+    "modifier": "麵條偏硬有嚼勁",
+    "target_index": null,
+    "target_indices": [],
+    "time_constraint": null,
+    "is_location_ambiguous": false,
+    "suggested_sub_areas": []
+  },
+  "eval_004": {
+    "intent": "more",
+    "location": null,
+    "cuisine": null,
+    "modifier": null,
+    "target_index": null,
+    "target_indices": [],
+    "time_constraint": null,
+    "is_location_ambiguous": false,
+    "suggested_sub_areas": []
+  },
+  "eval_005": {
+    "intent": "more",
+    "location": null,
+    "cuisine": null,
+    "modifier": "在地老店",
+    "target_index": null,
+    "target_indices": [],
+    "time_constraint": null,
+    "is_location_ambiguous": false,
+    "suggested_sub_areas": []
+  },
+  "eval_006": {
+    "intent": "follow_up",
+    "location": null,
+    "cuisine": null,
+    "modifier": null,
+    "target_index": 2,
+    "target_indices": [2],
+    "question": "今天有開嗎",
+    "time_constraint": "now",
+    "is_location_ambiguous": false,
+    "suggested_sub_areas": []
+  },
+  "eval_007": {
+    "intent": "follow_up",
+    "location": null,
+    "cuisine": null,
+    "modifier": null,
+    "target_index": 1,
+    "target_indices": [1],
+    "question": "可以刷信用卡或 PayPay 嗎",
+    "time_constraint": null,
+    "is_location_ambiguous": false,
+    "suggested_sub_areas": []
+  },
+  "eval_008": {
+    "intent": "chitchat",
+    "location": null,
+    "cuisine": null,
+    "modifier": null,
+    "target_index": null,
+    "target_indices": [],
+    "time_constraint": null,
+    "is_location_ambiguous": false,
+    "suggested_sub_areas": []
+  },
+  "eval_009": {
+    "intent": "need_location",
+    "location": null,
+    "cuisine": "炸豬排",
+    "modifier": null,
+    "target_index": null,
+    "target_indices": [],
+    "time_constraint": null,
+    "is_location_ambiguous": false,
+    "suggested_sub_areas": []
+  },
+  "eval_010": {
+    "intent": "search",
+    "location": "澀谷",
+    "cuisine": "居酒屋",
+    "modifier": "平價/3000日幣內",
+    "target_index": null,
+    "target_indices": [],
+    "time_constraint": null,
+    "is_location_ambiguous": false,
+    "suggested_sub_areas": []
+  },
+  "eval_011": {
+    "intent": "search",
+    "location": "京都祇園",
+    "cuisine": "湯豆腐",
+    "modifier": "適合長輩/清淡",
+    "target_index": null,
+    "target_indices": [],
+    "time_constraint": null,
+    "is_location_ambiguous": false,
+    "suggested_sub_areas": []
+  },
+  "eval_012": {
+    "intent": "search",
+    "location": "原宿竹下通",
+    "cuisine": "可麗餅",
+    "modifier": "排隊人氣",
+    "target_index": null,
+    "target_indices": [],
+    "time_constraint": null,
+    "is_location_ambiguous": false,
+    "suggested_sub_areas": []
+  },
+  "eval_013": {
+    "intent": "more",
+    "location": null,
+    "cuisine": null,
+    "modifier": "平價/便宜",
+    "target_index": null,
+    "target_indices": [],
+    "time_constraint": null,
+    "is_location_ambiguous": false,
+    "suggested_sub_areas": []
+  },
+  "eval_014": {
+    "intent": "chitchat",
+    "location": null,
+    "cuisine": null,
+    "modifier": null,
+    "target_index": null,
+    "target_indices": [],
+    "time_constraint": null,
+    "is_location_ambiguous": false,
+    "suggested_sub_areas": []
+  },
+  "eval_015": {
+    "intent": "search",
+    "location": "秋葉原",
+    "cuisine": "咖哩",
+    "modifier": "有名",
+    "target_index": null,
+    "target_indices": [],
+    "time_constraint": null,
+    "is_location_ambiguous": false,
+    "suggested_sub_areas": []
+  },
+  "eval_016": {
+    "intent": "search",
+    "location": "新宿",
+    "cuisine": "燒肉",
+    "modifier": "牛舌厚切多汁/炭火",
+    "target_index": null,
+    "target_indices": [],
+    "time_constraint": null,
+    "is_location_ambiguous": false,
+    "suggested_sub_areas": []
+  },
+  "eval_017": {
+    "intent": "follow_up",
+    "location": null,
+    "cuisine": null,
+    "modifier": null,
+    "target_index": 3,
+    "target_indices": [3],
+    "question": "可以線上訂位或打電話預約嗎",
+    "time_constraint": null,
+    "is_location_ambiguous": false,
+    "suggested_sub_areas": []
+  },
+  "eval_018": {
+    "intent": "search",
+    "location": "秋葉原",
+    "cuisine": "燒肉定食",
+    "modifier": "一人用餐",
+    "target_index": null,
+    "target_indices": [],
+    "time_constraint": null,
+    "is_location_ambiguous": false,
+    "suggested_sub_areas": []
+  },
+  "eval_019": {
+    "intent": "more",
+    "location": null,
+    "cuisine": null,
+    "modifier": "不排隊/少排隊",
+    "target_index": null,
+    "target_indices": [],
+    "time_constraint": null,
+    "is_location_ambiguous": false,
+    "suggested_sub_areas": []
+  },
+  "eval_020": {
+    "intent": "need_location",
+    "location": null,
+    "cuisine": "鰻魚飯",
+    "modifier": null,
+    "target_index": null,
+    "target_indices": [],
+    "time_constraint": null,
+    "is_location_ambiguous": false,
+    "suggested_sub_areas": []
+  }
+}
+
