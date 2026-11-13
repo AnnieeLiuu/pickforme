@@ -56,6 +56,7 @@ from src.services.embedding import EmbeddingService
 from src.services.entity_resolver import EntityResolver
 from src.services.google_places import GooglePlacesClient
 from src.services.tabelog_scraper import TabelogScraper
+from src.services.telemetry import telemetry
 
 logger = logging.getLogger(__name__)
 
@@ -218,25 +219,36 @@ class FoodRecommendationFSM:
         """FSM 狀態機執行主入口"""
         self.early_response = None
         await self.trace_logger.start_run(chat_id=chat_id, user_query=user_message)
+        trace = telemetry.start_trace(
+            name="handle-user-request",
+            session_id=str(chat_id) if chat_id else None,
+            user_id=str(chat_id) if chat_id else None,
+            input_data={"message": user_message, "has_location": user_location is not None},
+        )
 
         try:
             # 1. State 1: 意圖與座標鎖定 (支援 chat_id 繼承上一輪座標)
+            span_s1 = telemetry.start_span("classify-intent", input_data={"message": user_message})
             parsed = await self.execute_state_1_intent(
                 user_message, user_location, conversation_history, chat_id=chat_id
             )
+            telemetry.end_span(span_s1, output_data=parsed)
             intent = parsed.get("intent", "search")
 
             # 分支 0: QuickPassGate 0ms 直接秒回 (問候/道謝/健康檢查/安全絆線)
             if intent == "fast_reply":
+                fast_res = str(parsed.get("fast_reply", ""))
                 await self.trace_logger.finish_run(
                     status="completed",
                     model_used="quick_pass_gate",
                     total_tokens=0,
                 )
-                return str(parsed.get("fast_reply", ""))
+                telemetry.end_trace(trace, output_data=fast_res)
+                return fast_res
 
             # 分支 A: 純閒聊 / 非美食問題
             if intent == "chitchat":
+                span_cc = telemetry.start_span("handle-chitchat", input_data={"message": user_message})
                 messages = [
                     {
                         "role": "system",
@@ -256,6 +268,8 @@ class FoodRecommendationFSM:
                     latency_ms=latency,
                 )
                 await self.trace_logger.finish_run(status="completed", model_used=model, total_tokens=tokens)
+                telemetry.end_span(span_cc, output_data=chitchat_res)
+                telemetry.end_trace(trace, output_data=chitchat_res)
                 return chitchat_res
 
             # 分支 B: 缺乏座標與地名 / 縣級超大區域主動收斂 (策略 A)
@@ -277,19 +291,25 @@ class FoodRecommendationFSM:
                         except Exception as e:
                             logger.warning(f"Failed to persist prefecture disambiguation working memory: {e}")
                     await self.trace_logger.finish_run(status="completed")
+                    telemetry.end_trace(trace, output_data=str(prompt_text))
                     return str(prompt_text)
 
                 await self.trace_logger.finish_run(status="completed")
-                return "🍱 收到！請問您想在哪個城市、車站或地標附近用餐呢？（例如輸入「新宿御苑」或點擊下方 📎 傳送您的即時位置）"
+                fallback_loc_msg = "🍱 收到！請問您想在哪個城市、車站或地標附近用餐呢？（例如輸入「新宿御苑」或點擊下方 📎 傳送您的即時位置）"
+                telemetry.end_trace(trace, output_data=fallback_loc_msg)
+                return fallback_loc_msg
 
             # 分支 C: 追問上一輪名單
             if intent == "follow_up":
+                span_fu = telemetry.start_span("answer-followup", input_data={"message": user_message})
                 answer = await self.execute_follow_up(chat_id, parsed, user_message)
                 await self.trace_logger.finish_run(
                     status="completed",
                     model_used=self._last_state_4_model,
                     total_tokens=self._last_state_4_tokens,
                 )
+                telemetry.end_span(span_fu, output_data=answer)
+                telemetry.end_trace(trace, output_data=answer)
                 return answer
 
             # 分支 C2: 探索當地特色美食與飲食文化導覽 (explore_cuisine)
@@ -298,6 +318,9 @@ class FoodRecommendationFSM:
                 explore_cat = str(parsed.get("explore_category") or "food").strip().lower()
                 if explore_cat not in ("food", "drink", "souvenir"):
                     explore_cat = "food"
+                span_ec = telemetry.start_span(
+                    "explore-culture", input_data={"area": explore_loc, "category": explore_cat}
+                )
                 t0 = time.time()
                 guide = await self.cuisine_guide_service.get_area_guide(
                     area_name=explore_loc,
@@ -339,6 +362,8 @@ class FoodRecommendationFSM:
                     model_used=f"cuisine_guide:{guide.source_tier}",
                     total_tokens=0,
                 )
+                telemetry.end_span(span_ec, output_data=guide_card)
+                telemetry.end_trace(trace, output_data=guide_card)
                 return guide_card
 
             # 分支 D: 正式美食推薦 (search / more)
@@ -401,6 +426,9 @@ class FoodRecommendationFSM:
                     await on_progress(f"🧭 正在為您鎖定 {target_desc} 並檢索週邊熱門美食與食べログ評分...")
 
             # 2. State 2: 候選店家智慧階梯檢索 (含去重排除與自適應擴圈)
+            span_s2 = telemetry.start_span(
+                "search-places", input_data={"keyword": run_ctx.search_keyword, "lat": lat, "lng": lng}
+            )
             candidates = await self.execute_state_2_places_ladder(
                 lat=lat,
                 lng=lng,
@@ -409,11 +437,17 @@ class FoodRecommendationFSM:
                 exclude_place_ids=run_ctx.exclude_place_ids,
                 custom_radii=run_ctx.radii_ladder,
             )
+            telemetry.end_span(span_s2, output_data={"candidate_count": len(candidates)})
             if not candidates:
                 await self.trace_logger.finish_run(status="completed")
-                return f"抱歉，在 {run_ctx.location_name or '該地點'} 週邊暫時未檢索到更多符合「{run_ctx.search_keyword}」的高評價餐廳，建議可更換地標或料理關鍵字再次搜尋。"
+                no_cand_msg = f"抱歉，在 {run_ctx.location_name or '該地點'} 週邊暫時未檢索到更多符合「{run_ctx.search_keyword}」的高評價餐廳，建議可更換地標或料理關鍵字再次搜尋。"
+                telemetry.end_trace(trace, output_data=no_cand_msg)
+                return no_cand_msg
 
             # 3. State 3: 3 店家平行 Tabelog 查驗
+            span_s3 = telemetry.start_span(
+                "enrich-restaurants", input_data={"candidates": [c.get("name") for c in candidates]}
+            )
             enriched_stores = await self.execute_state_3_parallel_tabelog(candidates, area_hint=run_ctx.location_name)
 
             # 3.2 Deterministic Constraint Sensor: 根據當輪 modifier 與長期偏好進行硬性條件降權與重排
@@ -428,6 +462,7 @@ class FoodRecommendationFSM:
             # 3.5 pgvector 語意重排與食評亮點萃取 (RAG)
             rerank_query = f"{run_ctx.user_message} {run_ctx.modifier}" if run_ctx.modifier else run_ctx.user_message
             enriched_stores = await self.semantic_rerank_reviews(rerank_query, enriched_stores)
+            telemetry.end_span(span_s3, output_data={"enriched_count": len(enriched_stores)})
 
             # 方案 1A 二段式進度更新 (進度 2 - 準備寫卡片)
             if on_progress:
@@ -437,12 +472,16 @@ class FoodRecommendationFSM:
                 )
 
             # 4. State 4: 單輪卡片生成
+            span_s4 = telemetry.start_span(
+                "synthesize-recommendations", input_data={"store_count": len(enriched_stores)}
+            )
             final_card = await self.execute_state_4_synthesis(
                 stores=enriched_stores,
                 cuisine=run_ctx.search_keyword,
                 location_name=run_ctx.location_name,
                 category=run_ctx.explore_category,
             )
+            telemetry.end_span(span_s4, output_data={"card_length": len(final_card)})
 
             # 保存推薦店家與 Working Memory 至 Session 以支援後續追問與累積去重
             if run_ctx.chat_id:
@@ -462,9 +501,12 @@ class FoodRecommendationFSM:
                 model_used=self._last_state_4_model,
                 total_tokens=self._last_state_4_tokens,
             )
+            telemetry.end_trace(trace, output_data=final_card)
             return final_card
 
         except Exception as e:
             logger.error(f"FSM Pipeline execution error: {e}", exc_info=True)
             await self.trace_logger.finish_run(status="failed")
-            return f"抱歉，美食推薦管線處理時遭遇問題：{str(e)}"
+            err_msg = f"抱歉，美食推薦管線處理時遭遇問題：{str(e)}"
+            telemetry.end_trace(trace, output_data=err_msg)
+            return err_msg

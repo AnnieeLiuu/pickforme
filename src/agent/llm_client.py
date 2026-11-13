@@ -2,11 +2,13 @@ import asyncio
 import json
 import logging
 import re
+import time
 from typing import Any, Optional
 
 import httpx
 from pydantic import BaseModel, ValidationError
 from src.config import settings
+from src.services.telemetry import telemetry
 
 logger = logging.getLogger(__name__)
 
@@ -64,35 +66,73 @@ class LLMClient:
         if response_format:
             body["response_format"] = response_format
 
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            resp = await client.post(url, json=body, headers=headers)
-            if resp.status_code == 429:
-                retry_after_str = resp.headers.get("retry-after")
-                wait_time = 3.0
-                if retry_after_str:
-                    try:
-                        wait_time = max(float(retry_after_str), 3.0)
-                    except ValueError:
-                        pass
-                logger.warning(f"LLM API ({model}) 觸發 Rate Limit (429)，動態等待 {wait_time} 秒後重試...")
-                await asyncio.sleep(wait_time)
+        t0 = time.time()
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
                 resp = await client.post(url, json=body, headers=headers)
+                if resp.status_code == 429:
+                    retry_after_str = resp.headers.get("retry-after")
+                    wait_time = 3.0
+                    if retry_after_str:
+                        try:
+                            wait_time = max(float(retry_after_str), 3.0)
+                        except ValueError:
+                            pass
+                    logger.warning(f"LLM API ({model}) 觸發 Rate Limit (429)，動態等待 {wait_time} 秒後重試...")
+                    await asyncio.sleep(wait_time)
+                    resp = await client.post(url, json=body, headers=headers)
 
-            if resp.status_code >= 400:
-                logger.error(f"LLM API Error ({model}) HTTP {resp.status_code}: {resp.text[:500]}")
-                resp.raise_for_status()
+                if resp.status_code >= 400:
+                    logger.error(f"LLM API Error ({model}) HTTP {resp.status_code}: {resp.text[:500]}")
+                    resp.raise_for_status()
 
-            data = resp.json()
-            choice = data.get("choices", [{}])[0]
-            message_obj = choice.get("message", {})
-            usage = data.get("usage", {})
-            total_tokens = usage.get("total_tokens", 0)
+                data = resp.json()
+                choice = data.get("choices", [{}])[0]
+                message_obj = choice.get("message", {})
+                usage = data.get("usage", {})
+                total_tokens = usage.get("total_tokens", 0)
+                prompt_tokens = usage.get("prompt_tokens", 0)
+                completion_tokens = usage.get("completion_tokens", 0)
 
-            content_str = (message_obj.get("content") or "").strip()
-            if not content_str:
-                raise ValueError(f"Model {model} returned empty content")
+                content_str = (message_obj.get("content") or "").strip()
+                if not content_str:
+                    raise ValueError(f"Model {model} returned empty content")
 
-            return message_obj, total_tokens
+                latency_ms = (time.time() - t0) * 1000
+                telemetry.record_generation(
+                    name=f"llm-call:{model}",
+                    model=model,
+                    prompt=cleaned_messages,
+                    completion=content_str,
+                    model_parameters={
+                        "temperature": body.get("temperature"),
+                        "max_tokens": body.get("max_tokens"),
+                    },
+                    usage={
+                        "input": prompt_tokens,
+                        "output": completion_tokens,
+                        "total": total_tokens,
+                    },
+                    latency_ms=latency_ms,
+                )
+
+                return message_obj, total_tokens
+        except Exception as e:
+            latency_ms = (time.time() - t0) * 1000
+            telemetry.record_generation(
+                name=f"llm-call:{model}",
+                model=model,
+                prompt=cleaned_messages,
+                completion="",
+                model_parameters={
+                    "temperature": body.get("temperature"),
+                    "max_tokens": body.get("max_tokens"),
+                },
+                level="ERROR",
+                status_message=str(e),
+                latency_ms=latency_ms,
+            )
+            raise
 
     async def _try_groq(
         self,

@@ -40,6 +40,14 @@ graph TD
         HotDB -->|"prewarm_jobs (SKIP LOCKED)"| LocalWorker
     end
 
+    subgraph ObservabilityTier ["📊 可觀測性與即時監控 (Observability & Tracing)"]
+        RiverViewer["🌊 River 三欄式可觀測性看板 (public/index.html)"]
+        LangfuseCloud["🔭 Langfuse Cloud (即時 Tracing / Token 計價 / Bad Case 標註)"]
+        TelemetryMgr["📡 TelemetryManager (src/services/telemetry.py)"]
+        FSM --> TelemetryMgr
+        TelemetryMgr -.->|非同步批次傳送| LangfuseCloud
+    end
+
     FSM <--> LLMTier
     FSM --> HotDB
     FSM --> VectorDB
@@ -326,6 +334,9 @@ flowchart TD
   - **Telegram Webhook Secret Token 驗證**：要求驗證 `X-Telegram-Bot-Api-Secret-Token` 標頭，防止惡意流量觸發 Cloud Run。
   - **白名單過濾**：以 `TELEGRAM_ALLOWED_USER_ID` 限制存取權限。
   - **GitLab Secret Detection**：引入 CI 密鑰洩漏檢測模板，確保 API Keys 不外洩。
+- **線上可觀測性與即時監控 (Production Observability & Tracing)**：
+  - **Langfuse Cloud 整合 (`src/services/telemetry.py`)**：將每次 Telegram 對話請求包裝為以動詞優先（`handle-user-request`）的頂層 Trace，各階段以標準 Span（`classify-intent`, `search-places`, `enrich-restaurants`, `synthesize-recommendations`, `handle-chitchat`, `explore-culture`）細緻化記錄，底層 LLM 呼叫記錄為 Generation，精準掌握模型降級、Token 消耗、延遲分佈與壞案例標註。
+  - **Fail-Open 優雅降級與 0ms 離線 Mock 保證**：未填寫 API Key 或處於 `ENVIRONMENT=test` 時，自動啟用無侵入 NoOp 物件，確保單元測試 0 外部請求、0 延遲與 100% 業務隔離。
 - **快取維護與雙層對話記憶 (Cache TTL & Two-Tier Session Memory)**：
   - **7 天 Tabelog 快取 TTL**：Neon DB 快取超過 7 天自動觸發背景爬蟲刷新，平衡評分即時性與抓取頻率。
   - **3 輪對話歷史記憶**：`chat_sessions` 自動保存最近 3 輪對話內容，支援自然語言追問（如「第 2 家有開嗎？」）。

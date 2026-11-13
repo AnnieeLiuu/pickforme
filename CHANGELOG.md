@@ -7,6 +7,11 @@
 ## [Unreleased]
 
 ### Added
+- **Langfuse 線上可觀測性與即時鏈路追蹤整合 (`src/services/telemetry.py`, `src/agent/pipeline.py`, `src/agent/llm_client.py`, `src/config.py`)**：
+  - **遵循 Langfuse 官方最佳實踐 (`github.com/langfuse/skills`)**：以對話輪次為單位建立動詞優先的靜態 Trace (`handle-user-request`)，綁定 `session_id` 與 `user_id`；以靜態 Span（`classify-intent`, `search-places`, `enrich-restaurants`, `synthesize-recommendations`, `handle-chitchat`, `explore-culture`）細緻劃分 4-Stage 狀態機與各分支；底層 LLM 呼叫記錄為 Generation，精準掌握模型降級、Token 消耗（`input`/`output`/`total`）、延遲分佈與壞案例標註。
+  - **ContextVars 無侵入式傳遞**：透過 `contextvars.ContextVar` 追蹤當前活躍的 Trace/Span，完全無需改動現有 Service 與 Stage 函式簽名。
+  - **Fail-Open 優雅降級與 0ms 離線 Mock 原則**：當未配置金鑰或處於 `ENVIRONMENT=test` 時自動啟用輕量級 NoOp 物件，確保單元測試 0 外部請求、0 毫秒延遲，遙測失敗時絕不中斷業務對話。
+  - **FastAPI 生命週期清理**：於 `src/main.py` 關閉階段註冊 `telemetry.flush()`，確保緩衝佇列安全送出。
 - **微型 LLM 動態地理歧義消解與多聚落子商圈解析 (`src/agent/schemas.py`, `src/agent/stages/intent.py`, `src/agent/core.py`, `src/bot/handlers.py`)**：
   - **Dynamic LLM-driven Disambiguation**：升級 `IntentOutput` 與 `INTENT_PARSER_SYSTEM_PROMPT`，由微型 LLM 世界知識在單一推理回合中（0 額外網路延遲）動態判定廣域或模糊多聚落區域（如「靜岡溫泉街」、「北海道」、「長野滑雪」、「九州」），自動產出 2~3 個具代表性具體子商圈（含 `name`、`desc`、`search_loc`），回傳互動式選單並存入 Working Memory。
   - **雙軌 Prewarm 門面解耦與容錯直通 (Fail-Open)**：在 `AgentEngine` 增設 `disambiguate_area` 門面方法並賦予 2 秒超時防護，Telegram `/prewarm` 指令於大區域或模糊地名時自動提示互動式選單；若遇 LLM 逾時或異常則安全降級 (fail-open) 照常排入預熱，杜絕例外崩潰。
@@ -101,6 +106,11 @@
 ## [1.3.0] - 2026-11-11
 
 ### Added
+- **Langfuse 線上可觀測性與即時鏈路追蹤整合 (`src/services/telemetry.py`, `src/agent/pipeline.py`, `src/agent/llm_client.py`, `src/config.py`)**：
+  - **遵循 Langfuse 官方最佳實踐 (`github.com/langfuse/skills`)**：以對話輪次為單位建立動詞優先的靜態 Trace (`handle-user-request`)，綁定 `session_id` 與 `user_id`；以靜態 Span（`classify-intent`, `search-places`, `enrich-restaurants`, `synthesize-recommendations`, `handle-chitchat`, `explore-culture`）細緻劃分 4-Stage 狀態機與各分支；底層 LLM 呼叫記錄為 Generation，精準掌握模型降級、Token 消耗（`input`/`output`/`total`）、延遲分佈與壞案例標註。
+  - **ContextVars 無侵入式傳遞**：透過 `contextvars.ContextVar` 追蹤當前活躍的 Trace/Span，完全無需改動現有 Service 與 Stage 函式簽名。
+  - **Fail-Open 優雅降級與 0ms 離線 Mock 原則**：當未配置金鑰或處於 `ENVIRONMENT=test` 時自動啟用輕量級 NoOp 物件，確保單元測試 0 外部請求、0 毫秒延遲，遙測失敗時絕不中斷業務對話。
+  - **FastAPI 生命週期清理**：於 `src/main.py` 關閉階段註冊 `telemetry.flush()`，確保緩衝佇列安全送出。
 - **混合雙層日本在地特色美食與飲食文化導覽引擎 (`src/services/cuisine_guide.py`, `config/local_specialties.json`)**：
   - 支援 `explore_cuisine` 探索意圖（如「神保町有什麼特色美食？」、「淺草名物」）：當使用者尚未決定吃哪種料理時，先為其導覽當地最具代表性的 3 大名物料理與歷史文化背景。
   - **Tier 1 內建考據知識庫 (`config/local_specialties.json`)**：收錄神保町、淺草、月島、築地、新宿、橫濱、京都祇園、大阪難波、博多等熱門商圈之飲食發源史與名物，0ms 秒回、0 Token 且 100% 零歷史幻覺。
@@ -137,6 +147,11 @@
 ## [1.2.0] - 2026-10-11
 
 ### Added
+- **Langfuse 線上可觀測性與即時鏈路追蹤整合 (`src/services/telemetry.py`, `src/agent/pipeline.py`, `src/agent/llm_client.py`, `src/config.py`)**：
+  - **遵循 Langfuse 官方最佳實踐 (`github.com/langfuse/skills`)**：以對話輪次為單位建立動詞優先的靜態 Trace (`handle-user-request`)，綁定 `session_id` 與 `user_id`；以靜態 Span（`classify-intent`, `search-places`, `enrich-restaurants`, `synthesize-recommendations`, `handle-chitchat`, `explore-culture`）細緻劃分 4-Stage 狀態機與各分支；底層 LLM 呼叫記錄為 Generation，精準掌握模型降級、Token 消耗（`input`/`output`/`total`）、延遲分佈與壞案例標註。
+  - **ContextVars 無侵入式傳遞**：透過 `contextvars.ContextVar` 追蹤當前活躍的 Trace/Span，完全無需改動現有 Service 與 Stage 函式簽名。
+  - **Fail-Open 優雅降級與 0ms 離線 Mock 原則**：當未配置金鑰或處於 `ENVIRONMENT=test` 時自動啟用輕量級 NoOp 物件，確保單元測試 0 外部請求、0 毫秒延遲，遙測失敗時絕不中斷業務對話。
+  - **FastAPI 生命週期清理**：於 `src/main.py` 關閉階段註冊 `telemetry.flush()`，確保緩衝佇列安全送出。
 - **結構化搜尋約束 (Structured Search Constraints)**：將自然語言距離/步行要求（如「走路15分鐘內」）與料理類別解耦，自動換算為物理半徑階梯（`radii_ladder`），Places 搜尋關鍵字 100% 保持純淨。
 - **食評雜訊濾網與推薦理由智慧合成 (`ReviewSanitizer`)**：自動剔除生硬的「營業時間 24時間営業」與「交通指南」SEO 雜訊，依結構化權威指標合成高質感老饕推薦理由。
 - **Google 端老饕潛力預篩 (State 2.5)**：於 Google 記憶體端依評分、評論數與距離懲罰預篩 4 筆主選與 2 筆備選種子店家。
@@ -156,6 +171,11 @@
 ## [1.1.0] - 2026-10-10
 
 ### Added
+- **Langfuse 線上可觀測性與即時鏈路追蹤整合 (`src/services/telemetry.py`, `src/agent/pipeline.py`, `src/agent/llm_client.py`, `src/config.py`)**：
+  - **遵循 Langfuse 官方最佳實踐 (`github.com/langfuse/skills`)**：以對話輪次為單位建立動詞優先的靜態 Trace (`handle-user-request`)，綁定 `session_id` 與 `user_id`；以靜態 Span（`classify-intent`, `search-places`, `enrich-restaurants`, `synthesize-recommendations`, `handle-chitchat`, `explore-culture`）細緻劃分 4-Stage 狀態機與各分支；底層 LLM 呼叫記錄為 Generation，精準掌握模型降級、Token 消耗（`input`/`output`/`total`）、延遲分佈與壞案例標註。
+  - **ContextVars 無侵入式傳遞**：透過 `contextvars.ContextVar` 追蹤當前活躍的 Trace/Span，完全無需改動現有 Service 與 Stage 函式簽名。
+  - **Fail-Open 優雅降級與 0ms 離線 Mock 原則**：當未配置金鑰或處於 `ENVIRONMENT=test` 時自動啟用輕量級 NoOp 物件，確保單元測試 0 外部請求、0 毫秒延遲，遙測失敗時絕不中斷業務對話。
+  - **FastAPI 生命週期清理**：於 `src/main.py` 關閉階段註冊 `telemetry.flush()`，確保緩衝佇列安全送出。
 - **自研 4 階段確定性有限狀態機 (`FoodRecommendationFSM`)**：取代不可控的黑盒 Prompt Loop，確立 State 1（意圖解析）➔ State 2（Places 階梯擴圈）➔ State 3（Tabelog 平行對齊）➔ State 4（卡片合成與護欄）之確定性流水線。
 - **Scoped Anchor 區塊錨點防偽護欄 (`src/agent/pipeline.py`)**：以店家為作用域隔離切片，純 Python 記憶體運算（<0.5ms）杜絕高敏感評分微調幻覺。
 - **CI 雙向合約測試防禦 (`tests/test_pipeline.py`)**：自動驗證 System Prompt 排版標記與 Guardrail 正則錨點 100% 同步，徹底根除提示詞漂移。
@@ -169,6 +189,11 @@
 ## [1.0.0] - 2026-10-09
 
 ### Added
+- **Langfuse 線上可觀測性與即時鏈路追蹤整合 (`src/services/telemetry.py`, `src/agent/pipeline.py`, `src/agent/llm_client.py`, `src/config.py`)**：
+  - **遵循 Langfuse 官方最佳實踐 (`github.com/langfuse/skills`)**：以對話輪次為單位建立動詞優先的靜態 Trace (`handle-user-request`)，綁定 `session_id` 與 `user_id`；以靜態 Span（`classify-intent`, `search-places`, `enrich-restaurants`, `synthesize-recommendations`, `handle-chitchat`, `explore-culture`）細緻劃分 4-Stage 狀態機與各分支；底層 LLM 呼叫記錄為 Generation，精準掌握模型降級、Token 消耗（`input`/`output`/`total`）、延遲分佈與壞案例標註。
+  - **ContextVars 無侵入式傳遞**：透過 `contextvars.ContextVar` 追蹤當前活躍的 Trace/Span，完全無需改動現有 Service 與 Stage 函式簽名。
+  - **Fail-Open 優雅降級與 0ms 離線 Mock 原則**：當未配置金鑰或處於 `ENVIRONMENT=test` 時自動啟用輕量級 NoOp 物件，確保單元測試 0 外部請求、0 毫秒延遲，遙測失敗時絕不中斷業務對話。
+  - **FastAPI 生命週期清理**：於 `src/main.py` 關閉階段註冊 `telemetry.flush()`，確保緩衝佇列安全送出。
 - **FastAPI 核心後端**：提供 `/health` 健康檢查與 `/webhook/telegram` 端點。
 - **Telegram Bot 互動介面**：支援同步 Webhook 訊息即時狀態編輯串流 (`🔍 搜尋...` ➔ `📊 對齊評分...` ➔ 最終推薦卡片)。
 - **Neon Cloud Postgres + GCS 冷熱儲存分層**：

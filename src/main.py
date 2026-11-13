@@ -14,6 +14,7 @@ from src.bot.webhook import router as telegram_router
 from src.config import settings
 from src.db.connection import close_db_pool, get_db_pool
 from src.services.diagnostics import log_buffer
+from src.services.telemetry import telemetry
 
 logging.basicConfig(
     level=logging.INFO,
@@ -45,6 +46,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield
 
     logger.info("Shutting down PickForMe application lifespan...")
+    telemetry.flush()
     await close_db_pool()
 
 

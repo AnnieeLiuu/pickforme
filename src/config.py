@@ -35,6 +35,15 @@ class Settings(BaseSettings):
     OLLAMA_MODEL: str = "qwen2.5:3b"
     OLLAMA_ENABLED: bool = True
 
+    # Langfuse Online Observability
+    LANGFUSE_PUBLIC_KEY: str = ""
+    LANGFUSE_SECRET_KEY: str = ""
+    LANGFUSE_HOST: str = "https://cloud.langfuse.com"
+
+    def is_langfuse_enabled(self) -> bool:
+        """Langfuse is only enabled when keys are present and not in test environment."""
+        return bool(self.LANGFUSE_PUBLIC_KEY and self.LANGFUSE_SECRET_KEY and self.ENVIRONMENT != "test")
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
