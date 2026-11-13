@@ -393,6 +393,15 @@ async def execute_state_4_synthesis(
     system_prompt = get_recommendation_card_prompt()
     if category_guidance:
         system_prompt += f"\n\n{category_guidance}"
+
+    # 導航精準指引 (都會與景區全覆蓋，嚴防 LLM 竄改具體車站或在地街區)
+    nav_guidance = (
+        "【精準交通與步行導航指令】\n"
+        "店家資料所提供之「步行距離」（例如「從『西武新宿站』步行約 3 分鐘」、「位於新宿『歌舞伎町』 (距定位點約 557m)」），"
+        "請務必 100% 忠實完整引用，絕對禁止自行簡化或竄改為模糊的大區域出發（如嚴禁重寫為「從『新宿』步行」）！"
+    )
+    system_prompt += f"\n\n{nav_guidance}"
+
     if is_wide_area_origin(location_name):
         wide_area_guidance = (
             f"【景區/廣域導航指引】\n"

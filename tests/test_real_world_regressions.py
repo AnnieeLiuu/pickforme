@@ -2674,3 +2674,93 @@ async def test_case_33_out_of_region_coords_gate_and_bounds():
     assert gate_res.matched is True
     assert gate_res.rule_name == "out_of_region_coords"
     assert "不在日本國境內" in (gate_res.fast_reply or "")
+
+
+# ==============================================================================
+# Case 34: Universal Station-First & Anti-Ghost-Station Navigation
+# ==============================================================================
+@pytest.mark.asyncio
+async def test_case_34_universal_station_first_and_neighborhood_navigation():
+    """Case 34: 全國車站優先 (Station-First) 與反幽靈車站商圈保底 (Anti-Ghost-Station)
+
+    [真實痛點]
+    1. 都會區（如新宿、澀谷）店家若爬取到「西武新宿駅徒歩3分」，過去因非廣域景區被強制覆蓋為「從『新宿』步行約 7 分鐘」，模糊不清。
+    2. 使用者若輸入商圈/景點（如「清水寺」、「道頓堀」），若無車站資料不可盲目捏造「清水寺站」或「道頓堀站」等幽靈車站。
+    3. 使用者明確輸入「新宿站」、「池袋東口」等車站出口時，格式化應為點對點車站指引。
+    """
+    from src.agent.stages.places_search import format_walking_description
+
+    # 34.1: 都會區店家具備真實車站 (西武新宿站 3 分鐘) ➡️ 優先採用具體車站描述
+    desc_station = format_walking_description(
+        origin_name="新宿",
+        dist_m=557,
+        walk_mins=7,
+        nearest_station_desc="從「西武新宿站」步行約 3 分鐘",
+        address="東京都新宿区歌舞伎町2-39-8",
+    )
+    assert desc_station == "從「西武新宿站」步行約 3 分鐘"
+
+    # 34.2: 都會區店家無車站資訊且距離近 (<= 400m) ➡️ 維持向後相容的點對點描述
+    desc_close = format_walking_description(
+        origin_name="新宿",
+        dist_m=320,
+        walk_mins=4,
+        nearest_station_desc=None,
+        address="東京都新宿区西新宿1-1-1",
+    )
+    assert desc_close == "從「新宿」步行約 4 分鐘 (320m)"
+
+    # 34.3: 著名景點/地標無車站資料且距離較遠 (> 400m) ➡️ 提煉在地街區子商圈，絕不捏造幽靈車站
+    desc_landmark = format_walking_description(
+        origin_name="清水寺",
+        dist_m=650,
+        walk_mins=9,
+        nearest_station_desc=None,
+        address="京都府京都市東山区産寧坂123",
+    )
+    assert "清水寺站" not in desc_landmark
+    assert "産寧坂" in desc_landmark
+    assert desc_landmark == "位於清水寺「産寧坂」 (距定位點約 650m)"
+
+    # 防結巴驗證：若地址子商圈包含原地名，不重複輸出「位於道頓堀「道頓堀」」
+    desc_stutter = format_walking_description(
+        origin_name="道頓堀",
+        dist_m=520,
+        walk_mins=7,
+        nearest_station_desc=None,
+        address="大阪府大阪市中央区道頓堀1-1-1",
+    )
+    assert desc_stutter != "位於道頓堀「道頓堀」 (距定位點約 520m)"
+    assert desc_stutter == "距「道頓堀」定位點約 520m (步行約 7 分鐘)"
+
+    # 34.4: 使用者明確指定車站（如「新宿站」）且無細部車站 ➡️ 格式化為從「新宿站」出發
+    desc_user_station = format_walking_description(
+        origin_name="新宿站",
+        dist_m=280,
+        walk_mins=4,
+        nearest_station_desc=None,
+        address="東京都新宿区西新宿1-1-1",
+    )
+    assert desc_user_station == "從「新宿站」步行約 4 分鐘 (280m)"
+
+
+@pytest.mark.asyncio
+async def test_case_34_enrichment_urban_station_alignment():
+    """Case 34.5: Stage 3 Enrichment 在都會區對齊真實車站描述，不再僅限廣域景區"""
+    from src.agent.stages.enrichment import _align_walking_and_station
+
+    store = {
+        "name": "麵匠 竹虎 新宿店",
+        "origin_name": "新宿",
+        "distance_meters": 557,
+        "walk_time_minutes": 7,
+        "walking_desc": "從「新宿」步行約 7 分鐘",
+        "address": "東京都新宿区歌舞伎町2-39-8",
+    }
+    aligned = _align_walking_and_station(
+        store,
+        nearest_station="從「西武新宿站」步行約 3 分鐘",
+        area_hint="新宿",
+    )
+    assert aligned["walking_desc"] == "從「西武新宿站」步行約 3 分鐘"
+    assert aligned["nearest_station_desc"] == "從「西武新宿站」步行約 3 分鐘"

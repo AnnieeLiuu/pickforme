@@ -69,27 +69,66 @@ def format_walking_description(
     nearest_station_desc: Optional[str] = None,
     address: Optional[str] = None,
 ) -> str:
-    """產生精準步行描述。在廣域景區且有 nearest_station_desc 時，絕不拼接廣域中心點米數 (避免 Usain Bolt 錯位)"""
-    if not is_wide_area_origin(origin_name):
-        origin_prefix = f"從「{origin_name}」" if origin_name else "從「您目前位置」"
-        return f"{origin_prefix}步行約 {walk_mins} 分鐘 ({dist_m}m)"
+    """產生精準步行/交通描述。
 
-    # 廣域景區模式：
-    # 1. 優先採用店家所屬之最近車站步行指引 (如「從「強羅站」步行約 5 分鐘」)
+    三階精準指引原則：
+    1. 第一優先 (真實最近車站)：若有從 Tabelog/Grounding 爬取之具體車站步行 (如「從『西武新宿站』步行約 3 分鐘」)，
+       不論景區或都會區，一律優先採用真實車站與出口，徹底解決「從『新宿/箱根』大區域出發」之模糊痛點。
+    2. 使用者明確指名車站/出口 (Point-to-Point)：若使用者輸入本身即為站點 (如「新宿站」、「池袋東口」)，
+       格式化為「從「{origin_name}」步行約 {walk_mins} 分鐘 ({dist_m}m)」。
+    3. 區域/景點/商圈保底 (Neighborhood Context)：若無車站資訊且為大商圈/景點 (如「新宿」、「清水寺」、「道頓堀」)，
+       絕不盲目捏造「清水寺站」或「道頓堀站」等幽靈車站！
+       - 若為 GPS 定位模式 (not origin_name 或 origin_name == "您目前位置")，保留「從「您目前位置」步行約 {walk_mins} 分鐘 ({dist_m}m)」。
+       - 若 dist_m <= 400m (核心腹地)，保留「從「{clean_origin}」步行約 {walk_mins} 分鐘 ({dist_m}m)」。
+       - 若 dist_m > 400m (外圍街區)，嘗試由店家地址提煉在地子商圈/街區 (如新宿区歌舞伎町 ➡️ 歌舞伎町)，
+         並加入防結巴判斷避免「位於道頓堀「道頓堀」」：
+         輸出「位於{clean_origin}「{sub_area}」 (距定位點約 {dist_m}m)」。
+    """
+    # 1. 第一優先：真實最近車站 (都會 + 景區全覆蓋)
     if nearest_station_desc:
         return nearest_station_desc
 
-    # 2. 次之若地址可提煉出在地子商圈 (如 箱根町強羅 ➡️ 強羅商圈)
+    clean_origin = (origin_name or "").strip()
+
+    # GPS 定位模式直接保底
+    if not clean_origin or clean_origin == "您目前位置":
+        return f"從「您目前位置」步行約 {walk_mins} 分鐘 ({dist_m}m)"
+
+    # 2. 第二優先：使用者明確指名為具體車站或出口 (endswith 站/駅/口/Station)
+    if any(clean_origin.endswith(s) for s in ("站", "駅", "Station", "口")):
+        origin_prefix = f"從「{clean_origin}」"
+        return f"{origin_prefix}步行約 {walk_mins} 分鐘 ({dist_m}m)"
+
+    # 3. 第三優先：無車站資料時之商圈/景點街區保護 (杜絕盲加「站」引發幽靈車站)
+    # 3.1 核心腹地 (<= 400m)，維持點對點相容
+    if dist_m <= 400:
+        return f"從「{clean_origin}」步行約 {walk_mins} 分鐘 ({dist_m}m)"
+
+    # 3.2 較遠距離 (> 400m)，嘗試從地址萃取真實街區，避免誤導「從新宿走 12 分鐘」
     sub_area = None
     if address:
-        sub_m = re.search(r"[町市區区]([^\d\s\-\,]{2,8}?)(?=\d|丁目|番地|\s|$)", address)
+        if re.search(r"[市區区]", address):
+            rest = re.split(r"[市區区]", address)[-1]
+        elif re.search(r"[町村]", address):
+            rest = re.split(r"[町村]", address)[-1]
+        else:
+            rest = address
+        sub_m = re.match(r"([^\d\s\-\,]{2,10}?)(?=\d|丁目|番地|\s|$)", rest.strip())
         if sub_m:
-            sub_area = sub_m.group(1).strip()
-    if sub_area:
-        return f"位於{origin_name}「{sub_area}」商圈 (距定位點約 {dist_m}m)"
+            candidate_sub = sub_m.group(1).strip()
+            # 防結巴：若子商圈與 origin_name 互為子字串，不重複拼接 (例如避免「位於道頓堀「道頓堀」」)
+            if (
+                candidate_sub
+                and candidate_sub != clean_origin
+                and candidate_sub not in clean_origin
+                and clean_origin not in candidate_sub
+            ):
+                sub_area = candidate_sub
 
-    # 3. 保底
-    return f"位於「{origin_name}」區域 (距定位點約 {dist_m}m)"
+    if sub_area:
+        return f"位於{clean_origin}「{sub_area}」 (距定位點約 {dist_m}m)"
+
+    return f"距「{clean_origin}」定位點約 {dist_m}m (步行約 {walk_mins} 分鐘)"
 
 
 def resolve_search_constraints(
@@ -391,7 +430,7 @@ async def execute_state_2_places_ladder(
                 ):
                     if t_seed.get(k) is not None and not by_id[pid].get(k):
                         by_id[pid][k] = t_seed[k]
-                if t_seed.get("nearest_station_desc") and is_wide_area_origin(origin_name):
+                if t_seed.get("nearest_station_desc"):
                     by_id[pid]["walking_desc"] = format_walking_description(
                         origin_name=origin_name,
                         dist_m=by_id[pid].get("distance_meters", 0),

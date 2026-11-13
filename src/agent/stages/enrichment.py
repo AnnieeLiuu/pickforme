@@ -232,18 +232,17 @@ def _align_walking_and_station(
     nearest_station: Optional[str] = None,
     area_hint: Optional[str] = None,
 ) -> dict[str, Any]:
-    """若為廣域景區，依據最近車站或在地子商圈重新排版 walking_desc，絕不拼接廣域中心點米數"""
+    """依據最近車站或在地子商圈重新排版 walking_desc，絕不拼接模糊大區域中心點米數"""
     origin = p.get("origin_name") or area_hint
     st_desc = nearest_station or p.get("nearest_station_desc")
     p["nearest_station_desc"] = st_desc
-    if is_wide_area_origin(origin):
-        p["walking_desc"] = format_walking_description(
-            origin_name=origin,
-            dist_m=int(p.get("distance_meters") or 0),
-            walk_mins=int(p.get("walk_time_minutes") or 1),
-            nearest_station_desc=st_desc,
-            address=p.get("address"),
-        )
+    p["walking_desc"] = format_walking_description(
+        origin_name=origin,
+        dist_m=int(p.get("distance_meters") or 0),
+        walk_mins=int(p.get("walk_time_minutes") or 1),
+        nearest_station_desc=st_desc,
+        address=p.get("address"),
+    )
     return p
 
 

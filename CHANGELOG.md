@@ -7,6 +7,12 @@
 ## [Unreleased]
 
 ### Added
+- **全國車站優先 (Station-First) 與反幽靈車站商圈保底 (Anti-Ghost-Station Navigation) (`src/agent/stages/places_search.py`, `src/agent/stages/enrichment.py`, `src/agent/stages/synthesis.py`, `tests/test_real_world_regressions.py`)**：
+  - **Case 34.1 都會區真實車站優先採用**：徹底根除都會區（新宿、澀谷、銀座等）因非廣域景區而拋棄 Tabelog 最近車站資料之痛點。當店家爬取到「西武新宿駅徒歩3分」時，不再覆蓋為「從『新宿』步行約 7 分鐘」，一律優先展示「從『西武新宿站』步行約 3 分鐘」，全日本都會與景區無差別享受精確站點指引。
+  - **Case 34.2 核心腹地 (<400m) 向後相容**：店家無細部車站且距商圈定位點近時，維持簡潔清晰之點對點步行描述（如「從『新宿』步行約 4 分鐘 (320m)」）。
+  - **Case 34.3 反幽靈車站商圈街區保底 (Anti-Ghost-Station)**：使用者查詢景點或商圈地標（如「清水寺」、「道頓堀」）且無車站資料時，**絕不盲目拼接「站」捏造「清水寺站」或「道頓堀站」等虛假車站**；距定位點較遠 (>400m) 時，自動自店家日文地址精準提煉在地子街區（如「位於清水寺「產寧坂」 (距定位點約 650m)」），並具備防結巴機制（避免輸出「位於道頓堀「道頓堀」」）。
+  - **Case 34.4 使用者指定站點精準尊重**：使用者明確指定具體車站出口（結尾為「站/駅/口/Station」）時，一律尊重起點標註（如「從『新宿站』步行約 4 分鐘 (280m)」）。
+  - **Case 34.5 全管線與 Prompt 協同守門**：解除 `_align_walking_and_station` 僅限景區之門檻；於 State 4 推薦卡片提示詞注入通用交通導航指令，強制要求 LLM 100% 忠實照錄店家資料之步行描述，嚴禁擅自簡化為模糊的大區域。
 - **4-Tier 評測體系重構：消滅「自己考自己」假象，導入真實 Replay Cassettes 回放機制 (`src/eval/evaluator.py`, `tests/fixtures/eval_llm_cassettes.json`)**：
   - **根除 `actual = expected` 評測作弊**：重構 `EvaluationEngine.evaluate_tier1_intent`，徹底移除直接賦值假評測；採用錄製卡匣（Replay Cassettes）驅動受測 FSM，真實執行 `QuickPassGate` 0ms 快篩、`IntentOutput.model_validate()` 結構合約校驗、`validate_semantic_consistency()` 語意補齊、Working Memory 跨輪繼承與座標解析。
   - **0 依賴離線隔離**：注入 `InMemorySessionRepo` 與 `MockPlacesClient.geocode_location`，在保證 0 雲端 API 消耗與 0ms 離線速度的同時，真實驗證解析管線邏輯。
