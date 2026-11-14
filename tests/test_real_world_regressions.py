@@ -3173,3 +3173,75 @@ async def test_case_44_llm_fallback_prioritizes_gemini_before_secondary_groq():
         assert text == "ok-gemini"
         assert model_used == "gemini-3-flash-preview"
         assert call_order == ["groq:qwen/qwen3.8-27b", "gemini"]
+
+
+@pytest.mark.asyncio
+async def test_case_45_place_typo_does_not_inherit_previous_turn_location():
+    """
+    Case 45 (Production bug ae5b5b45):
+    使用者上一輪剛查詢過「靜岡車站」，下一輪輸入「神樂版 咖啡」（「神樂坂」的同音錯字）。
+    根因：Intent Parser 誤將「神樂版」塞入 modifier 並繼承上一輪的「靜岡車站」，同時誤標
+    is_location_ambiguous=true，導致回覆靜岡車站的店。
+    防禦：INTENT_PARSER_SYSTEM_PROMPT 必須明確指示自動糾正日本地名同音錯字、禁止跨輪繼承
+    非 more 意圖的 location，且單一具體車站/地區不得誤判為模糊地名；並且在 FSM Stage 1
+    中當 LLM 正確解析為 神樂坂 時，geocode_location 應以「神樂坂」為主而非上一輪的「靜岡車站」。
+    """
+    from pathlib import Path
+
+    from src.agent.pipeline import FoodRecommendationFSM
+    from src.agent.stages.intent import get_intent_parser_prompt
+
+    prompt_file = Path("config/prompts/intent_parser.md")
+    assert prompt_file.exists(), "config/prompts/intent_parser.md must exist"
+    raw_template = prompt_file.read_text(encoding="utf-8")
+    assert "{schema_prompt}" in raw_template
+
+    prompt = get_intent_parser_prompt()
+    assert "{schema_prompt}" not in prompt
+    assert "神樂版" in prompt
+    assert "神樂坂" in prompt
+    assert "is_location_ambiguous" in prompt
+
+    geocode_calls: list[str] = []
+
+    async def fake_geocode(loc: str):
+        geocode_calls.append(loc)
+        return {"lat": 35.7014, "lng": 139.7403, "formatted_address": "Kagurazaka, Shinjuku City, Tokyo"}
+
+    repo = MagicMock()
+    repo.get_working_memory = AsyncMock(return_value={"last_location": "靜岡車站"})
+    repo.get_session = AsyncMock(return_value={"last_location_lat": 34.9717, "last_location_lng": 138.3891})
+    repo.update_working_memory = AsyncMock()
+
+    fsm = FoodRecommendationFSM(
+        llm_client=MagicMock(
+            call_structured_json=AsyncMock(
+                return_value=(
+                    {
+                        "intent": "search",
+                        "location": "神樂坂",
+                        "cuisine": "咖啡",
+                        "modifier": None,
+                        "is_location_ambiguous": False,
+                    },
+                    "mock",
+                    10,
+                )
+            )
+        ),
+        places_client=MagicMock(geocode_location=AsyncMock(side_effect=fake_geocode)),
+        session_repo=repo,
+        trace_logger=MagicMock(log_step=AsyncMock(), start_run=AsyncMock(), finish_run=AsyncMock()),
+    )
+
+    history = [
+        {"role": "user", "content": "靜岡車站 抹茶"},
+        {"role": "assistant", "content": "為您推薦靜岡車站附近的抹茶店"},
+    ]
+    parsed = await fsm.execute_state_1_intent("神樂版 咖啡", None, history, chat_id=999)
+
+    assert parsed["intent"] == "search"
+    assert parsed["location"] == "神樂坂"
+    assert parsed["cuisine"] == "咖啡"
+    assert geocode_calls == ["神樂坂"]
+    assert "靜岡車站" not in geocode_calls

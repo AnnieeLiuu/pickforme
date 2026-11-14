@@ -7,6 +7,9 @@
 ## [Unreleased]
 
 ### Fixed
+- **地名同音錯字糾正與意圖解析提示詞納管 (`config/prompts/intent_parser.md`, `src/agent/skill_loader.py`, `src/agent/stages/intent.py`, `tests/test_real_world_regressions.py`)**：
+  - 修正生產環境問題 (`ae5b5b45`)：使用者輸入同音／繁簡錯別字地名（如「神樂版 咖啡」）時，要求模型直接運用世界知識糾正為正確日本地名（「神樂坂」），嚴禁將錯字地名塞入 `modifier` 並繼承上一輪 `location`，同時釐清單一具體車站／地區應設 `is_location_ambiguous=false`。
+  - 將 `INTENT_PARSER_SYSTEM_PROMPT` 抽離至 `config/prompts/intent_parser.md` 統一管理，透過 `SkillLoader.load_prompt()` 與 `get_intent_parser_prompt()` 懶載入快取並安全注入 `IntentOutput` Schema，並新增離線回歸測試 Case 45。
 - **殘缺截斷卡片護欄與備援順位調整 (`src/agent/validator.py`, `src/agent/llm_client.py`, `tests/test_real_world_regressions.py`)**：
   - `validate_card_tiered` 新增 `< 60` 字元與同時缺少評分及支付方式的致命攔截（Case 43），遇到 LLM 中途截斷立即降級為 `render_template_fallback_card` 保底模板。
   - `LLMClient.call_text`（`primary=groq`）調整備援順位為「Groq 主力 ➔ Gemini ➔ Groq 次要模型 ➔ Ollama」（Case 44），避免穩定度較低之次要模型搶在 Gemini 前執行。

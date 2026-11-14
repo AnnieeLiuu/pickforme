@@ -98,6 +98,7 @@ INTENT_PARSER_SYSTEM_PROMPT = f"""你是一位嚴格的日本美食搜尋意圖�
 
 可能的 intent 欄位值：
 1. "search": 使用者想尋找美食餐廳、特定飲品專門店或食品伴手禮店。請精準抽取 location (地名/車站/商圈/景點，若未提及請設為 null) 與 cuisine (料理類別/食物核心名詞，例如「壽喜燒」、「拉麵」、「抹茶甜點」，嚴禁包含距離或時間詞，若未指定請設為 "熱門人氣美食")。
+   地名同音錯字自動糾正與禁止跨輪繼承規則：若使用者輸入包含日本地名常見同音或繁簡錯別字（例如「神樂版 咖啡」實為「神樂坂」、「歌舞妓町 拉麵」實為「歌舞伎町」），請運用世界知識直接將 location 糾正為正確的日本地名（如 "神樂坂"），嚴禁將錯字地名塞入 modifier 而去繼承上一輪的 location！只要當前輸入出現新地名（含同音或繁簡錯別字地名），就必須以新地名為準；僅在 intent="more" 或未指定地點的追問/探索時才可沿用上一輪地點。
    行程停靠站規則：若句子包含從起點到終點之轉乘/停留用餐語句（例如「從東京去京都，在名古屋轉車吃鰻魚」或「搭新幹線去大阪，在名古屋中停」），請明確將用餐/中停地設為 location（如 "名古屋"），切勿誤設為出發地或目的地！
    時間約束抽取：若提及「宵夜/深夜/夜食」，請設 time_constraint="late_night"；若提及「早餐/早點/早午餐」，設 time_constraint="breakfast"；若提及「現在/營業中/現在有開嗎」，設 time_constraint="now"。
 2. "explore_cuisine": 使用者詢問某個日本地區「有什麼特色美食」、「有什麼喝的/名茶/地酒」、「必買什麼伴手禮/名菓」等開放式文化探索問題（尚未指定具體店家）。請抽取 location，並將 explore_category 標記為 "food"(美食料理)、"drink"(飲品/茶/酒/喫茶) 或 "souvenir"(伴手禮/名產/名菓)。
@@ -118,11 +119,21 @@ INTENT_PARSER_SYSTEM_PROMPT = f"""你是一位嚴格的日本美食搜尋意圖�
 
 地點模糊度判定規則 (is_location_ambiguous)：
 - 若 location 過於廣域（如都道府縣「北海道」、「長野」、「靜岡」；整座大島/大區如「九州」、「四國」；缺乏單一 800m 徒步檢索中心點之跨多市鎮廣域名詞如「靜岡溫泉街」、「長野滑雪」、「東京老街」；或橫跨多個獨立美食聚落、東西南北出口差異極大的超大型轉運商圈，例如單說「新宿」、「梅田」、「京都」、「札幌」、「福岡」），請將 is_location_ambiguous 設為 true，並於 ambiguity_reason 簡述原因，同時於 suggested_sub_areas 提供 2~3 個最具代表性、各具特色的具體子商圈或出口/城鎮名（含 name、desc、search_loc，例如「新宿西口/思出橫丁」、「新宿東口/歌舞伎町」、「新宿三丁目」）。
-- 若為單一具體出口、街區、子商圈或明確景點地標（例如「箱根湯本」、「熱海車站」、「新宿西口」、「新宿中央東口」、「新宿歌舞伎町」、「淺草雷門」），請將 is_location_ambiguous 設為 false，且 suggested_sub_areas 設為 []。
+- 若為單一具體車站、出口、街區、子商圈或明確景點地標（例如「靜岡車站」、「神樂坂」、「箱根湯本」、「熱海車站」、「新宿西口」、「新宿中央東口」、「新宿歌舞伎町」、「淺草雷門」），請將 is_location_ambiguous 設為 false，且 suggested_sub_areas 設為 []。
 
 輸出 JSON 結構規範（由 IntentOutput Schema 自動生成）：
 {IntentOutput.build_json_schema_prompt()}
 只輸出純 JSON 字串，不要包含任何多餘文字。"""
+
+
+def get_intent_parser_prompt() -> str:
+    """動態載入意圖解析系統提示詞 (config/prompts/intent_parser.md)，並安全注入 IntentOutput Schema"""
+    loader = get_skill_loader()
+    schema_prompt = IntentOutput.build_json_schema_prompt()
+    prompt = loader.load_prompt("intent_parser", schema_prompt=schema_prompt)
+    if prompt:
+        return prompt
+    return INTENT_PARSER_SYSTEM_PROMPT
 
 
 def sanitize_history_for_intent(
@@ -173,7 +184,7 @@ async def execute_state_1_intent(
             latency_ms=0,
         )
     else:
-        messages: list[dict[str, Any]] = [{"role": "system", "content": INTENT_PARSER_SYSTEM_PROMPT}]
+        messages: list[dict[str, Any]] = [{"role": "system", "content": get_intent_parser_prompt()}]
         messages.extend(sanitize_history_for_intent(conversation_history))
         messages.append({"role": "user", "content": user_message})
 

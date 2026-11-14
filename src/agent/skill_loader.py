@@ -30,8 +30,10 @@ class SkillLoader:
         self,
         agent_system_path: Optional[Path] = None,
         skills_dir: Optional[Path] = None,
+        prompts_dir: Optional[Path] = None,
     ) -> None:
         self.agent_system_path = agent_system_path or DEFAULT_AGENT_SYSTEM_PATH
+        self.prompts_dir = prompts_dir or self.agent_system_path.parent
         self.skills_dir = skills_dir or DEFAULT_SKILLS_DIR
         self._text_cache: dict[Path, str] = {}
         self._etiquette_index: Optional[list[tuple[tuple[str, ...], str]]] = None
@@ -59,16 +61,28 @@ class SkillLoader:
         text = self._read_cached(self.agent_system_path)
         return text if text is not None else fallback
 
+    @staticmethod
+    def _apply_placeholders(text: str, placeholders: dict[str, object]) -> str:
+        if text and placeholders:
+            for key, val in placeholders.items():
+                text = text.replace(f"{{{key}}}", str(val))
+        return text
+
+    def load_prompt(self, name: str, fallback: str = "", **placeholders: object) -> str:
+        """載入共用提示詞 (config/prompts/{name}.md)，支援安全佔位符替換與快取"""
+        path = self.prompts_dir / f"{name}.md"
+        text = self._read_cached(path)
+        if text is None:
+            text = fallback
+        return self._apply_placeholders(text, placeholders)
+
     def load_scenario(self, name: str, fallback: str = "", **placeholders: object) -> str:
         """載入場景專屬 Skill (config/skills/scenarios/{name}.md)，支援安全佔位符替換"""
         path = self.skills_dir / "scenarios" / f"{name}.md"
         text = self._read_cached(path)
         if text is None:
             text = fallback
-        if text and placeholders:
-            for key, val in placeholders.items():
-                text = text.replace(f"{{{key}}}", str(val))
-        return text
+        return self._apply_placeholders(text, placeholders)
 
     def _build_etiquette_index(self) -> list[tuple[tuple[str, ...], str]]:
         if self._etiquette_index is not None:
