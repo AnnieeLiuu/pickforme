@@ -4,7 +4,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-green.svg)](https://fastapi.tiangolo.com/)
 [![Ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![Type Checked](https://img.shields.io/badge/mypy-checked-blue.svg)](http://mypy-lang.org/)
-[![Tests](https://img.shields.io/badge/pytest-235%20passed-success.svg)](https://docs.pytest.org/)
+[![Tests](https://img.shields.io/badge/pytest-236%20passed-success.svg)](https://docs.pytest.org/)
 
 > **專案定位**：專為日本旅遊打造的高效能智慧美食 Agent 系統。解決遊客外出時「距離近、評分高、有開門、在地評價真實」的痛點。結合 Google Places API、Tabelog 爬蟲與實體比對器、Neon Serverless Postgres 以及 Telegram Bot 介面。
 
@@ -39,8 +39,8 @@
    - **Scoped Anchor 區塊錨點隔離**：自主研發 <0.5ms 毫秒級確定性護欄，按店家獨立切割片段並以前後強語境錨點精確核對校正，確保評分與距離 100% 精準無幻覺。
    - **CI Prompt-Code 合約測試**：在 CI Pipeline 實作雙向合約檢核，若提示詞範本演更引發關鍵字漂移，自動報警阻擋 Commit。
 8. **多級雲端+地端 LLM 容錯降級鏈 (Multi-Tier LLM Failover)**：
-   - **主力**：Groq `llama-3.3-70b-versatile`（極速推論，延遲 ~0.7s）。
-   - **備援**：Gemini 2.0 Flash（Google AI Studio 穩定雲端主力）。
+   - **主力**：Groq `qwen/qwen3.8-27b` / `openai/gpt-oss-120b`（極速推論，延遲 ~0.7s）。
+   - **備援**：Gemini 3.8 Flash（Google AI Studio 穩定雲端主力）。
    - **離線保底**：本機 Ollama `qwen2.5:3b`（0 API 費用、斷網仍可運行）。
    - 支援動態讀取 `Retry-After` 標頭之退避重試與全自動降級。
 
@@ -58,8 +58,8 @@ graph TD
     Gate -->|"通過快篩 [Sanitized Context / Observation Masking]"| FSM["自研 4 階段 FSM 狀態機 (FoodRecommendationFSM)"]
     
     subgraph MultiTierLLM ["🧠 多級 LLM 推論核心 (LLMClient + Pydantic Self-Correction)"]
-        Groq["🥇 Groq llama-3.3-70b (0.7s 極速主力)"]
-        Gemini["🥈 Gemini 2.0 Flash (429 自動備援)"]
+        Groq["🥇 Groq qwen3.8 / gpt-oss (0.7s 極速主力)"]
+        Gemini["🥈 Gemini 3.8 Flash (429 自動備援)"]
         Ollama["🥉 本機 Ollama qwen2.5 (離線保底)"]
         Groq -.->|429/異常降級| Gemini
         Gemini -.->|離線降級| Ollama
@@ -138,7 +138,7 @@ PickForMe/
 │   ├── worker/             # 本機非同步預熱 Worker (SKIP LOCKED 佇列)
 │   ├── config.py           # Pydantic Settings 環境設定
 │   └── main.py             # FastAPI 啟動入口
-├── tests/                  # 235 項單元、整合與黃金回歸測試 (Mock 驅動，CI 100% 通過)
+├── tests/                  # 236 項單元、整合與黃金回歸測試 (Mock 驅動，CI 100% 通過)
 └── pyproject.toml          # Ruff, Mypy 與專案相依設定
 ```
 

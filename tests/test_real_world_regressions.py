@@ -2764,3 +2764,53 @@ async def test_case_34_enrichment_urban_station_alignment():
     )
     assert aligned["walking_desc"] == "從「西武新宿站」步行約 3 分鐘"
     assert aligned["nearest_station_desc"] == "從「西武新宿站」步行約 3 分鐘"
+
+
+# ==============================================================================
+# Case 35: Active LLM Model Contract & Groq JSON/Null-List Resilience
+# ==============================================================================
+@pytest.mark.asyncio
+async def test_case_35_active_llm_models_and_structured_json_resilience():
+    """Case 35: 現役雲端模型合約與 Groq JSON 模式 / null 陣列防禦
+
+    [真實痛點]
+    1. 2026 實測 Groq 已下線 llama-3.3-70b-versatile / llama-3.1-8b-instant / qwen-2.5-32b，
+       Google 亦明確要求升級使用 models/gemini-3.8-flash；使用舊型號會導致雲端全數 404/400 並退回緩慢的本機 Ollama。
+    2. Groq 開啟 response_format={"type": "json_object"} 時，若 messages 不含 "json" 字眼會回 400。
+    3. qwen/qwen3.8-27b 常將空清單輸出為 null，若不轉為 [] 會觸發 Pydantic 驗證失敗重試。
+    """
+    from unittest.mock import patch
+
+    from src.agent.llm_client import GEMINI_PRIMARY_MODEL, GROQ_FALLBACK_MODELS, LLMClient
+    from src.agent.schemas import IntentOutput
+
+    # 1. 禁止回退至已下線模型
+    decommissioned = {"llama-3.3-70b-versatile", "llama-3.1-8b-instant", "qwen-2.5-32b", "gemini-2.0-flash"}
+    assert not (set(GROQ_FALLBACK_MODELS) & decommissioned)
+    assert GEMINI_PRIMARY_MODEL not in decommissioned
+    assert "qwen/qwen3.8-27b" in GROQ_FALLBACK_MODELS
+    assert GEMINI_PRIMARY_MODEL == "gemini-3.8-flash"
+
+    # 2. call_structured_json 自動補齊 'json' 字眼防禦 Groq 400
+    client = LLMClient()
+    captured_messages: list[dict[str, str]] = []
+
+    async def fake_call_text(messages, response_format=None):
+        captured_messages.extend(messages)
+        return (
+            '{"intent": "search", "location": "新宿", "cuisine": "拉麵", "target_indices": null}',
+            "qwen/qwen3.8-27b",
+            50,
+        )
+
+    with patch.object(client, "call_text", side_effect=fake_call_text):
+        parsed, model, _ = await client.call_structured_json(
+            messages=[{"role": "user", "content": "請幫我解析這句話：新宿 拉麵"}],
+            schema=IntentOutput,
+        )
+
+    assert any("json" in str(m.get("content", "")).lower() for m in captured_messages)
+    assert model == "qwen/qwen3.8-27b"
+    # 3. target_indices=null 在一次呼叫內即自動轉為 []，不觸發重試
+    assert parsed["target_indices"] == []
+    assert len(captured_messages) == 1

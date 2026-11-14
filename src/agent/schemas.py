@@ -106,6 +106,15 @@ class IntentOutput(BaseModel):
         description="若地點過於廣域模糊，請提供 2~3 個最具代表性的具體子商圈或城鎮名（含 name、desc、search_loc）",
     )
 
+    @field_validator(
+        "target_indices", "dietary_restrictions", "payment_preferences", "suggested_sub_areas", mode="before"
+    )
+    @classmethod
+    def _coerce_none_to_list(cls, v: Any) -> Any:
+        if v is None:
+            return []
+        return v
+
     @model_validator(mode="after")
     def validate_semantic_consistency(self) -> "IntentOutput":
         """跨欄位語意一致性驗證器 (借鏡 PydanticAI @result_validator)"""

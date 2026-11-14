@@ -6,6 +6,12 @@
 
 ## [Unreleased]
 
+### Fixed
+- **修復雲端 LLM 模型配置錯誤並新增現役模型監測機制 (`src/agent/llm_client.py`, `src/agent/schemas.py`, `tests/test_real_world_regressions.py`, `scripts/check_live_models.py`)**：
+  - **Case 35 現役模型恢復**：將先前誤改為已下線型號之配置恢復為實測可用模型（Groq: `qwen/qwen3.8-27b` ➔ `openai/gpt-oss-120b` ➔ `openai/gpt-oss-20b`；Gemini: `gemini-3.8-flash`），解決雲端全數 404/400 導致請求墜落至本機 Ollama 卡死的問題。
+  - **Groq JSON 模式與 `null` 陣列零重試保護**：`call_structured_json()` 自動確保 `messages` 含 `"json"` 關鍵字以防 Groq 400；`IntentOutput` 新增 `_coerce_none_to_list` 驗證器，將模型回傳之 `null` 陣列即時轉為 `[]`，消除無謂重試延遲。
+  - **Live 模型存活診斷腳本 (`scripts/check_live_models.py`)**：提供一鍵對 Groq `/v1/models` 與 Gemini 端點發送真實探針之檢查腳本，提早預警官方模型下線。
+
 ### Added
 - **全國車站優先 (Station-First) 與反幽靈車站商圈保底 (Anti-Ghost-Station Navigation) (`src/agent/stages/places_search.py`, `src/agent/stages/enrichment.py`, `src/agent/stages/synthesis.py`, `tests/test_real_world_regressions.py`)**：
   - **Case 34.1 都會區真實車站優先採用**：徹底根除都會區（新宿、澀谷、銀座等）因非廣域景區而拋棄 Tabelog 最近車站資料之痛點。當店家爬取到「西武新宿駅徒歩3分」時，不再覆蓋為「從『新宿』步行約 7 分鐘」，一律優先展示「從『西武新宿站』步行約 3 分鐘」，全日本都會與景區無差別享受精確站點指引。

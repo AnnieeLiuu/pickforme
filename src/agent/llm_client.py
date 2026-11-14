@@ -15,6 +15,9 @@ logger = logging.getLogger(__name__)
 GEMINI_OPENAI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
 GROQ_OPENAI_URL = "https://api.groq.com/openai/v1/chat/completions"
 
+GROQ_FALLBACK_MODELS: tuple[str, ...] = ("qwen/qwen3.8-27b", "openai/gpt-oss-120b", "openai/gpt-oss-20b")
+GEMINI_PRIMARY_MODEL = "gemini-3.8-flash"
+
 
 class LLMClient:
     """統一 LLM 通訊客戶端：負責多級模型降級容錯、動態 429 退避與 JSON/文字輸出"""
@@ -143,7 +146,7 @@ class LLMClient:
         """嘗試使用雲端 Groq 多模型"""
         if not settings.GROQ_API_KEY:
             return None
-        for fallback_model in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "qwen-2.5-32b"]:
+        for fallback_model in GROQ_FALLBACK_MODELS:
             try:
                 msg_resp, tokens = await self._call_openai_compatible_api(
                     url=GROQ_OPENAI_URL,
@@ -172,12 +175,12 @@ class LLMClient:
             msg_resp, tokens = await self._call_openai_compatible_api(
                 url=GEMINI_OPENAI_URL,
                 api_key=settings.GEMINI_API_KEY,
-                model="gemini-2.0-flash",
+                model=GEMINI_PRIMARY_MODEL,
                 messages=messages,
                 response_format=response_format,
                 timeout=30.0,
             )
-            return str(msg_resp.get("content", "")), "gemini-2.0-flash", tokens
+            return str(msg_resp.get("content", "")), GEMINI_PRIMARY_MODEL, tokens
         except Exception as e:
             logger.warning(f"Primary Gemini Flash LLM call failed: {e}. Attempting failover...")
             errors.append(f"Gemini: {e}")
@@ -240,6 +243,12 @@ class LLMClient:
     ) -> tuple[dict[str, Any], str, int]:
         """結構化 JSON 輸出呼叫 (支援 Pydantic Schema 驗證與 Self-Correction 自癒重試，回傳 parsed_json, model_used, tokens)"""
         working_messages = [dict(m) for m in messages]
+        # 確保 messages 包含 'json' 字眼以相容 OpenAI/Groq response_format 規範
+        if not any("json" in str(m.get("content", "")).lower() for m in working_messages) and working_messages:
+            working_messages[-1] = {
+                **working_messages[-1],
+                "content": f"{working_messages[-1].get('content', '')}\n(Please respond in valid JSON format)",
+            }
         total_tokens = 0
         model = "unknown"
 

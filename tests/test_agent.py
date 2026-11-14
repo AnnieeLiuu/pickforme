@@ -100,7 +100,7 @@ async def test_llm_client_groq_primary():
         ),
     ):
         content, model, tokens = await client.call_text([{"role": "user", "content": "hi"}])
-        assert model == "llama-3.3-70b-versatile"
+        assert model == "qwen/qwen3.8-27b"
         assert content == "Groq 極速推薦！"
         assert tokens == 95
 
@@ -127,7 +127,7 @@ async def test_llm_client_failover_gemini_to_groq():
             ],
         ):
             content, model, tokens = await client.call_text([{"role": "user", "content": "hi"}])
-            assert model == "llama-3.3-70b-versatile"
+            assert model == "qwen/qwen3.8-27b"
             assert content == "Groq 回覆推薦！"
             assert tokens == 120
 
