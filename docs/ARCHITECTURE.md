@@ -347,7 +347,7 @@ flowchart TD
 - **快取維護與雙層對話記憶 (Cache TTL & Two-Tier Session Memory)**：
   - **7 天 Tabelog 快取 TTL**：Neon DB 快取超過 7 天自動觸發背景爬蟲刷新，平衡評分即時性與抓取頻率。
   - **3 輪對話歷史記憶**：`chat_sessions` 自動保存最近 3 輪對話內容，支援自然語言追問（如「第 2 家有開嗎？」）。
-  - **Two-Tier Memory 雙層記憶架構 (`src/db/repositories/session.py`)**：於 `chat_sessions.last_recommended_ids` JSONB 中同時維護短期工作記憶 `working_memory`（記錄 `last_cuisine`、`last_location`、`suggested_cuisines` 與 `trip_scoping`，供 `"more"` 換一批、`explore_cuisine` 導覽接續與 2 輪上限前期需求收斂）與跨輪長期偏好 `long_term_preferences`（持久化累積 `dietary_restrictions` 飲食禁忌與 `payment_preferences` 支付偏好，並向下相容舊版 List/Dict 格式）。
+  - **Two-Tier Memory 雙層記憶架構 (`src/db/repositories/session.py`)**：於 `chat_sessions.last_recommended_ids` JSONB 中同時維護短期工作記憶 `working_memory`（記錄 `last_cuisine`、`last_location`、`suggested_cuisines` 與 `trip_scoping`，供 `"more"` 換一批、`explore_cuisine` 導覽接續與 2 輪上限前期需求收斂；並於 `is_location_ambiguous` 對超大型多聚落商圈如「新宿」、「梅田」、「京都」主動反問子商圈）與跨輪長期偏好 `long_term_preferences`（持久化累積 `dietary_restrictions` 飲食禁忌與 `payment_preferences` 支付偏好，並向下相容舊版 List/Dict 格式）。
   - **Progressive Skill Loader 漸進式技能注入 (`src/agent/skill_loader.py`, `config/skills/`)**：將龐大的推薦卡片 Prompt 拆分為瘦身核心憲章 (`config/prompts/agent_system.md`) 與按需載入的場景/禮儀技能模組 (`config/skills/scenarios/*.md`, `config/skills/etiquette/*.md`)，並於 `execute_follow_up` 支援受限 2 輪 Tool Loop（`detail_lookup` / `nearby_pairing`）與輸出護欄校驗 (`validate_follow_up_response`)。
   - **混合雙層在地特色美食與文化導覽 (`src/services/cuisine_guide.py`, `config/local_specialties.json`)**：當使用者提出地區探索意圖 (`explore_cuisine`) 時，優先以 Tier 1 內建考據知識庫 0ms 回應，未命中之長尾日本車站則自動啟動 Tier 2 Yahoo Japan 網頁 Grounding + `AreaSpecialtyGuide` 結構化提煉，兼顧零歷史幻覺與全日本車站覆蓋。
 - **OTel 格式 Trace 可觀測性 (Structured Observability & Trace Deep-Dive)**：
