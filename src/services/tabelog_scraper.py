@@ -21,6 +21,24 @@ STATION_WALK_PATTERN = re.compile(
 STATION_DIST_PATTERN = re.compile(
     r"([^\s\(\)（）「」]{2,10}?駅(?:[東西南北中央正面地下]*[口出口]*|\s*[A-Za-z0-9]+出口)?)(?:[^\d\n]{0,15}?)?(?:約)?\s*(\d{1,4})\s*m"
 )
+_BUDGET_RANGE_PATTERN = re.compile(r"(?:[～〜]\s*￥[0-9,]+|￥[0-9,]+\s*[～〜]\s*￥[0-9,]+|￥[0-9,]+\s*[～〜])")
+
+
+def _extract_budget_from_snippet(text: str) -> tuple[Optional[str], Optional[str]]:
+    """從 Tabelog 搜尋摘要中萃取 (price_lunch, price_dinner)，依循食べログ『夜先晝後』欄位順序"""
+    if not text:
+        return None, None
+    matches = _BUDGET_RANGE_PATTERN.findall(text)
+    if not matches:
+        return None, None
+    cleaned = [re.sub(r"\s+", "", m) for m in matches]
+    if len(cleaned) >= 2:
+        # Tabelog 店舗基本情報標準順序：第 1 組為晚餐 (夜)，第 2 組為午餐 (昼)
+        return cleaned[1], cleaned[0]
+    single = cleaned[0]
+    if re.search(r"(?:昼|ランチ)[^￥]{0,12}" + re.escape(matches[0]), text):
+        return single, None
+    return None, single
 
 
 def clean_station_name(st: str) -> str:
@@ -78,7 +96,17 @@ class TabelogScraper:
 
     async def search_via_grounding(self, store_name: str, area_name: str = "") -> list[dict[str, Any]]:
         """當 Tabelog 官方 HTTP 爬蟲遭 Cloudflare WAF (403/Turnstile) 攔截時，自動啟動 Web Grounding 搜尋備援"""
-        query = f"site:tabelog.com {store_name} {area_name}".strip()
+        budget_query = f"site:tabelog.com {store_name} {area_name} 予算".strip()
+        candidates = await self._fetch_and_parse_grounding(budget_query, store_name)
+        if not candidates:
+            fallback_query = f"site:tabelog.com {store_name} {area_name}".strip()
+            candidates = await self._fetch_and_parse_grounding(fallback_query, store_name)
+        if candidates:
+            logger.info(f"Web Grounding recovered {len(candidates)} Tabelog candidates for '{store_name}'")
+        return candidates
+
+    async def _fetch_and_parse_grounding(self, query: str, store_name: str) -> list[dict[str, Any]]:
+        """執行 Yahoo Japan Web Grounding 查詢並解析評分、預算與最近車站"""
         encoded = urllib.parse.quote_plus(query)
         search_url = f"https://search.yahoo.co.jp/search?p={encoded}"
         headers = {
@@ -159,7 +187,10 @@ class TabelogScraper:
             # 最近車站步行指引 (例如：強羅駅 徒歩5分)
             nearest_station_desc = extract_nearest_station_from_transit_text(text)
 
-            # 若此 URL 已記錄過，優先補全遺漏的評分與百名店資料
+            # 午晚餐預算區間 (例如：￥6,000～￥7,999. ￥1,000～￥1,999.)
+            price_lunch, price_dinner = _extract_budget_from_snippet(text)
+
+            # 若此 URL 已記錄過，優先補全遺漏的評分、預算與百名店資料
             if clean_url in seen_urls:
                 for c in candidates:
                     if c["tabelog_url"] == clean_url:
@@ -171,6 +202,10 @@ class TabelogScraper:
                             c["awards"] = hyakumeiten
                         if not c.get("nearest_station_desc") and nearest_station_desc:
                             c["nearest_station_desc"] = nearest_station_desc
+                        if not c.get("price_lunch") and price_lunch:
+                            c["price_lunch"] = price_lunch
+                        if not c.get("price_dinner") and price_dinner:
+                            c["price_dinner"] = price_dinner
                 continue
 
             candidates.append(
@@ -182,6 +217,8 @@ class TabelogScraper:
                     "hyakumeiten": hyakumeiten,
                     "awards": hyakumeiten,
                     "nearest_station_desc": nearest_station_desc,
+                    "price_lunch": price_lunch,
+                    "price_dinner": price_dinner,
                     "sample_reviews": [],
                     "phone": "",
                     "address": "",
@@ -191,8 +228,6 @@ class TabelogScraper:
             if len(candidates) >= 5:
                 break
 
-        if candidates:
-            logger.info(f"Web Grounding recovered {len(candidates)} Tabelog candidates for '{store_name}'")
         return candidates
 
     async def discover_area_top_stores(

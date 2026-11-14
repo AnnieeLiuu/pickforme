@@ -7,6 +7,7 @@
 ## [Unreleased]
 
 ### Fixed
+- **Web Grounding 午晚餐預算萃取 (`src/services/tabelog_scraper.py`, `tests/test_tabelog_scraper.py`)**：`search_via_grounding` 優先附加 `予算` 查詢並新增 `_extract_budget_from_snippet` 解析 Tabelog 午晚餐區間（`price_lunch` / `price_dinner`），無結果時自動退回原查詢確保零回歸。
 - **推薦卡片護欄強化、結構化實體比對與評測真機接線 (`src/agent/validator.py`, `src/agent/stages/synthesis.py`, `src/agent/stages/enrichment.py`, `src/services/review_sanitizer.py`, `src/services/entity_resolver.py`, `src/eval/evaluator.py`)**：
   - 統一 `split_card_store_blocks` / `is_store_matched` 區塊切分與非店名細節反引號白名單過濾，避免誤殺 `PayPay` / `現金` 等提示；移除 Layer 3 評分套話並在無真實中文短評時採「寧缺勿濫」策略省略違規理由行。
   - 新增背景日文評論批次繁中翻譯（`_translate_reviews_batch_fail_open`），保留 `review_text_ja` 並採 Fail-Open 降級。

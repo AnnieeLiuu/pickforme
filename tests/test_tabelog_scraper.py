@@ -1,9 +1,9 @@
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from src.services.tabelog_scraper import TabelogScraper
+from src.services.tabelog_scraper import TabelogScraper, _extract_budget_from_snippet
 
 
 def test_parse_search_results():
@@ -80,3 +80,63 @@ async def test_search_candidates_grounding_fallback_when_blocked():
             assert len(results) == 1
             assert results[0]["tabelog_rating"] == 3.49
             assert results[0]["name_ja"] == "餃子の福包 新宿店"
+
+
+def test_extract_budget_from_snippet_lunch_and_dinner():
+    snippet = "店舗基本情報 ; ￥6,000～￥7,999. ￥1,000～￥1,999. 利用金額分布を見る · 評価： 3.4 - 139件のレビュー"
+    lunch, dinner = _extract_budget_from_snippet(snippet)
+    assert lunch == "￥1,000～￥1,999"
+    assert dinner == "￥6,000～￥7,999"
+
+    lunch_only, dinner_only = _extract_budget_from_snippet("昼の予算: ～￥999")
+    assert lunch_only == "～￥999"
+    assert dinner_only is None
+
+
+@pytest.mark.asyncio
+async def test_search_via_grounding_extracts_budget_and_fallbacks():
+    scraper = TabelogScraper()
+    yahoo_html = """
+    <html><body>
+      <section class="sw-Card">
+        <h3><a href="https://tabelog.com/tokyo/A1304/A130401/13261234/">大衆すき焼き北斗 新宿中央東口店 - 食べログ</a></h3>
+        <p>店舗基本情報 ; ￥6,000～￥7,999. ￥1,000～￥1,999. 評価： 3.4 - 139件のレビュー</p>
+      </section>
+    </body></html>
+    """
+    mock_resp_budget = MagicMock(status_code=200, text=yahoo_html)
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(return_value=mock_resp_budget)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("src.services.tabelog_scraper.httpx.AsyncClient", return_value=mock_client):
+        cands = await scraper.search_via_grounding("大衆すき焼き 北斗 新宿中央東口店")
+        assert len(cands) == 1
+        assert cands[0]["tabelog_rating"] == 3.4
+        assert cands[0]["price_dinner"] == "￥6,000～￥7,999"
+        assert cands[0]["price_lunch"] == "￥1,000～￥1,999"
+        called_url = mock_client.get.call_args.args[0]
+        assert "%E4%BA%88%E7%AE%97" in called_url  # 予算
+
+    # 當含「予算」搜尋無結果時，應自動退回不含「予算」的查詢
+    empty_resp = MagicMock(status_code=200, text="<html><body></body></html>")
+    fallback_html = """
+    <html><body>
+      <section class="sw-Card">
+        <h3><a href="https://tabelog.com/tokyo/A1304/A130401/13000001/">小巷老店</a></h3>
+        <p>食べログ 評価： 3.52 - 40件のレビュー</p>
+      </section>
+    </body></html>
+    """
+    fallback_resp = MagicMock(status_code=200, text=fallback_html)
+    mock_client_fb = AsyncMock()
+    mock_client_fb.get = AsyncMock(side_effect=[empty_resp, fallback_resp])
+    mock_client_fb.__aenter__ = AsyncMock(return_value=mock_client_fb)
+    mock_client_fb.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("src.services.tabelog_scraper.httpx.AsyncClient", return_value=mock_client_fb):
+        fb_cands = await scraper.search_via_grounding("小巷老店")
+        assert len(fb_cands) == 1
+        assert fb_cands[0]["name_ja"] == "小巷老店"
+        assert mock_client_fb.get.call_count == 2
