@@ -443,17 +443,12 @@ async def execute_follow_up(
                 store_names.append(s_name)
                 store_descs.append(f"### 選手 {num}：{s_name}\n{json.dumps(s, ensure_ascii=False, indent=2)}")
 
+            from src.agent.skill_loader import get_skill_loader
+
             messages = [
                 {
                     "role": "system",
-                    "content": (
-                        "你是一位客觀、專業的日本美食評鑑特派員。使用者正在要求對比上一輪推薦名單中的多家店家。\n"
-                        "請根據所提供的店家資料，進行條理分明、直觀好懂的多面向對照比較：\n"
-                        "1. 🍱 風味特色與口感差異\n"
-                        "2. 💰 預算價位與 CP 值\n"
-                        "3. 🚶 交通步行與排隊狀況\n"
-                        "4. 💡 總結推薦：針對不同情境（如想吃清淡/濃郁、趕時間/放慢享受）明確建議選哪一家。"
-                    ),
+                    "content": get_skill_loader().build_follow_up_system_prompt(is_comparison=True),
                 },
                 {
                     "role": "user",
@@ -486,10 +481,12 @@ async def execute_follow_up(
     target_store = recommended_stores[target_idx]
     store_name = target_store.get("name_ja") or target_store.get("name") or "該店家"
 
+    from src.agent.skill_loader import get_skill_loader
+
     messages = [
         {
             "role": "system",
-            "content": "你是一位日本美食助手。使用者正在追問上一輪推薦名單中的特定店家。請根據所提供的店家資料，簡潔、親切地回答使用者的問題。",
+            "content": get_skill_loader().build_follow_up_system_prompt(is_comparison=False),
         },
         {
             "role": "user",

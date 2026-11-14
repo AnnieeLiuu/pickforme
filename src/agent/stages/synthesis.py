@@ -13,6 +13,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
 
+from src.agent.skill_loader import get_skill_loader
 from src.agent.stages.enrichment import format_payment_methods
 from src.agent.stages.places_search import is_wide_area_origin
 from src.agent.validator import (
@@ -57,7 +58,14 @@ RECOMMENDATION_CARD_SYSTEM_PROMPT = """你是一位專業、熱情的日本美�
 
 
 def get_recommendation_card_prompt() -> str:
-    """動態載入 config/prompts/agent_system.md 系統提示詞，支援即時自訂與模組保底"""
+    """動態載入模組化推薦卡片系統提示詞 (核心人格 + State 4 卡片規則)，支援即時自訂與模組保底"""
+    loader = get_skill_loader()
+    core = loader.load_core_persona()
+    card_rules = loader.load_scenario("card-synthesis")
+    if core and card_rules:
+        return f"{core}\n\n{card_rules}"
+    if card_rules:
+        return card_rules
     if AGENT_SYSTEM_PROMPT_PATH.exists():
         try:
             return AGENT_SYSTEM_PROMPT_PATH.read_text(encoding="utf-8")
@@ -309,6 +317,7 @@ async def execute_state_4_synthesis(
     cuisine: str,
     location_name: Optional[str],
     category: Optional[str] = None,
+    user_query: str = "",
 ) -> str:
     """State 4: 推薦卡片排版合成、護欄校驗與防禦回退"""
     t0 = time.time()
@@ -318,25 +327,14 @@ async def execute_state_4_synthesis(
         category_header = "伴手禮／名物類別"
         entity_label = "候選名店／老舖"
         honest_label = "高評價名店老舖"
-        category_guidance = (
-            "【重要類別措辭指引 - 伴手禮／名產】：\n"
-            "- 本輪推薦對象為伴手禮／銘菓／土產名店或老舖，排版時請使用「名店／老舖／名菓店」等稱謂，避免稱呼為「餐廳」。\n"
-            "- 點評請著重於招牌點心名產的風味層次、包裝送禮適宜性、賞味期限或常溫攜帶性。\n"
-        )
     elif cat == "drink":
         category_header = "特色飲品／名茶類別"
         entity_label = "候選茶房／名店"
         honest_label = "高評價茶房名店"
-        category_guidance = (
-            "【重要類別措辭指引 - 特色飲品／名茶茶房】：\n"
-            "- 本輪推薦對象為茶房／喫茶店／咖啡廳／地酒吧，排版時請使用「茶房／喫茶店／名店」等稱謂，避免稱呼為「餐廳」。\n"
-            "- 點評請著重於茶湯風味、香氣層次、焙火喉韻、店內氛圍或招牌茶點搭配。\n"
-        )
     else:
         category_header = "美食類別"
         entity_label = "候選餐廳"
         honest_label = "高評價店家"
-        category_guidance = ""
 
     honest_notice = ""
     if len(stores) < 3:
@@ -411,25 +409,15 @@ async def execute_state_4_synthesis(
         if review_text:
             prompt_content += f"- 顧客/老饕真實評價 (來源: {rev_source_label})：{review_text}\n"
 
-    system_prompt = get_recommendation_card_prompt()
-    if category_guidance:
-        system_prompt += f"\n\n{category_guidance}"
-
-    # 導航精準指引 (都會與景區全覆蓋，嚴防 LLM 竄改具體車站或在地街區)
-    nav_guidance = (
-        "【精準交通與步行導航指令】\n"
-        "店家資料所提供之「步行距離」（例如「從『西武新宿站』步行約 3 分鐘」、「位於新宿『歌舞伎町』 (距定位點約 557m)」），"
-        "請務必 100% 忠實完整引用，絕對禁止自行簡化或竄改為模糊的大區域出發（如嚴禁重寫為「從『新宿』步行」）！"
+    system_prompt = get_skill_loader().build_synthesis_system_prompt(
+        resolved_category=cat,
+        store_count=len(stores),
+        location_name=location_name,
+        cuisine=cuisine,
+        user_query=user_query,
+        is_wide_area=is_wide_area_origin(location_name),
+        fallback_card_prompt=RECOMMENDATION_CARD_SYSTEM_PROMPT,
     )
-    system_prompt += f"\n\n{nav_guidance}"
-
-    if is_wide_area_origin(location_name):
-        wide_area_guidance = (
-            f"【景區/廣域導航指引】\n"
-            f"1. 目標區域「{location_name}」為幅員廣闊之景區/廣域，店家資料若已提供所屬之最近車站或子商圈步行指引（例如「從『強羅站』步行約 5 分鐘」），請務必忠實呈現該站點之步行指引，絕對禁止竄改或重寫為「從『{location_name}』步行」！\n"
-            f"2. 請在文末特派員提醒中附帶溫馨提示，例如：「（💡 特派員提醒：{location_name} 幅員廣闊、景點分散；若您人在特定車站或區域，亦可隨時告訴我指定區域以精準搜尋）」"
-        )
-        system_prompt += f"\n\n{wide_area_guidance}"
 
     messages = [
         {"role": "system", "content": system_prompt},

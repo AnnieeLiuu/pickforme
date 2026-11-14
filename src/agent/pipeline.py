@@ -195,9 +195,12 @@ class FoodRecommendationFSM:
         cuisine: str,
         location_name: Optional[str],
         category: Optional[str] = None,
+        user_query: str = "",
     ) -> str:
         """State 4: 推薦卡片排版合成與護欄校驗 (委派至 stages.synthesis)"""
-        return await stage_execute_state_4_synthesis(self, stores, cuisine, location_name, category=category)
+        return await stage_execute_state_4_synthesis(
+            self, stores, cuisine, location_name, category=category, user_query=user_query
+        )
 
     async def execute_follow_up(
         self,
@@ -513,6 +516,7 @@ class FoodRecommendationFSM:
                 cuisine=run_ctx.search_keyword,
                 location_name=run_ctx.location_name,
                 category=run_ctx.explore_category,
+                user_query=user_message,
             )
             telemetry.end_span(span_s4, output_data={"card_length": len(final_card)})
 

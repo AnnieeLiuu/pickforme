@@ -141,18 +141,15 @@ class DevOpsSubagent:
         }
 
         # 檢測 Guardrail 提示詞同步狀態
-        guardrail_status = "🟢 正常 (100% 吻合 agent_system.md 規範)"
+        guardrail_status = "🟢 正常 (100% 吻合模組化卡片提示詞規範)"
         try:
-            from src.agent.pipeline import AGENT_SYSTEM_PROMPT_PATH
+            from src.agent.pipeline import get_recommendation_card_prompt
 
-            if AGENT_SYSTEM_PROMPT_PATH.exists():
-                prompt_text = AGENT_SYSTEM_PROMPT_PATH.read_text(encoding="utf-8")
-                required_anchors = ["Tabelog", "Google", "步行距離"]
-                missing = [a for a in required_anchors if a not in prompt_text]
-                if missing:
-                    guardrail_status = f"⚠️ 警告 (發現提示詞漂移，缺少錨點: {missing})"
-            else:
-                guardrail_status = "⚠️ 警告 (找不到 agent_system.md 檔案)"
+            prompt_text = get_recommendation_card_prompt()
+            required_anchors = ["Tabelog", "Google", "步行距離"]
+            missing = [a for a in required_anchors if a not in prompt_text]
+            if missing:
+                guardrail_status = f"⚠️ 警告 (發現提示詞漂移，缺少錨點: {missing})"
         except Exception as e:
             guardrail_status = f"⚠️ 檢測失敗 ({e})"
 

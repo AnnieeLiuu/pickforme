@@ -299,12 +299,12 @@ def test_guardrail_sanitizes_rating_drift(mock_fsm):
 
 
 def test_guardrail_contract_with_agent_system_prompt():
-    """合約測試 (Contract Test)：確保 agent_system.md 的規範與 Guardrail 正則錨點 100% 同步。
+    """合約測試 (Contract Test)：確保模組化卡片提示詞的規範與 Guardrail 正則錨點 100% 同步。
     若未來有人改動 Prompt 格式而導致關鍵字不一致，CI 會立刻紅燈阻擋！"""
-    from src.agent.pipeline import AGENT_SYSTEM_PROMPT_PATH
+    from src.agent.pipeline import AGENT_SYSTEM_PROMPT_PATH, get_recommendation_card_prompt
 
     assert AGENT_SYSTEM_PROMPT_PATH.exists(), "agent_system.md 檔案不存在！"
-    prompt_text = AGENT_SYSTEM_PROMPT_PATH.read_text(encoding="utf-8")
+    prompt_text = get_recommendation_card_prompt()
 
     # 檢驗 Prompt 必須包含護欄仰賴的關鍵錨點關鍵字
     assert "Tabelog" in prompt_text, "Prompt 缺少 'Tabelog' 評分錨點！"
