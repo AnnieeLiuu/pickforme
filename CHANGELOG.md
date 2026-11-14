@@ -21,7 +21,7 @@
 - **漸進式技能架構 (`SkillLoader`)、受限追問 Tool Loop 與 `trip-scoping` 前期收斂 (`src/agent/skill_loader.py`, `config/skills/`, `src/agent/stages/intent.py`, `src/agent/validator.py`, `src/db/repositories/session.py`)**：
   - 將 `config/prompts/agent_system.md` 瘦身為核心憲章，抽離場景與日本用餐禮儀技能至 `config/skills/scenarios/*.md` 與 `config/skills/etiquette/*.md`，由 `SkillLoader` 依店家特徵與場景確定性按需注入（`max_skills=2`）。
   - 為 `execute_follow_up` 新增 `validate_follow_up_response`（含單店／多店評分矯正、偽造 Maps 連結與連續日文段落攔截）與受限 2 輪 `FollowUpDecision` Tool Loop（`detail_lookup` / `nearby_pairing`）。
-  - 新增 `trip-scoping` 複合模糊需求收斂對話（上限 `scoping_turns < 2`），與既有廣域地名 `generate_disambiguation_prompt` 互補。
+  - 新增 `trip-scoping` 複合模糊需求收斂對話（上限 `scoping_turns < 2`），與既有廣域地名 `generate_disambiguation_prompt` 互補；並將單說「新宿」、「梅田」、「京都」等超大型多聚落轉運商圈納入主動反問收斂範例。
 - **全國車站優先 (Station-First) 與反幽靈車站商圈保底 (Anti-Ghost-Station Navigation) (`src/agent/stages/places_search.py`, `src/agent/stages/enrichment.py`, `src/agent/stages/synthesis.py`, `tests/test_real_world_regressions.py`)**：
   - **Case 34.1 都會區真實車站優先採用**：徹底根除都會區（新宿、澀谷、銀座等）因非廣域景區而拋棄 Tabelog 最近車站資料之痛點。當店家爬取到「西武新宿駅徒歩3分」時，不再覆蓋為「從『新宿』步行約 7 分鐘」，一律優先展示「從『西武新宿站』步行約 3 分鐘」，全日本都會與景區無差別享受精確站點指引。
   - **Case 34.2 核心腹地 (<400m) 向後相容**：店家無細部車站且距商圈定位點近時，維持簡潔清晰之點對點步行描述（如「從『新宿』步行約 4 分鐘 (320m)」）。
