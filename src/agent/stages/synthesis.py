@@ -16,8 +16,10 @@ from typing import TYPE_CHECKING, Any, Optional
 from src.agent.stages.enrichment import format_payment_methods
 from src.agent.stages.places_search import is_wide_area_origin
 from src.agent.validator import (
+    is_store_matched,
     repair_card_in_place,
     repair_store_name_code_blocks,
+    split_card_store_blocks,
     validate_card_tiered,
 )
 from src.services.review_sanitizer import synthesize_store_recommendation_reason
@@ -158,7 +160,6 @@ def render_template_fallback_card(
         lines.append(f"精選「{cuisine or '熱門推薦'}」指標{entity_name}如下：\n")
     for idx, s in enumerate(stores, 1):
         name = s.get("name_ja") or s.get("name") or "精選餐廳"
-        rating_src = s.get("rating_source", "Google")
         t_rating = s.get("tabelog_rating")
         g_rating = s.get("rating") or s.get("google_rating")
 
@@ -169,8 +170,8 @@ def render_template_fallback_card(
         if walk_desc:
             lines.append(f"🚶 **步行距離**：{walk_desc}")
         lines.append(f"⏰ **營業狀態**：{format_operating_hours(s.get('open_now'))}")
-        if rating_src == "Tabelog" and t_rating:
-            lines.append(f"⭐️ **Tabelog 評分**：{t_rating:.2f} 分 ({s.get('review_count', 0)} 則評價)")
+        if t_rating:
+            lines.append(f"⭐️ **Tabelog 評分**：{float(t_rating):.2f} 分 ({s.get('review_count', 0)} 則評價)")
         else:
             lines.append(f"⭐️ **評分資訊**：Google {g_rating or '4.0'} 分 (Tabelog 暫無評分，以 Google 評價為依據)")
 
@@ -194,9 +195,10 @@ def render_template_fallback_card(
                 s.get("google_maps_url") or f"https://www.google.com/maps/place/?q=place_id:{s.get('google_place_id')}"
             )
             lines.append(f"🔗 [Google Maps 頁面]({g_url})")
-        # 老饕短評 (透過 ReviewSanitizer 淨化雜訊並智慧合成)
+        # 老饕短評 (透過 ReviewSanitizer 淨化雜訊；無真實中文食評或獎項時寧缺勿濫)
         rev_txt, rev_badge = synthesize_store_recommendation_reason(s, cuisine=cuisine)
-        lines.append(f"📍 **老饕推薦理由 ({rev_badge})**：{rev_txt}")
+        if rev_txt:
+            lines.append(f"📍 **老饕推薦理由 ({rev_badge})**：{rev_txt}")
         lines.append("")
 
     if len(stores) < 3:
@@ -215,17 +217,36 @@ def sanitize_card_ratings(card_text: str, stores: list[dict[str, Any]]) -> str:
         return card_text
 
     try:
-        # 1. 依序號/標題切割為獨立段落 (維持原文段落完整性)
-        parts = re.split(r"(?=\n(?:###\s*\d+|\d+[\.、]|\*\*\d+[\.、]))", card_text)
+        # 1. 使用共用區塊切割器隔離各店家段落 (支援 1. / ### / 🥇🥈🥉 / 💡 特派員提醒)
+        parts = split_card_store_blocks(card_text)
         modified_parts: list[str] = []
+        rank_badges = {1: "🥇", 2: "🥈", 3: "🥉"}
 
         for part in parts:
+            stripped = part.lstrip()
+            first_line = stripped.splitlines()[0] if stripped else ""
+            # 若為特派員提醒或分隔線結尾段落，直接保留不進行評分替換
+            if first_line.startswith("💡") or first_line.startswith("---"):
+                modified_parts.append(part)
+                continue
+
             matched_store: Optional[dict[str, Any]] = None
-            for idx, s in enumerate(stores, 1):
+            # 優先以正規化店名或原文店名在區塊中精準配對
+            for s in stores:
                 name_ja = s.get("name_ja") or s.get("name") or ""
-                if (name_ja and name_ja in part) or re.search(rf"(?:###\s*{idx}|\b{idx}[\.、]|\*\*{idx}[\.、])", part):
+                if (name_ja and name_ja in part) or is_store_matched(first_line, s):
                     matched_store = s
                     break
+
+            # 若店名未命中，才退回首行序號或獎牌徽章配對 (嚴禁跨入內文避免 \b3\. 誤撞 3.5)
+            if not matched_store:
+                for idx, s in enumerate(stores, 1):
+                    badge = rank_badges.get(idx)
+                    if re.search(rf"(?:###\s*{idx}(?!\d)|\b{idx}[\.、](?!\d)|\*\*{idx}[\.、](?!\d))", first_line) or (
+                        badge and badge in first_line
+                    ):
+                        matched_store = s
+                        break
 
             if not matched_store:
                 modified_parts.append(part)
@@ -459,7 +480,7 @@ async def execute_state_4_synthesis(
                 f"[CardGuardrail] Minor violations detected ({', '.join(minor_warnings)}). "
                 f"Performing in-place surgical repair."
             )
-            card_text = repair_card_in_place(card_text, stores)
+            card_text = repair_card_in_place(card_text, stores, cuisine=cuisine)
 
         latency = int((time.time() - t0) * 1000)
         await fsm.trace_logger.log_step(

@@ -20,6 +20,76 @@ def _normalize_name(name: str) -> str:
     return re.sub(r"[\s\-_・，,（）()「」『』*#]+", "", name).lower()
 
 
+def get_store_normalized_names(store: dict[str, Any]) -> list[str]:
+    """取得店家所有可用於比對的正規化名稱 (name_ja / name / name_en)"""
+    names: list[str] = []
+    for k in ("name_ja", "name", "name_en"):
+        val = store.get(k)
+        if val and isinstance(val, str):
+            norm = _normalize_name(val)
+            if norm and norm not in names:
+                names.append(norm)
+    return names
+
+
+def is_store_matched(candidate_text: str, store: dict[str, Any]) -> bool:
+    """判斷候選文字是否與指定店家名稱相符 (正規化包含比對)"""
+    clean_cand = _normalize_name(candidate_text)
+    if not clean_cand:
+        return False
+    return any(
+        allowed and (clean_cand in allowed or allowed in clean_cand) for allowed in get_store_normalized_names(store)
+    )
+
+
+def split_card_store_blocks(card_text: str) -> list[str]:
+    """將推薦卡片依店家標題與結尾提醒切割為獨立區塊 (支援 1. / ### / 🥇🥈🥉 / 💡 特派員提醒)"""
+    if not card_text:
+        return []
+    pattern = (
+        r"(?m)(?=^(?:"
+        r"(?:###\s*|(?:\*\*))?(?:[🥇🥈🥉]|\d+[\.、](?!\d))"
+        r"|###\s*(?:`[^`\n]+`|\*\*[^*\n]+)"
+        r"|💡\s*\*{0,2}特派員提醒"
+        r"|---+\s*$"
+        r"))"
+    )
+    return [part for part in re.split(pattern, card_text) if part]
+
+
+_DETAIL_LINE_ICON_RE = re.compile(r"^\s*(?:[-•*]\s*)?(?:🚶|⭐️|⭐|💳|💰|🔗|📍|💡)")
+_DETAIL_LINE_LABEL_RE = re.compile(
+    r"^\s*(?:[-•*]\s*)?(?:\*\*)?(?:支付(?:方式)?|付款(?:方式)?|交通|步行(?:距離)?|預算|價位|營業(?:狀態|時間)?|地址|評分|雙平台評分|評價|老饕推薦理由|老饕評價與推薦理由|推薦理由|點評|特派員提醒|提醒|店家連結|連結)(?:\*\*)?\s*[：:]"
+)
+_STORE_LABEL_RE = re.compile(r"(?:🍱|店名|餐廳|店家)\s*(?:\*\*)?\s*[：:]")
+
+
+def _is_detail_metadata_line(line: str) -> bool:
+    """判斷是否為非店名之明細欄位行 (Fail-Closed：含店名標籤或無明確明細標籤者皆視為潛在店名行)"""
+    if _STORE_LABEL_RE.search(line):
+        return False
+    return bool(_DETAIL_LINE_ICON_RE.search(line) or _DETAIL_LINE_LABEL_RE.search(line))
+
+
+def _extract_store_code_blocks(card_text: str, stores: list[dict[str, Any]]) -> list[str]:
+    """萃取應視為「店名主張」的反引號內容，排除明細欄中的非店名排版反引號 (如 `PayPay`)"""
+    store_cbs: list[str] = []
+    for line in card_text.splitlines():
+        cbs = re.findall(r"`([^`\n]+)`", line)
+        if not cbs:
+            continue
+        is_detail = _is_detail_metadata_line(line)
+        for cb in cbs:
+            cb_stripped = cb.strip()
+            if not cb_stripped:
+                continue
+            if any(is_store_matched(cb_stripped, s) for s in stores):
+                store_cbs.append(cb)
+            elif not is_detail:
+                store_cbs.append(cb)
+    return store_cbs
+
+
 def validate_recommendation_card(
     card_text: str,
     stores: Optional[list[dict[str, Any]]] = None,
@@ -180,7 +250,7 @@ def validate_card_tiered(
             break
 
     # 3. 致命/局限：反引號店名與 Grounding 真實性
-    code_blocks = re.findall(r"`([^`\n]+)`", card_text)
+    code_blocks = _extract_store_code_blocks(card_text, stores or [])
     if not code_blocks:
         fatal_errors.append("缺少一鍵複製店名反引號代碼塊 (`店名`)")
     elif stores:
@@ -194,34 +264,13 @@ def validate_card_tiered(
                 if clean and clean not in [_normalize_name(x) for x in unique_cbs]:
                     unique_cbs.append(cb)
 
-            allowed_store_names: list[str] = []
-            has_ascii_store = False
-            for s in stores:
-                raw_name = s.get("name") or ""
-                if raw_name and re.search(r"^[a-zA-Z0-9\s\-]+$", raw_name.strip()):
-                    has_ascii_store = True
-                for k in ["name_ja", "name", "name_en"]:
-                    val = s.get(k)
-                    if val and isinstance(val, str):
-                        allowed_store_names.append(_normalize_name(val))
-
             matched_stores_count = 0
             unmatched_store_cbs: list[str] = []
             for cb in unique_cbs:
-                clean_cb = _normalize_name(cb)
-                if not clean_cb:
-                    continue
-                is_matched = any(
-                    allowed and (clean_cb in allowed or allowed in clean_cb) for allowed in allowed_store_names
-                )
-                if is_matched:
+                if any(is_store_matched(cb, s) for s in stores):
                     matched_stores_count += 1
                 else:
                     unmatched_store_cbs.append(cb)
-
-            if has_ascii_store and matched_stores_count == 0 and len(unique_cbs) <= len(stores):
-                matched_stores_count = len(unique_cbs)
-                unmatched_store_cbs.clear()
 
             # 致命：店名完全對不上
             if matched_stores_count == 0:
@@ -233,8 +282,8 @@ def validate_card_tiered(
                     f"推薦店家數量 ({len(unique_cbs)} 家) 超過輸入之候選店家數 ({len(stores)} 家)，違反 Grounding 規範"
                 )
 
-            # 致命：虛構未授權店家
-            if unmatched_store_cbs and not has_ascii_store:
+            # 致命：虛構未授權店家 (嚴格禁止整批 Bypass)
+            if unmatched_store_cbs:
                 fatal_errors.append(f"推薦了未在候選名單中的未授權/虛構店家 ({', '.join(unmatched_store_cbs)})")
 
     # 4. 局限：欄位標記檢查
@@ -262,43 +311,62 @@ def validate_card_tiered(
     return fatal_errors, minor_warnings
 
 
+_PROTECTED_SPAN_RE = re.compile(r"(`[^`\n]+`|\[[^\]]*\]\([^)]+\))")
+
+
+def _wrap_name_outside_protected_spans(line: str, name_clean: str) -> tuple[str, bool]:
+    """僅在既有的反引號與 Markdown 連結之外包裹店名，防止雙重反引號或破壞超連結"""
+    parts = _PROTECTED_SPAN_RE.split(line)
+    for idx in range(0, len(parts), 2):
+        seg = parts[idx]
+        if name_clean in seg:
+            parts[idx] = seg.replace(name_clean, f"`{name_clean}`", 1)
+            return "".join(parts), True
+    return line, False
+
+
 def repair_store_name_code_blocks(card_text: str, stores: list[dict[str, Any]]) -> str:
     """自動修復標題行中缺失的一鍵複製店名反引號代碼塊
 
-    當 LLM 輸出了正確的店家名稱但偶發遺漏反引號時，自動將店名包裹反引號，
-    防止因純排版微瑕觸發整張卡片拋棄 (Format Fallback)。
+    逐店檢查是否已被反引號包覆，僅對漏包店家進行修復，
+    並保護既有反引號與 Markdown 連結不被重複包覆。
     """
     if not card_text or not stores:
         return card_text
 
-    # 若已經有反引號且能匹配候選店名，則無需修復
     existing_cbs = re.findall(r"`([^`\n]+)`", card_text)
-    if existing_cbs:
-        return card_text
+    lines = card_text.splitlines()
 
-    repaired = card_text
     for s in stores:
+        if any(is_store_matched(cb, s) for cb in existing_cbs):
+            continue
+
         candidates = [s.get("name_ja"), s.get("name"), s.get("name_en")]
+        wrapped = False
         for name in candidates:
             if not name or not isinstance(name, str):
                 continue
             name_clean = name.strip()
             if len(name_clean) < 2:
                 continue
-            # 若店名出現在文字中且未被反引號包覆
-            # 優先在標題/序號行尋找 (例如 1. 店名 或 【1】 店名 或 ### 店名)
-            pattern = rf"([#\*【\d\.\s、🥇🥈🥉]+)({re.escape(name_clean)})([】\*]*)"
-            if re.search(pattern, repaired):
-                repaired = re.sub(pattern, r"\1`\2`\3", repaired, count=1)
+
+            # 第一輪：優先在非明細行 (標題/店名行) 尋找並包裹
+            for idx, line in enumerate(lines):
+                if _is_detail_metadata_line(line):
+                    continue
+                new_line, did_wrap = _wrap_name_outside_protected_spans(line, name_clean)
+                if did_wrap:
+                    lines[idx] = new_line
+                    existing_cbs.append(name_clean)
+                    wrapped = True
+                    break
+            if wrapped:
                 break
-            elif name_clean in repaired:
-                repaired = repaired.replace(name_clean, f"`{name_clean}`", 1)
-                break
 
-    return repaired
+    return "\n".join(lines)
 
 
-def repair_card_in_place(card_text: str, stores: list[dict[str, Any]]) -> str:
+def repair_card_in_place(card_text: str, stores: list[dict[str, Any]], cuisine: Optional[str] = None) -> str:
     """外科手術式局部修復 (In-Place Surgical Repair)
 
     在不破壞 LLM 原生語意與結構的前提下：
@@ -374,13 +442,14 @@ def repair_card_in_place(card_text: str, stores: list[dict[str, Any]]) -> str:
 
         if is_reason_line and (has_boilerplate or has_raw_japanese) and stores and current_store_idx < len(stores):
             target_store = stores[current_store_idx]
-            replacement_text, _ = synthesize_store_recommendation_reason(target_store)
+            replacement_text, _ = synthesize_store_recommendation_reason(target_store, cuisine=cuisine)
             if not replacement_text or contains_japanese_kana(replacement_text):
-                replacement_text = "以道地手藝與扎實用料著稱，風味純粹，深獲在地常客好評。"
-            else:
-                replacement_text = replacement_text.strip().replace("\n", " ")
-                if len(replacement_text) > 90:
-                    replacement_text = replacement_text[:88] + "..."
+                # 寧缺勿濫：無真實中文食評或獎項可替換時，直接省略該違規推薦理由行
+                continue
+
+            replacement_text = replacement_text.strip().replace("\n", " ")
+            if len(replacement_text) > 90:
+                replacement_text = replacement_text[:88] + "..."
 
             # 保留前綴 (例如 "💡 **老饕推薦理由**：")，替換後方內容
             prefix_match = re.match(r"^([^\n]*?[：:])\s*.*$", line)

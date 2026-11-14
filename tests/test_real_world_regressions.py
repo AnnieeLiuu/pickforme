@@ -677,7 +677,8 @@ async def test_case13_distance_modifier_cleansing_and_review_noise_filtering() -
     assert "24時間" not in reason
     assert "営業時間" not in reason
     assert "ラーメン" not in reason
-    assert "道地 拉麵 風味" in reason or "美味" in reason or "精選" in reason
+    assert reason == ""
+    assert badge == ""
 
     store_hyakumeiten = {
         "name_ja": "高級壽喜燒名店",
@@ -710,10 +711,10 @@ async def test_case13_distance_modifier_cleansing_and_review_noise_filtering() -
     ]
     card = fsm._render_template_fallback_card(test_stores, cuisine="壽喜燒", is_format_fallback=True)
 
-    # 驗證卡片中 100% 絕無生硬營業時間或雜訊
+    # 驗證卡片中 100% 絕無生硬營業時間或雜訊，且無有效食評或獎項時寧缺勿濫省略推薦理由
     assert "24時間" not in card
     assert "営業時間" not in card
-    assert "老饕推薦理由" in card
+    assert "老饕推薦理由" not in card
     assert "3.52" in card
     assert "`壽喜燒極`" in card
 
@@ -1236,19 +1237,19 @@ async def test_case21_no_raw_japanese_review_leak_and_code_block_repair():
         "tabelog_url": "https://tabelog.com/tokyo/A1311/A131102/13000000/",
     }
 
-    # 1. 驗證 synthesize_store_recommendation_reason 絕不穿透日文假名
+    # 1. 驗證 synthesize_store_recommendation_reason 絕不穿透日文假名，且無中文翻譯/獎項時寧缺勿濫回傳空字串
     reason, badge = synthesize_store_recommendation_reason(mock_store_japanese, cuisine="中華料理")
     assert not contains_japanese_kana(reason), f"理由仍含有日文假名: {reason}"
-    assert "Tabelog 評分達 3.65 高分名店" in reason or "中華料理" in reason
-    assert badge in ["食べログ 權威認證", "在地饕客精選", "百名店指標"]
+    assert reason == ""
+    assert badge == ""
 
-    # 2. 驗證 template fallback 渲染出之卡片理由絕無日文假名
+    # 2. 驗證 template fallback 渲染出之卡片理由絕無日文假名 (無中文翻譯時寧缺勿濫省略該行)
     fsm = FoodRecommendationFSM()
     template_card = fsm._render_template_fallback_card([mock_store_japanese], cuisine="中華料理")
-    reason_match = re.search(r"📍 \*\*老饕推薦理由[^\n]*\*\*：([^\n]+)", template_card)
-    assert reason_match is not None
-    extracted_reason = reason_match.group(1)
-    assert not contains_japanese_kana(extracted_reason), f"模板理由穿透了日文: {extracted_reason}"
+    assert "老饕推薦理由" not in template_card
+    assert not contains_japanese_kana(template_card.replace("浅草 聚楽", "").replace("食べログ", "")), (
+        f"模板穿透了日文: {template_card}"
+    )
 
     # 3. 驗證 repair_card_in_place 能將日文理由外科手術修復為繁體中文
     card_with_japanese_reason = (
@@ -1266,9 +1267,11 @@ async def test_case21_no_raw_japanese_review_leak_and_code_block_repair():
     assert any("Raw Japanese Leak" in w for w in minor_warns), f"應標記日文洩漏警告: {minor_warns}"
 
     repaired = repair_card_in_place(card_with_japanese_reason, [mock_store_japanese])
-    repaired_reason_match = re.search(r"📍 \*\*老饕推薦理由[^\n]*\*\*：([^\n]+)", repaired)
-    assert repaired_reason_match is not None
-    assert not contains_japanese_kana(repaired_reason_match.group(1)), "修復後理由仍含有日文"
+    assert "チャーハン" not in repaired
+    assert "老饕推薦理由" not in repaired
+    fatal_after, minor_after = validate_card_tiered(repaired, [mock_store_japanese])
+    assert fatal_after == []
+    assert minor_after == []
 
     # 4. 驗證 repair_store_name_code_blocks 自動包裹缺失之反引號
     card_missing_code_block = (
@@ -2839,3 +2842,195 @@ async def test_case_35_env_driven_model_hot_swap():
         assert get_active_gemini_model() == "gemini-4.0-flash"
         _, model, _ = await client.call_text([{"role": "user", "content": "hi"}])
         assert model == "openai/gpt-oss-120b"
+
+
+# ==============================================================================
+# Case 36–40: Plan 1 Guardrail Hardening & Background Review Translation
+# ==============================================================================
+@pytest.mark.asyncio
+async def test_case_36_no_rating_boilerplate_in_sanitizer_and_in_place_repair():
+    """Case 36: 徹底消除 synthesize_store_recommendation_reason 與 repair_card_in_place 自相矛盾的評分套話
+
+    [真實痛點]
+    1. validate_card_tiered 嚴禁推薦理由出現「Google 評分高達 X.X 分 / Tabelog 評分達 X.XX」，
+       但 review_sanitizer 第 3 層保底卻自己寫出該套話，導致 repair_card_in_place 與模板保底自相矛盾。
+    2. 無真實繁中食評且無獎項時應「寧缺勿濫」省略空話；若有真實中文食評或百名店獎項則正常抽換。
+    """
+    from src.agent.validator import repair_card_in_place, validate_card_tiered
+    from src.services.review_sanitizer import synthesize_store_recommendation_reason
+
+    store_t = {
+        "name": "麵匠 竹虎 新宿店",
+        "name_ja": "麺匠 竹虎 新宿店",
+        "tabelog_rating": 3.65,
+        "review_count": 1200,
+        "sample_reviews": [{"text": "スープが濃厚で美味しい！", "source": "tabelog"}],
+    }
+    store_zh = {
+        "name": "麵匠 竹虎 新宿店",
+        "name_ja": "麺匠 竹虎 新宿店",
+        "tabelog_rating": 3.65,
+        "sample_reviews": [
+            {"text": "スープが濃厚で美味しい！", "text_zh": "豚骨湯頭濃厚順口，叉燒軟嫩。", "source": "tabelog"}
+        ],
+    }
+
+    # 1. 無真實中文食評且無獎項時，寧缺勿濫回傳空字串，絕不硬生評分套話
+    reason_t, _ = synthesize_store_recommendation_reason(store_t, cuisine="拉麵")
+    assert reason_t == ""
+
+    # 2. 有已翻譯中文食評時正常回傳
+    reason_zh, _ = synthesize_store_recommendation_reason(store_zh, cuisine="拉麵")
+    assert "豚骨湯頭濃厚順口" in reason_zh
+
+    # 3. repair_card_in_place 修復違規卡片：無替代食評時直接省略該違規行，0 warnings
+    bad_card = (
+        "🥇 1. `麺匠 竹虎 新宿店`\n"
+        "🚶 **步行距離**：從「西武新宿站」步行約 3 分鐘\n"
+        "⭐️ **雙平台評分**：Tabelog 3.65 (1,200則評價) / Google 4.3\n"
+        "💳 **支付方式**：可使用信用卡 / PayPay\n"
+        "📍 **老饕推薦理由**：Google 評分高達 4.3 分，整體表現獲得在地人高度認可。\n"
+        "🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1304/A130401/13000001/)\n"
+    )
+    repaired_omit = repair_card_in_place(bad_card, [store_t], cuisine="拉麵")
+    assert "老饕推薦理由" not in repaired_omit
+    fatal_errors, minor_warnings = validate_card_tiered(repaired_omit, [store_t])
+    assert fatal_errors == []
+    assert minor_warnings == []
+
+    # 4. 若有真實中文食評則精準抽換上去
+    repaired_zh = repair_card_in_place(bad_card, [store_zh], cuisine="拉麵")
+    assert "豚骨湯頭濃厚順口" in repaired_zh
+    fatal_errors_zh, minor_warnings_zh = validate_card_tiered(repaired_zh, [store_zh])
+    assert fatal_errors_zh == []
+    assert minor_warnings_zh == []
+
+
+@pytest.mark.asyncio
+async def test_case_37_index_store_reviews_background_translation_and_fail_open():
+    """Case 37: index_store_reviews 背景將日文評論批次翻譯存入 review_text_zh，並保留日文原文與 Fail-Open 防護"""
+    from uuid import uuid4
+
+    from src.agent.stages.enrichment import index_store_reviews
+
+    rid = uuid4()
+    reviews = [
+        {"text": "濃厚な豚骨スープが絶品です。", "source": "tabelog"},
+        {"text": "チャーシューが柔らかくて美味しい！", "source": "google"},
+    ]
+
+    fsm = MagicMock()
+    fsm.vector_repo = AsyncMock()
+    fsm.vector_repo.get_reviews_by_restaurant_id.return_value = []
+    fsm.embedding_service = AsyncMock()
+    fsm.embedding_service.get_embeddings_batch.return_value = [[0.1, 0.2], [0.3, 0.4]]
+    fsm.llm_client = MagicMock()
+    fsm.llm_client.call_text = AsyncMock(
+        return_value=('["濃郁的豚骨湯頭堪稱一絕。", "叉燒軟嫩又美味！"]', "test-model", 50)
+    )
+
+    await index_store_reviews(fsm, rid, reviews)
+    fsm.vector_repo.batch_insert_reviews.assert_awaited_once()
+    inserted = fsm.vector_repo.batch_insert_reviews.call_args[0][0]
+    assert len(inserted) == 2
+    assert inserted[0]["review_text_ja"] == "濃厚な豚骨スープが絶品です。"
+    assert inserted[0]["review_text_zh"] == "濃郁的豚骨湯頭堪稱一絕。"
+    assert inserted[1]["review_text_zh"] == "叉燒軟嫩又美味！"
+
+    # Fail-Open：若 LLM 翻譯失敗，仍應照常寫入 embedding 且降級保留原文
+    fsm.vector_repo.batch_insert_reviews.reset_mock()
+    fsm.llm_client.call_text = AsyncMock(side_effect=RuntimeError("429 Rate Limit"))
+    await index_store_reviews(fsm, rid, reviews)
+    fsm.vector_repo.batch_insert_reviews.assert_awaited_once()
+    fallback_inserted = fsm.vector_repo.batch_insert_reviews.call_args[0][0]
+    assert fallback_inserted[0]["review_text_ja"] == "濃厚な豚骨スープが絶品です。"
+    assert fallback_inserted[0]["review_text_zh"] == "濃厚な豚骨スープが絶品です。"
+
+
+def test_case_38_ascii_store_does_not_bypass_hallucinated_stores():
+    """Case 38: 移除 has_ascii_store 整批繞過開關，候選含純英文店名時仍嚴格攔截虛構店家"""
+    from src.agent.validator import validate_card_tiered
+
+    stores = [
+        {"name": "AFURI", "name_ja": "AFURI 新宿"},
+        {"name": "麵屋武藏", "name_ja": "麺屋武蔵 新宿総本店"},
+    ]
+    hallucinated_card = (
+        "1. `AFURI 新宿`\n"
+        "🚶 **步行距離**：步行約 3 分鐘\n"
+        "⭐️ **雙平台評分**：Tabelog 3.50\n"
+        "💳 **支付方式**：現金\n\n"
+        "2. `Fake Ramen Shinjuku`\n"
+        "🚶 **步行距離**：步行約 4 分鐘\n"
+        "⭐️ **雙平台評分**：Tabelog 3.90\n"
+        "💳 **支付方式**：現金\n"
+    )
+    fatal_errors, _ = validate_card_tiered(hallucinated_card, stores)
+    assert any("未授權/虛構店家" in err and "Fake Ramen Shinjuku" in err for err in fatal_errors)
+
+
+def test_case_39_per_store_code_block_repair_and_non_store_backtick_filtering():
+    """Case 39: 逐店補包反引號、防雙重包覆、區分明細欄 `PayPay` 與標題/🍱 店名行"""
+    from src.agent.validator import repair_store_name_code_blocks, validate_card_tiered
+
+    stores = [
+        {"name": "一蘭 新宿中央東口店", "name_ja": "一蘭 新宿中央東口店"},
+        {"name": "風雲兒", "name_ja": "風雲児"},
+    ]
+    # 第 1 家有包反引號、明細欄有 `PayPay`，第 2 家漏包反引號
+    partial_card = (
+        "1. `一蘭 新宿中央東口店`\n"
+        "🚶 **步行距離**：步行約 3 分鐘\n"
+        "⭐️ **雙平台評分**：Tabelog 3.45\n"
+        "💳 **支付方式**：支援 `PayPay` / 現金\n"
+        "🔗 [一蘭 新宿中央東口店](https://tabelog.com/1)\n\n"
+        "2. 風雲児\n"
+        "🚶 **步行距離**：步行約 5 分鐘\n"
+        "⭐️ **雙平台評分**：Tabelog 3.72\n"
+        "💳 **支付方式**：僅收現金\n"
+    )
+    repaired = repair_store_name_code_blocks(partial_card, stores)
+    assert "`風雲児`" in repaired
+    assert "``" not in repaired
+    assert "[`一蘭 新宿中央東口店`]" not in repaired
+
+    fatal_errors, _ = validate_card_tiered(repaired, stores)
+    assert fatal_errors == []
+
+    # Fail-Closed：若虛構店名出現在 `- 🍱 **店名**：` 行，必須攔截
+    fake_label_card = (
+        "1. `一蘭 新宿中央東口店`\n"
+        "🚶 **步行距離**：步行約 3 分鐘\n"
+        "⭐️ **雙平台評分**：Tabelog 3.45\n"
+        "💳 **支付方式**：支援 `PayPay`\n"
+        "- 🍱 **店名**：`虛構拉麵店`\n"
+    )
+    fatal_fake, _ = validate_card_tiered(fake_label_card, stores)
+    assert any("虛構拉麵店" in err for err in fatal_fake)
+
+
+def test_case_40_sanitize_card_ratings_emoji_headings_and_outro_isolation():
+    """Case 40: sanitize_card_ratings 支援 🥇🥈🥉 / ### 排版、首行精準配對與特派員提醒隔離"""
+    from src.agent.stages.synthesis import sanitize_card_ratings
+
+    stores = [
+        {"name_ja": "一蘭", "tabelog_rating": 3.45, "google_rating": 4.1},
+        {"name_ja": "風雲児", "tabelog_rating": 3.72, "google_rating": 4.4},
+        {"name_ja": "麵屋翔", "tabelog_rating": 3.68, "google_rating": 4.3},
+    ]
+    emoji_card = (
+        "🥇 `一蘭`\n"
+        "⭐️ Tabelog 3.99 分 / Google 4.9\n\n"
+        "🥈 `風雲児`\n"
+        "⭐️ Tabelog 3.98 分 / Google 4.9\n\n"
+        "### `麵屋翔`\n"
+        "⭐️ Tabelog 3.50 分 / Google 4.9\n\n"
+        "💡 **特派員提醒**：新宿商圈多數名店在 Tabelog 3.5 分以上需排隊。"
+    )
+    sanitized = sanitize_card_ratings(emoji_card, stores)
+    assert "3.45" in sanitized
+    assert "3.72" in sanitized
+    assert "3.68" in sanitized
+    assert "3.99" not in sanitized
+    assert "3.98" not in sanitized
+    assert "Tabelog 3.5 分以上需排隊" in sanitized

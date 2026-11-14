@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import re
 import time
@@ -517,6 +518,63 @@ async def enrich_single_place(
     return _align_walking_and_station(fallback_res, fallback_res.get("nearest_station_desc"), area_hint)
 
 
+async def _translate_reviews_batch_fail_open(
+    fsm: FoodRecommendationFSM,
+    texts: list[str],
+) -> list[str]:
+    """Fail-Open 單次批次日文食評翻譯 (日文 -> 繁體中文)，失敗或超時時安全降級保留原文"""
+    from src.services.review_sanitizer import contains_japanese_kana
+
+    zh_texts = list(texts)
+    ja_indices = [i for i, t in enumerate(texts) if contains_japanese_kana(t)]
+    if not ja_indices:
+        return zh_texts
+
+    llm_client = getattr(fsm, "llm_client", None)
+    call_text = getattr(llm_client, "call_text", None)
+    if not callable(call_text):
+        return zh_texts
+
+    try:
+        numbered_items = [{"index": idx, "text": texts[i]} for idx, i in enumerate(ja_indices)]
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "你是專業的日本美食評論翻譯員。請將輸入的日文食評逐則翻譯成自然流暢的繁體中文（台灣用語），"
+                    "保留具體菜色、口感與環境細節。請嚴格只回傳 JSON 字串陣列，長度與輸入順序必須完全一致。"
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"請翻譯以下 {len(ja_indices)} 則評論：\n{json.dumps(numbered_items, ensure_ascii=False)}",
+            },
+        ]
+        res = call_text(messages)
+        if not asyncio.iscoroutine(res):
+            return zh_texts
+        raw_reply, _, _ = await asyncio.wait_for(res, timeout=10.0)
+        cleaned = str(raw_reply).strip()
+        if "```" in cleaned:
+            for part in cleaned.split("```"):
+                p = part.strip()
+                if p.startswith("json"):
+                    p = p[4:].strip()
+                if p.startswith("[") and p.endswith("]"):
+                    cleaned = p
+                    break
+        parsed = json.loads(cleaned)
+        if isinstance(parsed, list) and len(parsed) == len(ja_indices):
+            for idx, orig_pos in enumerate(ja_indices):
+                val = parsed[idx]
+                if isinstance(val, str) and val.strip():
+                    zh_texts[orig_pos] = val.strip()
+    except Exception as e:
+        logger.warning(f"Background review translation failed (Fail-Open to original text): {e}")
+
+    return zh_texts
+
+
 async def index_store_reviews(
     fsm: FoodRecommendationFSM,
     restaurant_id: Any,
@@ -531,24 +589,28 @@ async def index_store_reviews(
         if existing:
             return
 
-        sample_reviews = reviews[:3]
-        texts = [
-            r.get("text") or r.get("original_text", "")
-            for r in sample_reviews
-            if (r.get("text") or r.get("original_text"))
-        ]
+        valid_reviews = [r for r in reviews[:3] if (r.get("text") or r.get("original_text"))]
+        texts = [str(r.get("text") or r.get("original_text", "")) for r in valid_reviews]
         if not texts:
             return
 
-        embeddings = await fsm.embedding_service.get_embeddings_batch(texts)
+        # 先取已有中文欄位或進行 Fail-Open 背景日翻中，再批次計算向量
+        raw_zh_inputs = [
+            str(r.get("zh") or r.get("text_zh") or r.get("text") or r.get("original_text", "")) for r in valid_reviews
+        ]
+        zh_texts, embeddings = await asyncio.gather(
+            _translate_reviews_batch_fail_open(fsm, raw_zh_inputs),
+            fsm.embedding_service.get_embeddings_batch(texts),
+        )
+
         records = []
-        for r, emb in zip(sample_reviews, embeddings):
+        for r, ja_text, zh_text, emb in zip(valid_reviews, texts, zh_texts, embeddings):
             if any(emb):
                 records.append(
                     {
                         "restaurant_id": rid,
-                        "review_text_ja": r.get("original_text") or r.get("text", ""),
-                        "review_text_zh": r.get("text") or r.get("original_text", ""),
+                        "review_text_ja": str(r.get("original_text") or ja_text),
+                        "review_text_zh": zh_text,
                         "embedding": emb,
                     }
                 )

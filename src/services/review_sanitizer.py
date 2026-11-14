@@ -181,27 +181,11 @@ def synthesize_store_recommendation_reason(
                 if clean_text:
                     return clean_text, rev_source
 
-    # 3. 若為純日文無翻譯或無有效口感短評，依結構化指標智慧合成優雅老饕中文推薦理由
-    t_rating = store.get("tabelog_rating")
-    g_rating = store.get("rating") or store.get("google_rating")
+    # 3. 僅保留具體獲獎事實 (百名店等)；無實質中文食評且無獎項時寧缺勿濫，回傳空字串以免硬生空話
     awards = store.get("awards") or store.get("hyakumeiten") or []
-    rev_count = store.get("review_count") or 0
-    c_name = cuisine or "日式經典"
 
     if awards:
         reason = "獲選 Tabelog 百名店殊榮，主打正宗經典風味與高品質食材，為在地饕客極力推崇之指標名店。"
         return reason, "百名店指標"
 
-    if t_rating and float(t_rating) >= 3.50:
-        reason = f"Tabelog 評分達 {float(t_rating):.2f} 高分名店，累積逾 {rev_count:,} 則老饕驗證，口味穩定出眾，為該商圈首選人氣店。"
-        return reason, "食べログ 權威認證"
-
-    if t_rating and float(t_rating) > 0:
-        reason = f"主打道地 {c_name} 風味，食材講究且深受在地食客青睞，用餐氛圍親切道地。"
-        return reason, "在地饕客精選"
-
-    if g_rating and float(g_rating) >= 4.5:
-        reason = f"Google 評分高達 {float(g_rating):.1f} 分超人氣口碑，服務細緻且菜品豐富，為周邊極具人氣的美味之選。"
-        return reason, "Google 人氣推薦"
-
-    return f"精選周邊優質 {c_name} 餐廳，整體評價優秀且深受歡迎，值得前往一試。", "美食特派員推薦"
+    return "", ""
