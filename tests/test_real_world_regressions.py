@@ -2814,3 +2814,28 @@ async def test_case_35_active_llm_models_and_structured_json_resilience():
     # 3. target_indices=null 在一次呼叫內即自動轉為 []，不觸發重試
     assert parsed["target_indices"] == []
     assert len(captured_messages) == 1
+
+
+@pytest.mark.asyncio
+async def test_case_35_env_driven_model_hot_swap():
+    """Case 35.2: 透過環境變數 GROQ_MODELS 與 GEMINI_MODEL 免改碼熱切換模型"""
+    from unittest.mock import AsyncMock, patch
+
+    from src.agent.llm_client import LLMClient, get_active_gemini_model, get_active_groq_models
+
+    client = LLMClient()
+    with (
+        patch("src.config.settings.LLM_PRIMARY_PROVIDER", "groq"),
+        patch("src.config.settings.GROQ_API_KEY", "fake_groq_key"),
+        patch("src.config.settings.GROQ_MODELS", "openai/gpt-oss-120b, qwen/qwen3.8-27b"),
+        patch("src.config.settings.GEMINI_MODEL", "gemini-4.0-flash"),
+        patch.object(
+            client,
+            "_call_openai_compatible_api",
+            AsyncMock(return_value=({"role": "assistant", "content": "熱切換成功"}, 42)),
+        ),
+    ):
+        assert get_active_groq_models() == ("openai/gpt-oss-120b", "qwen/qwen3.8-27b")
+        assert get_active_gemini_model() == "gemini-4.0-flash"
+        _, model, _ = await client.call_text([{"role": "user", "content": "hi"}])
+        assert model == "openai/gpt-oss-120b"

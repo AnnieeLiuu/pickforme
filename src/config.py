@@ -29,6 +29,8 @@ class Settings(BaseSettings):
 
     # LLM Provider Configuration ('groq' | 'ollama' | 'gemini')
     LLM_PRIMARY_PROVIDER: str = "groq"
+    GROQ_MODELS: str = "qwen/qwen3.8-27b,openai/gpt-oss-120b,openai/gpt-oss-20b"
+    GEMINI_MODEL: str = "gemini-3.8-flash"
 
     # Ollama Local LLM Configuration
     OLLAMA_BASE_URL: str = "http://localhost:11434"

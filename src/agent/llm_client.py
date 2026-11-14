@@ -19,6 +19,20 @@ GROQ_FALLBACK_MODELS: tuple[str, ...] = ("qwen/qwen3.8-27b", "openai/gpt-oss-120
 GEMINI_PRIMARY_MODEL = "gemini-3.8-flash"
 
 
+def get_active_groq_models() -> tuple[str, ...]:
+    """從環境變數 GROQ_MODELS 解析現役 Groq 模型清單（逗號分隔），空白時回退預設清單。"""
+    raw = getattr(settings, "GROQ_MODELS", "")
+    parsed = tuple(m.strip() for m in str(raw).split(",") if m.strip())
+    return parsed or GROQ_FALLBACK_MODELS
+
+
+def get_active_gemini_model() -> str:
+    """從環境變數 GEMINI_MODEL 讀取現役 Gemini 模型名稱，空白時回退預設模型。"""
+    raw = getattr(settings, "GEMINI_MODEL", "")
+    cleaned = str(raw).strip()
+    return cleaned or GEMINI_PRIMARY_MODEL
+
+
 class LLMClient:
     """統一 LLM 通訊客戶端：負責多級模型降級容錯、動態 429 退避與 JSON/文字輸出"""
 
@@ -146,7 +160,7 @@ class LLMClient:
         """嘗試使用雲端 Groq 多模型"""
         if not settings.GROQ_API_KEY:
             return None
-        for fallback_model in GROQ_FALLBACK_MODELS:
+        for fallback_model in get_active_groq_models():
             try:
                 msg_resp, tokens = await self._call_openai_compatible_api(
                     url=GROQ_OPENAI_URL,
@@ -171,16 +185,17 @@ class LLMClient:
         """嘗試使用 Google Gemini Flash 雲端主力"""
         if not settings.GEMINI_API_KEY:
             return None
+        gemini_model = get_active_gemini_model()
         try:
             msg_resp, tokens = await self._call_openai_compatible_api(
                 url=GEMINI_OPENAI_URL,
                 api_key=settings.GEMINI_API_KEY,
-                model=GEMINI_PRIMARY_MODEL,
+                model=gemini_model,
                 messages=messages,
                 response_format=response_format,
                 timeout=30.0,
             )
-            return str(msg_resp.get("content", "")), GEMINI_PRIMARY_MODEL, tokens
+            return str(msg_resp.get("content", "")), gemini_model, tokens
         except Exception as e:
             logger.warning(f"Primary Gemini Flash LLM call failed: {e}. Attempting failover...")
             errors.append(f"Gemini: {e}")

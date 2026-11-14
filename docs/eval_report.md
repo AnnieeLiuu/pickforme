@@ -14,9 +14,9 @@
 
 ## ⚡ 延遲基準統計 (Latency Benchmark)
 
-- **平均延遲 (Average Latency)**：`4.2 ms`
+- **平均延遲 (Average Latency)**：`3.9 ms`
 - **P50 延遲**：`3.0 ms`
-- **P90 延遲**：`6.0 ms`
+- **P90 延遲**：`4.0 ms`
 
 ## 🛡️ Agent Harness 架構防護矩陣 (Harness Capabilities)
 
@@ -29,23 +29,23 @@
 
 | ID | 分類 | 測試提問句 | T1 (意圖) | T2 (比對) | T3 (護欄) | 耗時 |
 | :---: | :--- | :--- | :---: | :---: | :---: | :---: |
-| `eval_001` | `typo_colloquial` | 新宿歌舞妓町有啥開很晚的拉麵，不要太油 | ✅ | ✅ | ✅ | 23ms |
-| `eval_002` | `multi_landmark` | 想要在橫濱棒球場或橫濱車站附近的壽喜燒 | ✅ | ✅ | ✅ | 4ms |
+| `eval_001` | `typo_colloquial` | 新宿歌舞妓町有啥開很晚的拉麵，不要太油 | ✅ | ✅ | ✅ | 26ms |
+| `eval_002` | `multi_landmark` | 想要在橫濱棒球場或橫濱車站附近的壽喜燒 | ✅ | ✅ | ✅ | 3ms |
 | `eval_003` | `taste_rag` | 池袋 想要麵條偏硬有嚼勁的拉麵 | ✅ | ✅ | ✅ | 3ms |
 | `eval_004` | `multi_turn_more` | 還有更多推薦嗎？ | ✅ | ✅ | ✅ | 2ms |
 | `eval_005` | `multi_turn_more` | 我想找更在地的老店 | ✅ | ✅ | ✅ | 2ms |
-| `eval_006` | `follow_up` | 第2家今天有開嗎？ | ✅ | ✅ | ✅ | 6ms |
-| `eval_007` | `follow_up` | 第一家可以刷信用卡或 PayPay 嗎？ | ✅ | ✅ | ✅ | 3ms |
+| `eval_006` | `follow_up` | 第2家今天有開嗎？ | ✅ | ✅ | ✅ | 4ms |
+| `eval_007` | `follow_up` | 第一家可以刷信用卡或 PayPay 嗎？ | ✅ | ✅ | ✅ | 2ms |
 | `eval_008` | `chitchat` | 哈囉你好！請問你可以幫我做什麼？ | ✅ | ✅ | ✅ | 4ms |
-| `eval_009` | `need_location` | 我想吃炸豬排 | ✅ | ✅ | ✅ | 3ms |
+| `eval_009` | `need_location` | 我想吃炸豬排 | ✅ | ✅ | ✅ | 2ms |
 | `eval_010` | `typo_colloquial` | 澀谷平價居酒屋，預算3000日幣內 | ✅ | ✅ | ✅ | 3ms |
-| `eval_011` | `taste_rag` | 京都 祇園 適合長輩吃的清淡湯豆腐 | ✅ | ✅ | ✅ | 4ms |
+| `eval_011` | `taste_rag` | 京都 祇園 適合長輩吃的清淡湯豆腐 | ✅ | ✅ | ✅ | 3ms |
 | `eval_012` | `typo_colloquial` | 原宿竹下通排隊人氣可麗餅 | ✅ | ✅ | ✅ | 3ms |
-| `eval_013` | `multi_turn_more` | 有沒有更便宜一點的？ | ✅ | ✅ | ✅ | 1ms |
-| `eval_014` | `chitchat` | 明天東京會下雨嗎？ | ✅ | ✅ | ✅ | 5ms |
+| `eval_013` | `multi_turn_more` | 有沒有更便宜一點的？ | ✅ | ✅ | ✅ | 2ms |
+| `eval_014` | `chitchat` | 明天東京會下雨嗎？ | ✅ | ✅ | ✅ | 3ms |
 | `eval_015` | `multi_landmark` | 秋葉原跟御茶之水中間有名的日式咖哩 | ✅ | ✅ | ✅ | 4ms |
 | `eval_016` | `taste_rag` | 新宿 想要牛舌厚切多汁的炭火燒肉 | ✅ | ✅ | ✅ | 3ms |
-| `eval_017` | `follow_up` | 第3家可以線上訂位或打電話預約嗎？ | ✅ | ✅ | ✅ | 2ms |
+| `eval_017` | `follow_up` | 第3家可以線上訂位或打電話預約嗎？ | ✅ | ✅ | ✅ | 1ms |
 | `eval_018` | `typo_colloquial` | 秋葉 一個人也能吃的燒肉定食 | ✅ | ✅ | ✅ | 3ms |
-| `eval_019` | `multi_turn_more` | 換一批，但不要排隊太久的 | ✅ | ✅ | ✅ | 4ms |
-| `eval_020` | `need_location` | 好想吃鰻魚飯喔！ | ✅ | ✅ | ✅ | 2ms |
+| `eval_019` | `multi_turn_more` | 換一批，但不要排隊太久的 | ✅ | ✅ | ✅ | 2ms |
+| `eval_020` | `need_location` | 好想吃鰻魚飯喔！ | ✅ | ✅ | ✅ | 3ms |
