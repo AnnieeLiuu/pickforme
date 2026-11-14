@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -156,3 +156,32 @@ async def test_telegram_handler_location_guard_japan_and_non_japan():
         mock_session_repo.update_location.assert_called_once_with(chat_id=100, lat=35.6812, lng=139.7671)
         mock_bot.send_message.assert_called_once()
         assert "已成功接收並記錄您的定位資訊" in mock_bot.send_message.call_args[1]["text"]
+
+
+@pytest.mark.asyncio
+async def test_markdown_to_telegram_html_and_parse_mode_html():
+    from src.bot.handlers import TelegramBotHandler, markdown_to_telegram_html
+
+    md = (
+        "### 1. `麺匠_竹虎` (新宿)\n"
+        "🚶 **步行距離**：約 3 分鐘 (< 300m)\n"
+        "> 在地人最愛 *濃厚* 湯頭 & 叉燒\n"
+        "---\n"
+        "🔗 [Google 地圖](https://maps.google.com/?cid=123&hl=zh-TW)"
+    )
+    rendered = markdown_to_telegram_html(md)
+    assert "<b>1. <code>麺匠_竹虎</code> (新宿)</b>" in rendered
+    assert "<b>步行距離</b>" in rendered
+    assert "(&lt; 300m)" in rendered
+    assert "<blockquote>在地人最愛 <i>濃厚</i> 湯頭 &amp; 叉燒</blockquote>" in rendered
+    assert "────────────" in rendered
+    assert '<a href="https://maps.google.com/?cid=123&amp;hl=zh-TW">Google 地圖</a>' in rendered
+
+    mock_bot = MagicMock()
+    mock_bot.send_message = AsyncMock(return_value=MagicMock(message_id=99))
+    handler = TelegramBotHandler(bot=mock_bot)
+    msg_id = await handler._send_telegram_message(chat_id=100, text=md)
+    assert msg_id == 99
+    kwargs = mock_bot.send_message.call_args.kwargs
+    assert kwargs["parse_mode"] == "HTML"
+    assert "<code>麺匠_竹虎</code>" in kwargs["text"]

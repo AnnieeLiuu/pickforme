@@ -1,5 +1,7 @@
 import asyncio
+import html
 import logging
+import re
 from typing import Any, Optional, Set
 
 from src.agent.core import AgentEngine
@@ -26,6 +28,65 @@ def is_update_processed(update_id: int) -> bool:
     if len(SEEN_UPDATE_IDS) > MAX_SEEN_SIZE:
         SEEN_UPDATE_IDS.pop()
     return False
+
+
+_INLINE_CODE_RE = re.compile(r"`([^`\n]+)`")
+_MD_LINK_RE = re.compile(r"\[([^\]]+)\]\((https?://[^)\s]+)\)")
+_HEADING_RE = re.compile(r"^#{1,6}\s+(.+)$", re.MULTILINE)
+_HR_RE = re.compile(r"^-{3,}\s*$", re.MULTILINE)
+_BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
+_ITALIC_RE = re.compile(r"(?<!\*)\*([^*\n]+?)\*(?!\*)")
+
+
+def markdown_to_telegram_html(text: str) -> str:
+    """將內部 Markdown 推薦卡片確定性轉換為 Telegram HTML，避免舊版 Markdown 遇 `_`/`*` 解析崩壞。"""
+    if not text:
+        return text
+
+    placeholders: dict[str, str] = {}
+
+    def _stash(value: str) -> str:
+        token = f"\x00TGPH{len(placeholders)}\x00"
+        placeholders[token] = value
+        return token
+
+    # 1. 先抽離行內程式碼與超連結，避免內部字元被 html.escape 或粗斜體正則二次破壞
+    working = _INLINE_CODE_RE.sub(lambda m: _stash(f"<code>{html.escape(m.group(1), quote=False)}</code>"), text)
+    working = _MD_LINK_RE.sub(
+        lambda m: _stash(f'<a href="{html.escape(m.group(2), quote=True)}">{html.escape(m.group(1), quote=False)}</a>'),
+        working,
+    )
+
+    # 2. 跳脫純文字中的 &, <, >
+    working = html.escape(working, quote=False)
+
+    # 3. 處理區塊引用 (> ...)、標題 (### ...) 與分隔線 (---)
+    out_lines: list[str] = []
+    quote_buf: list[str] = []
+    for line in working.splitlines():
+        if line.startswith("&gt; "):
+            quote_buf.append(line[5:])
+            continue
+        if quote_buf:
+            out_lines.append(f"<blockquote>{chr(10).join(quote_buf)}</blockquote>")
+            quote_buf.clear()
+        out_lines.append(line)
+    if quote_buf:
+        out_lines.append(f"<blockquote>{chr(10).join(quote_buf)}</blockquote>")
+    working = "\n".join(out_lines)
+
+    working = _HEADING_RE.sub(r"<b>\1</b>", working)
+    working = _HR_RE.sub("────────────", working)
+
+    # 4. 處理粗體 (**...**) 與斜體 (*...*)
+    working = _BOLD_RE.sub(r"<b>\1</b>", working)
+    working = _ITALIC_RE.sub(r"<i>\1</i>", working)
+
+    # 5. 還原 code 與連結佔位符
+    for token, replacement in placeholders.items():
+        working = working.replace(token, replacement)
+
+    return working
 
 
 class TelegramBotHandler:
@@ -425,15 +486,16 @@ class TelegramBotHandler:
             logger.debug(f"Background watermark check skipped or failed: {e}")
 
     async def _send_telegram_message(self, chat_id: int, text: str) -> Optional[int]:
-        """發送 Telegram 訊息，支援 Markdown 並含降級機制"""
+        """發送 Telegram 訊息，支援轉換為 Telegram HTML 並含純文字降級機制"""
         if not self.bot:
             logger.warning(f"[Mock Bot Send] chat_id={chat_id}: {text}")
             return None
+        html_text = markdown_to_telegram_html(text)
         try:
-            msg = await self.bot.send_message(chat_id=chat_id, text=text, parse_mode="Markdown")
+            msg = await self.bot.send_message(chat_id=chat_id, text=html_text, parse_mode="HTML")
             return int(msg.message_id)
         except TelegramError as e:
-            logger.warning(f"Markdown send failed ({e}), falling back to plain text")
+            logger.warning(f"HTML send failed ({e}), falling back to plain text")
             try:
                 msg = await self.bot.send_message(chat_id=chat_id, text=text)
                 return int(msg.message_id)
@@ -442,18 +504,19 @@ class TelegramBotHandler:
                 return None
 
     async def _edit_telegram_message(self, chat_id: int, message_id: int, text: str) -> None:
-        """編輯已發送的 Telegram 訊息以達成串流效果，支援 Markdown 並含降級機制"""
+        """編輯已發送的 Telegram 訊息以達成串流效果，支援 Telegram HTML 並含降級機制"""
         if not self.bot:
             logger.warning(f"[Mock Bot Edit] msg_id={message_id}: {text}")
             return
         if not text or not text.strip():
             return
+        html_text = markdown_to_telegram_html(text)
         try:
-            await self.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text, parse_mode="Markdown")
+            await self.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=html_text, parse_mode="HTML")
         except TelegramError as e:
             if "not modified" in str(e).lower():
                 return
-            logger.warning(f"Markdown edit failed ({e}), falling back to plain text")
+            logger.warning(f"HTML edit failed ({e}), falling back to plain text")
             try:
                 await self.bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=text)
             except TelegramError as err:
