@@ -22,6 +22,9 @@
   - **Live 模型存活診斷腳本 (`scripts/check_live_models.py`)**：提供一鍵對 Groq `/v1/models` 與 Gemini 端點發送真實探針之檢查腳本，提早預警官方模型下線。
 
 ### Added
+- **Grounding 隱藏欄位解析與追問按需細節查詢 (`src/services/tabelog_scraper.py`, `src/agent/stages/intent.py`, `tests/test_tabelog_scraper.py`)**：
+  - `search_via_grounding` 0 額外請求順便解析支付方式（`カード可` / `QRコード決済可`）、料理次分類（`tabelog_genre`）並將非 `【移転】` 現行店址排前。
+  - 新增 `TabelogScraper.fetch_detail_snippets`，於 `execute_follow_up` 的 `detail_lookup` 無庫存評論時按需查詢預約／包廂／禁菸／口碑摘要。
 - **Telegram HTML 確定性渲染邊界 (`src/bot/handlers.py`, `tests/test_bot.py`)**：新增 `markdown_to_telegram_html` 並將 `_send_telegram_message` / `_edit_telegram_message` 切換為 `parse_mode="HTML"`，保留 `<code>` 一鍵複製、`<a>` 超連結、`<b>`/`<i>`/`<blockquote>` 樣式與純文字降級防呆，徹底根除舊版 `Markdown` 遇底線或星號解析失敗的問題。
 - **漸進式技能架構 (`SkillLoader`)、受限追問 Tool Loop 與 `trip-scoping` 前期收斂 (`src/agent/skill_loader.py`, `config/skills/`, `src/agent/stages/intent.py`, `src/agent/validator.py`, `src/db/repositories/session.py`)**：
   - 將 `config/prompts/agent_system.md` 瘦身為核心憲章，抽離場景與日本用餐禮儀技能至 `config/skills/scenarios/*.md` 與 `config/skills/etiquette/*.md`，由 `SkillLoader` 依店家特徵與場景確定性按需注入（`max_skills=2`）。

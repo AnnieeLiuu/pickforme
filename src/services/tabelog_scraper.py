@@ -41,6 +41,39 @@ def _extract_budget_from_snippet(text: str) -> tuple[Optional[str], Optional[str
     return None, single
 
 
+def _extract_payment_from_snippet(text: str) -> tuple[Optional[bool], Optional[list[str]]]:
+    """從 Tabelog 搜尋摘要萃取 (supports_paypay, credit_cards)"""
+    if not text:
+        return None, None
+    supports_paypay: Optional[bool] = None
+    if re.search(r"(?:QRコード決済可|PayPay可)", text):
+        supports_paypay = True
+    elif re.search(r"(?:QRコード決済不可|PayPay不可)", text):
+        supports_paypay = False
+
+    credit_cards: Optional[list[str]] = None
+    if "カード不可" in text:
+        credit_cards = []
+    elif "カード可" in text:
+        cards = [c for c in ("VISA", "Master", "JCB", "AMEX", "Diners") if re.search(rf"\b{c}\b", text, re.IGNORECASE)]
+        credit_cards = cards if cards else ["可"]
+
+    return supports_paypay, credit_cards
+
+
+def _extract_genre_and_relocated(raw_title: str, text: str) -> tuple[Optional[str], bool]:
+    """從標題與摘要萃取 Tabelog 料理次分類與是否為【移転】舊店址"""
+    is_relocated = "【移転】" in raw_title or "【移転】" in text[:80]
+    genre: Optional[str] = None
+    # 典型格式：店名 - 新静岡/ジェラート・アイスクリーム | 食べログ
+    m = re.search(r"[^\s/]+/([^|\-｜\[\(]{2,24}?)\s*(?:\||｜|-|\[|$)", raw_title)
+    if m:
+        candidate = m.group(1).strip()
+        if candidate and "食べログ" not in candidate:
+            genre = candidate
+    return genre, is_relocated
+
+
 def clean_station_name(st: str) -> str:
     """清理鐵道公司前綴並轉換日文『駅』為繁體『站』"""
     st = re.sub(
@@ -101,9 +134,52 @@ class TabelogScraper:
         if not candidates:
             fallback_query = f"site:tabelog.com {store_name} {area_name}".strip()
             candidates = await self._fetch_and_parse_grounding(fallback_query, store_name)
+        if len(candidates) > 1:
+            # 將非【移転】現行店址排在舊址之前，避免誤取已搬遷的舊評分
+            candidates.sort(key=lambda c: bool(c.get("is_relocated")))
         if candidates:
             logger.info(f"Web Grounding recovered {len(candidates)} Tabelog candidates for '{store_name}'")
         return candidates
+
+    async def fetch_detail_snippets(
+        self,
+        store_name: str,
+        area_name: str = "",
+        focus: str = "予約 個室 禁煙 口コミ",
+    ) -> list[str]:
+        """針對追問細節 (預約/包廂/禁菸/招牌菜口碑) 即時查詢 Yahoo Search Tabelog 摘要"""
+        query = f"site:tabelog.com {store_name} {area_name} {focus}".strip()
+        encoded = urllib.parse.quote_plus(query)
+        search_url = f"https://search.yahoo.co.jp/search?p={encoded}"
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
+            "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
+        }
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                resp = await client.get(search_url, headers=headers)
+                if resp.status_code != 200:
+                    return []
+                soup = BeautifulSoup(resp.text, "html.parser")
+        except Exception as e:
+            logger.debug(f"Detail snippet fetch failed for '{store_name}': {e}")
+            return []
+
+        snippets: list[str] = []
+        seen: set[str] = set()
+        for item in soup.select("section, .sw-Card"):
+            t = item.get_text(" ", strip=True)
+            if ("tabelog" not in t and "食べログ" not in t) or len(t) < 25:
+                continue
+            if "日本最大級のグルメサイト「食べログ」では" in t and "件の口コミ" in t:
+                continue
+            snippet = t[:260]
+            if snippet not in seen:
+                seen.add(snippet)
+                snippets.append(snippet)
+            if len(snippets) >= 3:
+                break
+        return snippets
 
     async def _fetch_and_parse_grounding(self, query: str, store_name: str) -> list[dict[str, Any]]:
         """執行 Yahoo Japan Web Grounding 查詢並解析評分、預算與最近車站"""
@@ -190,7 +266,11 @@ class TabelogScraper:
             # 午晚餐預算區間 (例如：￥6,000～￥7,999. ￥1,000～￥1,999.)
             price_lunch, price_dinner = _extract_budget_from_snippet(text)
 
-            # 若此 URL 已記錄過，優先補全遺漏的評分、預算與百名店資料
+            # 支付方式、料理次分類與【移転】舊址標記
+            supports_paypay, credit_cards = _extract_payment_from_snippet(text)
+            tabelog_genre, is_relocated = _extract_genre_and_relocated(raw_title, text)
+
+            # 若此 URL 已記錄過，優先補全遺漏的評分、預算、支付與百名店資料
             if clean_url in seen_urls:
                 for c in candidates:
                     if c["tabelog_url"] == clean_url:
@@ -206,6 +286,12 @@ class TabelogScraper:
                             c["price_lunch"] = price_lunch
                         if not c.get("price_dinner") and price_dinner:
                             c["price_dinner"] = price_dinner
+                        if c.get("supports_paypay") is None and supports_paypay is not None:
+                            c["supports_paypay"] = supports_paypay
+                        if c.get("credit_cards") is None and credit_cards is not None:
+                            c["credit_cards"] = credit_cards
+                        if not c.get("tabelog_genre") and tabelog_genre:
+                            c["tabelog_genre"] = tabelog_genre
                 continue
 
             candidates.append(
@@ -219,6 +305,10 @@ class TabelogScraper:
                     "nearest_station_desc": nearest_station_desc,
                     "price_lunch": price_lunch,
                     "price_dinner": price_dinner,
+                    "supports_paypay": supports_paypay,
+                    "credit_cards": credit_cards,
+                    "tabelog_genre": tabelog_genre,
+                    "is_relocated": is_relocated,
                     "sample_reviews": [],
                     "phone": "",
                     "address": "",

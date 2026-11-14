@@ -3,7 +3,12 @@ from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from src.services.tabelog_scraper import TabelogScraper, _extract_budget_from_snippet
+from src.services.tabelog_scraper import (
+    TabelogScraper,
+    _extract_budget_from_snippet,
+    _extract_genre_and_relocated,
+    _extract_payment_from_snippet,
+)
 
 
 def test_parse_search_results():
@@ -140,3 +145,44 @@ async def test_search_via_grounding_extracts_budget_and_fallbacks():
         assert len(fb_cands) == 1
         assert fb_cands[0]["name_ja"] == "小巷老店"
         assert mock_client_fb.get.call_count == 2
+
+
+def test_extract_payment_genre_and_relocated_from_snippet():
+    snippet = "店舗基本情報 ; ￥6,000～￥7,999. ￥1,000～￥1,999. カード可. （VISA、Master、JCB、AMEX、Diners）. 電子マネー不可. QRコード決済可."
+    paypay, cards = _extract_payment_from_snippet(snippet)
+    assert paypay is True
+    assert cards == ["VISA", "Master", "JCB", "AMEX", "Diners"]
+
+    genre, relocated = _extract_genre_and_relocated(
+        "ななや 静岡店 - 新静岡/ジェラート・アイスクリーム | 食べログ", snippet
+    )
+    assert genre == "ジェラート・アイスクリーム"
+    assert relocated is False
+
+    _, relocated_old = _extract_genre_and_relocated("【移転】ななや 静岡店 - 食べログ", snippet)
+    assert relocated_old is True
+
+
+@pytest.mark.asyncio
+async def test_fetch_detail_snippets_filters_boilerplate():
+    scraper = TabelogScraper()
+    html = """
+    <html><body>
+      <section class="sw-Card">
+        <p>日本最大級のグルメサイト「食べログ」では、 ななや 静岡店 の 口コミ 563件の口コミを掲載中。</p>
+      </section>
+      <section class="sw-Card">
+        <p>食べログ 店舗基本情報：全席禁煙、個室なし、予約不可、抹茶ジェラートNo.7が一番人気で濃厚。</p>
+      </section>
+    </body></html>
+    """
+    mock_resp = MagicMock(status_code=200, text=html)
+    mock_client = AsyncMock()
+    mock_client.get = AsyncMock(return_value=mock_resp)
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+
+    with patch("src.services.tabelog_scraper.httpx.AsyncClient", return_value=mock_client):
+        snippets = await scraper.fetch_detail_snippets("ななや 静岡店")
+        assert len(snippets) == 1
+        assert "全席禁煙" in snippets[0]

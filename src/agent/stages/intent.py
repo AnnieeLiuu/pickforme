@@ -672,6 +672,17 @@ async def execute_follow_up(
                     txt = r.get("text_zh") or r.get("zh") or r.get("text")
                     if txt:
                         review_snippets.append(str(txt))
+        if not review_snippets:
+            scraper = getattr(fsm, "tabelog_scraper", None)
+            fetch_fn = getattr(scraper, "fetch_detail_snippets", None)
+            if callable(fetch_fn):
+                try:
+                    f_res = fetch_fn(store_name=store_name, focus=decision.tool_query or "予約 個室 禁煙 口コミ")
+                    if inspect.isawaitable(f_res):
+                        live_snippets = await asyncio.wait_for(f_res, timeout=6.0)
+                        review_snippets.extend(str(s) for s in (live_snippets or []) if s)
+                except Exception as e:
+                    logger.warning(f"Follow-up detail_lookup live Grounding failed (Fail-Safe): {e}")
         if review_snippets:
             extra_context = "\n\n【在地評論摘要】\n" + "\n".join(f"- {s}" for s in review_snippets[:5])
 
