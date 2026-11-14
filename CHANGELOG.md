@@ -7,6 +7,9 @@
 ## [Unreleased]
 
 ### Fixed
+- **殘缺截斷卡片護欄與備援順位調整 (`src/agent/validator.py`, `src/agent/llm_client.py`, `tests/test_real_world_regressions.py`)**：
+  - `validate_card_tiered` 新增 `< 60` 字元與同時缺少評分及支付方式的致命攔截（Case 43），遇到 LLM 中途截斷立即降級為 `render_template_fallback_card` 保底模板。
+  - `LLMClient.call_text`（`primary=groq`）調整備援順位為「Groq 主力 ➔ Gemini ➔ Groq 次要模型 ➔ Ollama」（Case 44），避免穩定度較低之次要模型搶在 Gemini 前執行。
 - **Web Grounding 午晚餐預算萃取 (`src/services/tabelog_scraper.py`, `tests/test_tabelog_scraper.py`)**：`search_via_grounding` 優先附加 `予算` 查詢並新增 `_extract_budget_from_snippet` 解析 Tabelog 午晚餐區間（`price_lunch` / `price_dinner`），無結果時自動退回原查詢確保零回歸。
 - **推薦卡片護欄強化、結構化實體比對與評測真機接線 (`src/agent/validator.py`, `src/agent/stages/synthesis.py`, `src/agent/stages/enrichment.py`, `src/services/review_sanitizer.py`, `src/services/entity_resolver.py`, `src/eval/evaluator.py`)**：
   - 統一 `split_card_store_blocks` / `is_store_matched` 區塊切分與非店名細節反引號白名單過濾，避免誤殺 `PayPay` / `現金` 等提示；移除 Layer 3 評分套話並在無真實中文短評時採「寧缺勿濫」策略省略違規理由行。

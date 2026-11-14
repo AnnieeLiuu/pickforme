@@ -3102,3 +3102,74 @@ async def test_case_42_evaluator_tier3_guardrail_runs_real_validator_pipeline():
     passed_fu, details_fu = await engine.evaluate_tier3_guardrail(followup_case)
     assert passed_fu is False
     assert any("last_recommended_stores" in r for r in details_fu["reasons"])
+
+
+@pytest.mark.asyncio
+async def test_case_43_truncated_llm_card_triggers_template_fallback():
+    """Case 43: 真實生產事件 (2026-11-14 run_id=27e43736)：openai/gpt-oss-120b 截斷僅輸出 26 字元，
+    validate_card_tiered 必須判定為 fatal_errors 並切換為 render_template_fallback_card 保底卡片。
+    """
+    from src.agent.validator import validate_card_tiered
+
+    truncated_card = "**🍱 `ななや 静岡店`**  \n🚶 **步行距離"
+    stores = [
+        {
+            "name": "ななや 静岡店",
+            "name_ja": "ななや 静岡店",
+            "tabelog_rating": 3.5,
+            "google_rating": 4.3,
+            "walking_desc": "從「靜岡市葵區」步行約 5 分鐘 (380m)",
+            "payment_desc": "💳 支援現金",
+        }
+    ]
+    fatal_errors, _ = validate_card_tiered(truncated_card, stores)
+    assert len(fatal_errors) >= 1
+
+    mock_llm = MagicMock()
+    mock_llm.call_text = AsyncMock(return_value=(truncated_card, "openai/gpt-oss-120b", 100))
+    fsm = FoodRecommendationFSM(
+        places_client=MagicMock(),
+        tabelog_scraper=MagicMock(),
+        entity_resolver=MagicMock(),
+        llm_client=mock_llm,
+        session_repo=MagicMock(),
+        trace_logger=MagicMock(log_step=AsyncMock()),
+    )
+    rendered = await fsm.execute_state_4_synthesis(stores, cuisine="抹茶", location_name="靜岡市葵區")
+    assert "ななや 静岡店" in rendered
+    assert "3.5" in rendered
+    assert len(rendered) > 80
+    assert fsm._last_state_4_model == "template_fallback"
+
+
+@pytest.mark.asyncio
+async def test_case_44_llm_fallback_prioritizes_gemini_before_secondary_groq():
+    """Case 44: 當 primary=groq 主力模型失敗時，第二順位應優先切換至 Gemini，之後才退回次要 Groq 模型"""
+    from src.agent.llm_client import LLMClient
+    from src.config import settings
+
+    client = LLMClient()
+    call_order: list[str] = []
+
+    async def fake_try_groq(messages, errors, response_format=None, models=None):
+        for m in models or ():
+            call_order.append(f"groq:{m}")
+            if m != "qwen/qwen3.8-27b":
+                return ("ok-secondary", m, 10)
+        return None
+
+    async def fake_try_gemini(messages, errors, response_format=None):
+        call_order.append("gemini")
+        return ("ok-gemini", "gemini-3-flash-preview", 15)
+
+    with (
+        patch.object(settings, "LLM_PRIMARY_PROVIDER", "groq"),
+        patch.object(settings, "GROQ_MODELS", "qwen/qwen3.8-27b,openai/gpt-oss-120b"),
+        patch.object(client, "_try_groq", side_effect=fake_try_groq),
+        patch.object(client, "_try_gemini", side_effect=fake_try_gemini),
+        patch.object(client, "_try_ollama", AsyncMock(return_value=None)),
+    ):
+        text, model_used, _ = await client.call_text([{"role": "user", "content": "hi"}])
+        assert text == "ok-gemini"
+        assert model_used == "gemini-3-flash-preview"
+        assert call_order == ["groq:qwen/qwen3.8-27b", "gemini"]

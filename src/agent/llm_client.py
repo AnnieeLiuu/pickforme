@@ -156,11 +156,13 @@ class LLMClient:
         messages: list[dict[str, Any]],
         errors: list[str],
         response_format: Optional[dict[str, Any]] = None,
+        models: Optional[tuple[str, ...]] = None,
     ) -> Optional[tuple[str, str, int]]:
         """嘗試使用雲端 Groq 多模型"""
         if not settings.GROQ_API_KEY:
             return None
-        for fallback_model in get_active_groq_models():
+        target_models = get_active_groq_models() if models is None else models
+        for fallback_model in target_models:
             try:
                 msg_resp, tokens = await self._call_openai_compatible_api(
                     url=GROQ_OPENAI_URL,
@@ -237,7 +239,21 @@ class LLMClient:
         primary = getattr(settings, "LLM_PRIMARY_PROVIDER", "groq").lower()
 
         if primary == "groq":
-            pipeline = [self._try_groq, self._try_gemini, self._try_ollama]
+            groq_models = get_active_groq_models()
+            res = await self._try_groq(messages, errors, response_format=response_format, models=groq_models[:1])
+            if res is not None:
+                return res
+            res = await self._try_gemini(messages, errors, response_format=response_format)
+            if res is not None:
+                return res
+            if len(groq_models) > 1:
+                res = await self._try_groq(messages, errors, response_format=response_format, models=groq_models[1:])
+                if res is not None:
+                    return res
+            res = await self._try_ollama(messages, errors, response_format=response_format)
+            if res is not None:
+                return res
+            raise RuntimeError(f"All LLM endpoints failed. Errors: {'; '.join(errors)}")
         elif primary == "ollama":
             pipeline = [self._try_ollama, self._try_gemini, self._try_groq]
         else:  # "gemini" or default

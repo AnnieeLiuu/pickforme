@@ -231,6 +231,8 @@ def validate_card_tiered(
     """
     if not card_text or not card_text.strip():
         return ["卡片內容為空"], []
+    if len(card_text.strip()) < 60:
+        return ["卡片內容過短或遭模型中途截斷"], []
 
     fatal_errors: list[str] = []
     minor_warnings: list[str] = []
@@ -289,13 +291,19 @@ def validate_card_tiered(
             if unmatched_store_cbs:
                 fatal_errors.append(f"推薦了未在候選名單中的未授權/虛構店家 ({', '.join(unmatched_store_cbs)})")
 
-    # 4. 局限：欄位標記檢查
-    if not re.search(r"(?:步行距離|步行約|🚶)", card_text):
-        minor_warnings.append("缺少步行距離標記")
-    if not re.search(r"(?:Tabelog|Google|雙平台評分|食べログ|⭐️)", card_text, flags=re.IGNORECASE):
-        minor_warnings.append("缺少評分資訊標記")
-    if not re.search(r"(?:支付方式|信用卡|PayPay|現金|💳)", card_text):
-        minor_warnings.append("缺少支付方式標記")
+    # 4. 致命/局限：欄位標記檢查 (同時缺少評分與支付方式視為嚴重殘缺，觸發保底模板)
+    has_walking = bool(re.search(r"(?:步行距離|步行約|🚶)", card_text))
+    has_rating = bool(re.search(r"(?:Tabelog|Google|雙平台評分|食べログ|⭐️)", card_text, flags=re.IGNORECASE))
+    has_payment = bool(re.search(r"(?:支付方式|信用卡|PayPay|現金|💳)", card_text))
+    if not has_rating and not has_payment:
+        fatal_errors.append("卡片結構嚴重殘缺（同時缺少評分與支付方式）")
+    else:
+        if not has_walking:
+            minor_warnings.append("缺少步行距離標記")
+        if not has_rating:
+            minor_warnings.append("缺少評分資訊標記")
+        if not has_payment:
+            minor_warnings.append("缺少支付方式標記")
 
     # 5. 局限：評分套話或生硬日文評論洩漏 (可透過外科手術局部替換為真實短評)
     reason_lines = re.findall(r"(?:老饕推薦理由|老饕評價與推薦理由|推薦理由)[^\n]*[：:]\s*([^\n]+)", card_text)
