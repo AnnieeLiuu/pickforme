@@ -117,8 +117,8 @@ INTENT_PARSER_SYSTEM_PROMPT = f"""你是一位嚴格的日本美食搜尋意圖�
    - 漢字同名地名消歧義：台日之間少數漢字同名地名（如「松山」、「板橋」、「三重」、「中山」），若問句無任何境外特徵詞（如「松山 鯛魚飯」、「板橋 拉麵」、「三重縣 燒肉」），預設視為日本境內地點（判定為 "search"）；只有在問句明確包含境外特徵詞（如「台北松山」、「新北板橋」、「捷運中山站」、「夜市」）時，才判為 "out_of_region"。
 
 地點模糊度判定規則 (is_location_ambiguous)：
-- 若 location 過於廣域（如都道府縣「北海道」、「長野」、「靜岡」；整座大島/大區如「九州」、「四國」；或缺乏單一 800m 徒步檢索中心點之跨多市鎮廣域名詞如「靜岡溫泉街」、「長野滑雪」、「東京老街」），請將 is_location_ambiguous 設為 true，並於 ambiguity_reason 簡述原因，同時於 suggested_sub_areas 提供 2~3 個最具代表性、各具特色的具體子商圈或城鎮名（含 name、desc、search_loc）。
-- 若為單一具體車站、街區、商圈或明確景點地標（例如「箱根湯本」、「熱海車站」、「新宿歌舞伎町」、「淺草雷門」），請將 is_location_ambiguous 設為 false，且 suggested_sub_areas 設為 []。
+- 若 location 過於廣域（如都道府縣「北海道」、「長野」、「靜岡」；整座大島/大區如「九州」、「四國」；缺乏單一 800m 徒步檢索中心點之跨多市鎮廣域名詞如「靜岡溫泉街」、「長野滑雪」、「東京老街」；或橫跨多個獨立美食聚落、東西南北出口差異極大的超大型轉運商圈，例如單說「新宿」、「梅田」、「京都」、「札幌」、「福岡」），請將 is_location_ambiguous 設為 true，並於 ambiguity_reason 簡述原因，同時於 suggested_sub_areas 提供 2~3 個最具代表性、各具特色的具體子商圈或出口/城鎮名（含 name、desc、search_loc，例如「新宿西口/思出橫丁」、「新宿東口/歌舞伎町」、「新宿三丁目」）。
+- 若為單一具體出口、街區、子商圈或明確景點地標（例如「箱根湯本」、「熱海車站」、「新宿西口」、「新宿中央東口」、「新宿歌舞伎町」、「淺草雷門」），請將 is_location_ambiguous 設為 false，且 suggested_sub_areas 設為 []。
 
 輸出 JSON 結構規範（由 IntentOutput Schema 自動生成）：
 {IntentOutput.build_json_schema_prompt()}
