@@ -6,15 +6,20 @@
 
 from __future__ import annotations
 
+import asyncio
 import inspect
 import json
 import logging
 import re
 import time
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Literal, Optional
+from uuid import UUID
 
+from pydantic import BaseModel, Field
 from src.agent.gate import QuickPassGate
 from src.agent.schemas import IntentOutput, extract_preferences_from_text
+from src.agent.skill_loader import get_skill_loader
+from src.agent.validator import validate_follow_up_response
 
 if TYPE_CHECKING:
     from src.agent.pipeline import FoodRecommendationFSM
@@ -39,6 +44,30 @@ def is_prefecture_level_area(
         return True, stripped, None
 
     return False, None, None
+
+
+class FollowUpDecision(BaseModel):
+    """追問 Tool Loop 決策合約"""
+
+    action: Literal["answer", "detail_lookup", "nearby_pairing"] = Field(
+        default="answer",
+        description="answer: 既有資料足夠直接回答 | detail_lookup: 需查評論向量庫或詳細快取 | nearby_pairing: 需查周邊400m續攤店家",
+    )
+    tool_query: Optional[str] = Field(
+        default=None,
+        description="呼叫 detail_lookup 或 nearby_pairing 時的檢索關鍵字（例如「素食 推車」或「咖啡廳 甜點」）",
+    )
+
+
+_COMPOUND_SCOPING_RE = re.compile(r"(?:長輩|老人|小孩|嬰兒|親子|不排隊|免排隊|清淡|素食|過敏|預算|包廂|約會|慶生|輪椅)")
+
+
+def _has_compound_scoping_constraints(user_message: str, parsed: dict[str, Any]) -> bool:
+    """判斷是否屬於帶有複合旅遊限制條件且需前期收斂的模糊查詢"""
+    if _COMPOUND_SCOPING_RE.search(user_message or ""):
+        return True
+    modifier = str(parsed.get("modifier") or "")
+    return bool(modifier and _COMPOUND_SCOPING_RE.search(modifier))
 
 
 def generate_disambiguation_prompt(loc_str: str, options: list[Any]) -> str:
@@ -327,10 +356,82 @@ async def execute_state_1_intent(
     loc_str = parsed.get("location")
     resolved_coords: Optional[tuple[float, float]] = parsed.get("coords")
 
-    # 策略 A：動態廣域/多聚落模糊地點主動反問收斂 (由 LLM 世界知識判定，防範硬編碼映射)
+    # 策略 A0：複合旅遊需求前期收斂 (Trip Scoping，優先於純廣域反問，最多 2 輪避免無限追問)
     is_ambiguous = bool(parsed.get("is_location_ambiguous"))
     suggested_sub_areas = parsed.get("suggested_sub_areas") or []
+    needs_concrete_area = (not loc_str) or (is_ambiguous and len(suggested_sub_areas) >= 2)
 
+    if (
+        intent in ("search", "more", "need_location")
+        and not resolved_coords
+        and not user_location
+        and needs_concrete_area
+    ):
+        if _has_compound_scoping_constraints(user_message, parsed):
+            scoping_turns = 0
+            if chat_id:
+                try:
+                    wm_fn = getattr(fsm.session_repo, "get_working_memory", None)
+                    if callable(wm_fn):
+                        wm_res = wm_fn(chat_id)
+                        wm_val = await wm_res if inspect.isawaitable(wm_res) else wm_res
+                        if isinstance(wm_val, dict) and isinstance(wm_val.get("trip_scoping"), dict):
+                            scoping_turns = int(wm_val["trip_scoping"].get("scoping_turns", 0))
+                except Exception as e:
+                    logger.warning(f"Failed to read trip_scoping working memory: {e}")
+
+            if scoping_turns < 2:
+                scoping_skill = get_skill_loader().load_scenario(
+                    "trip-scoping",
+                    fallback="請簡潔親切地確認使用者具體想前往的日本車站或商圈，以及預算或飲食偏好（1～2 句）。",
+                )
+                scoping_prompt = (
+                    f"🍱 了解您的同行與用餐需求！為了幫您精準鎖定最合適的名店，方便確認一下：\n"
+                    f"1. 您主要會在**{loc_str or '日本'}哪個車站或商圈**一帶活動呢？（例如東京車站、淺草、新宿）\n"
+                    f"2. 大概的**每人預算**大概抓多少呢？"
+                )
+                call_text = getattr(fsm.llm_client, "call_text", None)
+                if callable(call_text):
+                    try:
+                        res = call_text(
+                            [
+                                {"role": "system", "content": scoping_skill},
+                                {
+                                    "role": "user",
+                                    "content": f"使用者需求：{user_message}\n已抽取地點：{loc_str or '未指定'}",
+                                },
+                            ]
+                        )
+                        if inspect.isawaitable(res):
+                            reply, _, _ = await asyncio.wait_for(res, timeout=8.0)
+                            if isinstance(reply, str) and len(reply.strip()) >= 8:
+                                scoping_prompt = reply.strip()
+                    except Exception as e:
+                        logger.warning(f"Trip-scoping LLM prompt fallback triggered: {e}")
+
+                parsed["intent"] = "need_location"
+                parsed["need_location_prompt"] = scoping_prompt
+                parsed["coords"] = None
+                setattr(fsm, "early_response", scoping_prompt)
+
+                if chat_id:
+                    try:
+                        upd_fn = getattr(fsm.session_repo, "update_working_memory", None)
+                        if callable(upd_fn):
+                            res = upd_fn(
+                                chat_id=chat_id,
+                                trip_scoping={
+                                    "scoping_turns": scoping_turns + 1,
+                                    "original_query": user_message,
+                                },
+                            )
+                            if inspect.isawaitable(res):
+                                await res
+                    except Exception as e:
+                        logger.warning(f"Failed to persist trip_scoping working memory: {e}")
+                return parsed
+
+    # 策略 A：動態廣域/多聚落模糊地點主動反問收斂 (由 LLM 世界知識判定，防範硬編碼映射)
     if intent in ("search", "more", "need_location") and loc_str and not resolved_coords:
         if is_ambiguous and len(suggested_sub_areas) >= 2:
             prompt_text = generate_disambiguation_prompt(loc_str, suggested_sub_areas)
@@ -443,8 +544,6 @@ async def execute_follow_up(
                 store_names.append(s_name)
                 store_descs.append(f"### 選手 {num}：{s_name}\n{json.dumps(s, ensure_ascii=False, indent=2)}")
 
-            from src.agent.skill_loader import get_skill_loader
-
             messages = [
                 {
                     "role": "system",
@@ -457,10 +556,29 @@ async def execute_follow_up(
             ]
             try:
                 t0 = time.time()
+                compared_stores = [s for _, s in valid_stores]
                 reply, model, tokens = await fsm.llm_client.call_text(messages)
                 fsm._last_state_4_model = model
                 fsm._last_state_4_tokens = tokens
-                ans = reply.strip()
+                ans, fu_errors = validate_follow_up_response(reply.strip(), compared_stores)
+                if fu_errors:
+                    logger.warning(f"[FollowUp Validation] Multi-store issues: {fu_errors}, retrying once...")
+                    retry_msgs = messages + [
+                        {"role": "assistant", "content": reply},
+                        {
+                            "role": "user",
+                            "content": f"請修正以下輸出問題後重新回答：{', '.join(fu_errors)}。嚴禁出現日文長句或搜尋連結。",
+                        },
+                    ]
+                    reply2, model2, tokens2 = await fsm.llm_client.call_text(retry_msgs)
+                    fsm._last_state_4_model = model2
+                    fsm._last_state_4_tokens += tokens2
+                    ans2, fu_errors2 = validate_follow_up_response(reply2.strip(), compared_stores)
+                    if not fu_errors2:
+                        ans = ans2
+                    else:
+                        ans = f"為您對比 {' 與 '.join(store_names)}：建議可依目前距離與偏好口味挑選，詳細營業與付款資訊如上輪卡片所列。"
+
                 latency = int((time.time() - t0) * 1000)
                 await fsm.trace_logger.log_step(
                     action_type="follow_up_comparison",
@@ -473,45 +591,173 @@ async def execute_follow_up(
             except Exception as e:
                 logger.warning(f"Failed to generate multi-store comparison: {e}")
 
-    # 單店追問分支
+    # 單店追問分支 (支援受限 2 輪 Tool Loop：detail_lookup / nearby_pairing + 輸出驗證)
     target_idx = (target_indices[0] if target_indices else (parsed_intent.get("target_index") or 1)) - 1
     if target_idx < 0 or target_idx >= len(recommended_stores):
         target_idx = 0
 
     target_store = recommended_stores[target_idx]
     store_name = target_store.get("name_ja") or target_store.get("name") or "該店家"
+    loader = get_skill_loader()
+    system_prompt = loader.build_follow_up_system_prompt(is_comparison=False)
+    extra_context = ""
+    extra_allowed_stores: list[dict[str, Any]] = []
+    tool_used = "llm_follow_up"
 
-    from src.agent.skill_loader import get_skill_loader
+    # Round 1：僅在目標店家至少具備一種可用工具的必要欄位時，才透過 call_structured_json 判斷工具路由
+    can_detail_lookup = bool(
+        (target_store.get("restaurant_id") or target_store.get("id"))
+        or (target_store.get("sample_reviews") or target_store.get("reviews"))
+    )
+    can_nearby_pairing = bool(
+        isinstance(target_store.get("lat"), (int, float))
+        and isinstance(target_store.get("lng"), (int, float))
+        and target_store.get("lat")
+        and target_store.get("lng")
+    )
+
+    decision = FollowUpDecision(action="answer")
+    call_structured = getattr(fsm.llm_client, "call_structured_json", None)
+    if (can_detail_lookup or can_nearby_pairing) and callable(call_structured):
+        try:
+            dec_msgs = [
+                {
+                    "role": "system",
+                    "content": (
+                        "請判斷回答使用者對目標店家的追問是否需要呼叫工具。\n"
+                        "- 若目標店家 JSON 已有答案（營業時間、地址、價格、支付），選 answer。\n"
+                        "- 若詢問素食/過敏/嬰兒推車/座位/排隊實況等細節，選 detail_lookup。\n"
+                        "- 若詢問吃完附近續攤/甜點/咖啡廳/酒吧，選 nearby_pairing。"
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": f"問題：{user_message}\n店家摘要：{json.dumps(target_store, ensure_ascii=False)[:1200]}",
+                },
+            ]
+            dec_res = call_structured(dec_msgs, schema=FollowUpDecision)
+            if inspect.isawaitable(dec_res):
+                raw_dec, _, _ = await asyncio.wait_for(dec_res, timeout=6.0)
+                decision = FollowUpDecision.model_validate(raw_dec)
+        except Exception as e:
+            logger.debug(f"Follow-up decision degraded to direct answer: {e}")
+            decision = FollowUpDecision(action="answer")
+
+    # 執行受限工具 (上限 1 次工具呼叫，含超時與 Fail-Safe 隔離)
+    if decision.action == "detail_lookup":
+        tool_used = "follow_up_detail_lookup"
+        detail_skill = loader.load_scenario("detail-lookup")
+        if detail_skill:
+            system_prompt = f"{system_prompt}\n\n{detail_skill}"
+        review_snippets: list[str] = []
+        rid = target_store.get("restaurant_id") or target_store.get("id")
+        vector_repo = getattr(fsm, "vector_repo", None)
+        if rid and vector_repo and callable(getattr(vector_repo, "get_reviews_by_restaurant_id", None)):
+            try:
+                v_res = vector_repo.get_reviews_by_restaurant_id(UUID(str(rid)))
+                if inspect.isawaitable(v_res):
+                    db_revs = await asyncio.wait_for(v_res, timeout=8.0)
+                    for r in db_revs or []:
+                        if isinstance(r, dict):
+                            txt = r.get("review_text_zh") or r.get("review_text_ja")
+                            if txt:
+                                review_snippets.append(str(txt))
+            except Exception as e:
+                logger.warning(f"Follow-up detail_lookup vector_repo failed (Fail-Safe): {e}")
+        if not review_snippets:
+            for r in target_store.get("sample_reviews") or target_store.get("reviews") or []:
+                if isinstance(r, dict):
+                    txt = r.get("text_zh") or r.get("zh") or r.get("text")
+                    if txt:
+                        review_snippets.append(str(txt))
+        if review_snippets:
+            extra_context = "\n\n【在地評論摘要】\n" + "\n".join(f"- {s}" for s in review_snippets[:5])
+
+    elif decision.action == "nearby_pairing":
+        tool_used = "follow_up_nearby_pairing"
+        nearby_skill = loader.load_scenario("nearby-pairing")
+        if nearby_skill:
+            system_prompt = f"{system_prompt}\n\n{nearby_skill}"
+        lat = target_store.get("lat")
+        lng = target_store.get("lng")
+        places_client = getattr(fsm, "places_client", None)
+        if (
+            lat
+            and lng
+            and isinstance(lat, (int, float))
+            and isinstance(lng, (int, float))
+            and places_client
+            and callable(getattr(places_client, "search_nearby", None))
+        ):
+            try:
+                p_res = places_client.search_nearby(
+                    lat=float(lat),
+                    lng=float(lng),
+                    keyword=decision.tool_query or "咖啡 甜點",
+                    radius=400,
+                )
+                if inspect.isawaitable(p_res):
+                    nearby_list = await asyncio.wait_for(p_res, timeout=8.0)
+                    if isinstance(nearby_list, list) and nearby_list:
+                        extra_allowed_stores = nearby_list[:5]
+                        nearby_lines = [
+                            f"- {n.get('name_ja') or n.get('name')} (評分: {n.get('rating', 'N/A')}, 地址: {n.get('address', '鄰近區域')})"
+                            for n in extra_allowed_stores
+                        ]
+                        extra_context = "\n\n【方圓 400m 內真實周邊店家】\n" + "\n".join(nearby_lines)
+            except Exception as e:
+                logger.warning(f"Follow-up nearby_pairing places_client failed (Fail-Safe): {e}")
 
     messages = [
-        {
-            "role": "system",
-            "content": get_skill_loader().build_follow_up_system_prompt(is_comparison=False),
-        },
+        {"role": "system", "content": system_prompt},
         {
             "role": "user",
-            "content": f"使用者問題：{user_message}\n目標店家資訊：\n{json.dumps(target_store, ensure_ascii=False, indent=2)}",
+            "content": f"使用者問題：{user_message}\n目標店家資訊：\n{json.dumps(target_store, ensure_ascii=False, indent=2)}{extra_context}",
         },
     ]
+
+    fallback_ans = f"針對 `{store_name}` 的問題：該店評分為 {target_store.get('tabelog_rating') or target_store.get('rating')} 分，地址在 {target_store.get('address', '市區')}。"
 
     try:
         t0 = time.time()
         reply, model, tokens = await fsm.llm_client.call_text(messages)
         fsm._last_state_4_model = model
         fsm._last_state_4_tokens = tokens
-        ans = reply.strip()
+        ans, fu_errors = validate_follow_up_response(
+            reply.strip(),
+            [target_store],
+            extra_allowed_stores=extra_allowed_stores,
+        )
+        if fu_errors:
+            logger.warning(f"[FollowUp Validation] Single-store issues: {fu_errors}, retrying once...")
+            retry_msgs = messages + [
+                {"role": "assistant", "content": reply},
+                {
+                    "role": "user",
+                    "content": f"請修正以下問題後重新簡潔回答：{', '.join(fu_errors)}。嚴禁出現日文長句或搜尋連結。",
+                },
+            ]
+            reply2, model2, tokens2 = await fsm.llm_client.call_text(retry_msgs)
+            fsm._last_state_4_model = model2
+            fsm._last_state_4_tokens += tokens2
+            ans2, fu_errors2 = validate_follow_up_response(
+                reply2.strip(),
+                [target_store],
+                extra_allowed_stores=extra_allowed_stores,
+            )
+            ans = ans2 if not fu_errors2 else fallback_ans
+
         latency = int((time.time() - t0) * 1000)
         await fsm.trace_logger.log_step(
             action_type="follow_up",
-            tool_name="llm_follow_up",
-            tool_input={"message": user_message, "target_store": store_name},
+            tool_name=tool_used,
+            tool_input={"message": user_message, "target_store": store_name, "action": decision.action},
             tool_output={"card_content": ans, "length": len(ans)},
             latency_ms=latency,
         )
         return ans
     except Exception as e:
         logger.warning(f"Follow up LLM call failed: {e}")
-        fallback_ans = f"針對 `{store_name}` 的問題：該店評分為 {target_store.get('tabelog_rating') or target_store.get('rating')} 分，地址在 {target_store.get('address', '市區')}。"
         await fsm.trace_logger.log_step(
             action_type="follow_up",
             tool_name="fallback_follow_up",

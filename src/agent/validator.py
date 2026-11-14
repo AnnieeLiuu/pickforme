@@ -9,8 +9,11 @@
 6. 嚴禁出現偽造的 Google Maps 搜尋連結 (google.com/maps/search)
 """
 
+import logging
 import re
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_name(name: str) -> str:
@@ -462,3 +465,105 @@ def repair_card_in_place(card_text: str, stores: list[dict[str, Any]], cuisine: 
             new_lines.append(line)
 
     return "\n".join(new_lines)
+
+
+def sanitize_single_store_ratings(text: str, store: dict[str, Any]) -> str:
+    """校正單一店家區塊或單店追問回覆中的 Tabelog / Google 評分數值"""
+    if not text or not store:
+        return text
+
+    updated = text
+    t_rating = store.get("tabelog_rating")
+    if t_rating is not None:
+        t_val = float(t_rating)
+        t_pattern = r"((?:Tabelog|食べログ)[^\d\n]{0,25}?)(\d\.\d{1,2})(\s*分)?"
+
+        def _replace_tabelog(m: re.Match[str]) -> str:
+            orig_val = float(m.group(2))
+            unit = m.group(3) or ""
+            if abs(orig_val - t_val) > 0.001:
+                logger.info(
+                    f"[Guardrail] Corrected Tabelog rating for '{store.get('name_ja') or store.get('name')}': "
+                    f"{orig_val} -> {t_val:.2f}"
+                )
+                return f"{m.group(1)}{t_val:.2f}{unit}"
+            return m.group(0)
+
+        updated = re.sub(t_pattern, _replace_tabelog, updated, count=1)
+
+    g_rating = store.get("google_rating") or store.get("rating")
+    if g_rating is not None:
+        g_val = float(g_rating)
+        g_pattern = r"(Google[^\d\n]{0,20}?)([0-5]\.[0-9])(\s*分)?"
+
+        def _replace_google(m: re.Match[str]) -> str:
+            orig_val = float(m.group(2))
+            unit = m.group(3) or ""
+            if abs(orig_val - g_val) > 0.001:
+                logger.info(
+                    f"[Guardrail] Corrected Google rating for '{store.get('name_ja') or store.get('name')}': "
+                    f"{orig_val} -> {g_val:.1f}"
+                )
+                return f"{m.group(1)}{g_val:.1f}{unit}"
+            return m.group(0)
+
+        updated = re.sub(g_pattern, _replace_google, updated, count=1)
+
+    return updated
+
+
+def validate_follow_up_response(
+    response_text: str,
+    stores: list[dict[str, Any]],
+    extra_allowed_stores: Optional[list[dict[str, Any]]] = None,
+) -> tuple[str, list[str]]:
+    """追問回覆輸出驗證護欄 (Item 5)
+
+    驗證追問與比較回覆：
+    1. 非空且非異常過短
+    2. 嚴禁偽造 Google Maps 搜尋連結
+    3. 嚴禁夾帶連續 8 字以上未翻譯日文假名段落 (容許括號或店名與短料理詞彙如 お通し)
+    4. 單店純文字回覆自動執行評分一致性校正
+
+    Returns:
+        tuple[str, list[str]]: (經評分校正後之安全文字, 錯誤訊息清單)
+    """
+    if not response_text or len(response_text.strip()) < 2:
+        return response_text, ["追問回覆內容為空或過短"]
+
+    errors: list[str] = []
+    sanitized = response_text.strip()
+
+    # 1. 嚴禁偽造 Google Maps 搜尋連結
+    markdown_links = re.findall(r"\[([^\]]*)\]\(([^)]+)\)", sanitized)
+    for _, url in markdown_links:
+        url_lower = url.lower()
+        if (
+            "google.com/maps/search" in url_lower
+            or "google.co.jp/maps/search" in url_lower
+            or "maps.google.com/?q=" in url_lower
+            or "maps.google.com/maps?q=" in url_lower
+        ):
+            errors.append("偵測到偽造的 Google Maps 搜尋連結")
+            break
+    if not errors and (
+        "google.com/maps/search" in sanitized.lower() or "google.co.jp/maps/search" in sanitized.lower()
+    ):
+        errors.append("偵測到偽造的 Google Maps 搜尋連結")
+
+    # 2. 檢查連續 8 字以上之實質日文假名洩漏 (先移除店名與括號內日文原文)
+    scrubbed = re.sub(r"[（(][^）)\n]{1,40}[）)]", "", sanitized)
+    all_stores = list(stores) + list(extra_allowed_stores or [])
+    for s in all_stores:
+        for k in ("name_ja", "name", "name_en"):
+            val = s.get(k)
+            if isinstance(val, str) and val.strip():
+                scrubbed = scrubbed.replace(val.strip(), "")
+    if len(re.findall(r"[\u3040-\u309F\u30A0-\u30FF]", scrubbed)) >= 8:
+        errors.append("追問回覆中夾帶未翻譯的生硬日文段落")
+
+    # 3. 單店純文字回覆直接進行評分一致性校正
+    if len(stores) == 1:
+        sanitized = sanitize_single_store_ratings(sanitized, stores[0])
+
+    return sanitized, errors

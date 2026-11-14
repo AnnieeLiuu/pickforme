@@ -20,6 +20,7 @@ from src.agent.validator import (
     is_store_matched,
     repair_card_in_place,
     repair_store_name_code_blocks,
+    sanitize_single_store_ratings,
     split_card_store_blocks,
     validate_card_tiered,
 )
@@ -260,46 +261,7 @@ def sanitize_card_ratings(card_text: str, stores: list[dict[str, Any]]) -> str:
                 modified_parts.append(part)
                 continue
 
-            updated_part = part
-
-            # 2. 檢驗並校正 Tabelog 評分錨點 (只作用於該店家隔離區塊)
-            t_rating = matched_store.get("tabelog_rating")
-            if t_rating is not None:
-                t_val = float(t_rating)
-                t_pattern = r"((?:Tabelog|食べログ)[^\d\n]{0,25}?)(\d\.\d{1,2})(\s*分)?"
-
-                def _replace_tabelog(m: re.Match[str]) -> str:
-                    orig_val = float(m.group(2))
-                    unit = m.group(3) or ""
-                    if abs(orig_val - t_val) > 0.001:
-                        logger.info(
-                            f"[Guardrail] Corrected Tabelog rating for '{matched_store.get('name_ja')}': "
-                            f"{orig_val} -> {t_val:.2f}"
-                        )
-                        return f"{m.group(1)}{t_val:.2f}{unit}"
-                    return m.group(0)
-
-                updated_part = re.sub(t_pattern, _replace_tabelog, updated_part, count=1)
-
-            # 3. 檢驗並校正 Google 評分錨點 (只作用於該店家隔離區塊)
-            g_rating = matched_store.get("google_rating") or matched_store.get("rating")
-            if g_rating is not None:
-                g_val = float(g_rating)
-                g_pattern = r"(Google[^\d\n]{0,20}?)([0-5]\.[0-9])(\s*分)?"
-
-                def _replace_google(m: re.Match[str]) -> str:
-                    orig_val = float(m.group(2))
-                    unit = m.group(3) or ""
-                    if abs(orig_val - g_val) > 0.001:
-                        logger.info(
-                            f"[Guardrail] Corrected Google rating for '{matched_store.get('name_ja')}': "
-                            f"{orig_val} -> {g_val:.1f}"
-                        )
-                        return f"{m.group(1)}{g_val:.1f}{unit}"
-                    return m.group(0)
-
-                updated_part = re.sub(g_pattern, _replace_google, updated_part, count=1)
-
+            updated_part = sanitize_single_store_ratings(part, matched_store)
             modified_parts.append(updated_part)
 
         return "".join(modified_parts)
