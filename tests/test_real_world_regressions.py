@@ -3034,3 +3034,71 @@ def test_case_40_sanitize_card_ratings_emoji_headings_and_outro_isolation():
     assert "3.99" not in sanitized
     assert "3.98" not in sanitized
     assert "Tabelog 3.5 分以上需排隊" in sanitized
+
+
+# ==============================================================================
+# Case 41–42: Plan 2 EntityResolver Structured JSON & Eval Guardrail Wiring
+# ==============================================================================
+@pytest.mark.asyncio
+async def test_case_41_entity_resolver_uses_structured_json_and_blocks_intent_fallback():
+    """Case 41: EntityResolver._verify_with_llm 改用 LLMClient.call_structured_json 並防範 intent 兜底字典穿透"""
+    from src.services.entity_resolver import EntityResolver
+
+    mock_bridge = MagicMock()
+    mock_bridge.is_bridge_available = AsyncMock(return_value=False)
+
+    mock_llm_client = MagicMock()
+    mock_llm_client.call_structured_json = AsyncMock(
+        return_value=({"is_same_store": True, "confidence": 0.92, "reason": "店名與地址吻合"}, "test-model", 30)
+    )
+
+    resolver = EntityResolver(bridge=mock_bridge, llm_client=mock_llm_client)
+    res = await resolver._verify_with_llm(
+        {"name": "一蘭", "address": "新宿區", "lat": 35.69, "lng": 139.70},
+        {"name_ja": "一蘭 新宿店", "address": "東京都新宿區"},
+    )
+    assert res is not None
+    assert res.is_same_store is True
+    assert res.confidence == 0.92
+    mock_llm_client.call_structured_json.assert_awaited_once()
+
+    # 若 call_structured_json 失敗退回 intent 兜底字典，model_validate 必須攔截並安全回傳 None
+    mock_llm_client.call_structured_json = AsyncMock(
+        return_value=({"intent": "search", "location": None, "cuisine": None}, "fallback", 0)
+    )
+    res_bad = await resolver._verify_with_llm({"name": "一蘭"}, {"name_ja": "一蘭"})
+    assert res_bad is None
+
+
+@pytest.mark.asyncio
+async def test_case_42_evaluator_tier3_guardrail_runs_real_validator_pipeline():
+    """Case 42: EvaluationEngine.evaluate_tier3_guardrail 接線真實護欄管線，不再使用永遠通過的假卡片"""
+    from src.eval.evaluator import EvaluationEngine
+
+    engine = EvaluationEngine()
+    bad_case = {
+        "guardrail_rules": {"require_code_block": True, "apply_repair_and_sanitize": False},
+        "candidate_stores": [{"name": "AFURI", "name_ja": "AFURI 新宿"}],
+        "candidate_card": (
+            "1. `虛構拉麵店`\n🚶 **步行距離**：步行約 3 分鐘\n⭐️ **雙平台評分**：Tabelog 3.8\n💳 **支付方式**：現金\n"
+        ),
+        "expected_valid": True,
+    }
+    passed, details = await engine.evaluate_tier3_guardrail(bad_case)
+    assert passed is False
+    assert any("虛構拉麵店" in r for r in details["reasons"])
+
+    # 負面測試案例：預期護欄攔截時應判定 passed=True
+    bad_case["expected_valid"] = False
+    passed_neg, _ = await engine.evaluate_tier3_guardrail(bad_case)
+    assert passed_neg is True
+
+    # 追問案例檢查 require_target_store_context
+    followup_case = {
+        "guardrail_rules": {"require_target_store_context": True},
+        "expected": {"target_index": 2},
+        "session_context": {"last_recommended_stores": [{"name": "A"}]},
+    }
+    passed_fu, details_fu = await engine.evaluate_tier3_guardrail(followup_case)
+    assert passed_fu is False
+    assert any("last_recommended_stores" in r for r in details_fu["reasons"])

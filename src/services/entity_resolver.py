@@ -1,14 +1,19 @@
+from __future__ import annotations
+
 import json
 import logging
 import math
 import re
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import BaseModel
 
 from src.agent.bridge import IDEAgentBridge
+
+if TYPE_CHECKING:
+    from src.agent.llm_client import LLMClient
 
 logger = logging.getLogger(__name__)
 
@@ -367,8 +372,10 @@ class EntityResolver:
         agent_engine: Optional[Any] = None,
         bridge: Optional[IDEAgentBridge] = None,
         gemini_api_key: Optional[str] = None,
+        llm_client: Optional[LLMClient] = None,
     ):
         self._agent_engine = agent_engine
+        self._llm_client = llm_client
         self.bridge = bridge or IDEAgentBridge()
 
     def _get_engine(self) -> Any:
@@ -590,16 +597,29 @@ Tabelog 店家資料:
                 '{"is_same_store": true, "confidence": 0.95, "reason": "店名相同且座標吻合"}'
             )
             messages = [{"role": "user", "content": prompt}]
-            engine = self._get_engine()
-            msg_obj, model_used, _ = await engine.call_llm_with_failover(messages)
-            raw_text = msg_obj.get("content", "").strip()
-            cleaned_text = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_text, flags=re.MULTILINE).strip()
-            data = json.loads(cleaned_text)
-            return EntityVerifyResponse(
-                is_same_store=bool(data.get("is_same_store", False)),
-                confidence=float(data.get("confidence", 0.0)),
-                reason=str(data.get("reason", f"由 {model_used} 驗證完成")),
-            )
+
+            llm_client = self._llm_client
+            engine = None
+            if llm_client is None:
+                engine = self._get_engine()
+                llm_client = getattr(engine, "llm_client", None)
+
+            if llm_client is not None and callable(getattr(llm_client, "call_structured_json", None)):
+                data, model_used, _ = await llm_client.call_structured_json(messages, schema=EntityVerifyResponse)
+            else:
+                # 向後相容僅實作 call_llm_with_failover 的舊測試 Mock AgentEngine
+                if engine is None:
+                    engine = self._get_engine()
+                msg_obj, model_used, _ = await engine.call_llm_with_failover(messages)
+                raw_text = msg_obj.get("content", "").strip()
+                cleaned_text = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_text, flags=re.MULTILINE).strip()
+                data = json.loads(cleaned_text)
+
+            # 嚴格透過 Pydantic 驗證 (防範 call_structured_json 失敗退回 intent 兜底字典穿透)
+            validated = EntityVerifyResponse.model_validate(data)
+            if not validated.reason.strip():
+                validated.reason = f"由 {model_used} 驗證完成"
+            return validated
         except Exception as e:
-            logger.error(f"Error calling AgentEngine for entity verification: {e}")
+            logger.error(f"Error calling LLM for entity verification: {e}")
             return None

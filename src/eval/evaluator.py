@@ -6,6 +6,12 @@ from pathlib import Path
 from typing import Any, Optional
 
 from src.agent.pipeline import FoodRecommendationFSM
+from src.agent.stages.synthesis import render_template_fallback_card, sanitize_card_ratings
+from src.agent.validator import (
+    repair_card_in_place,
+    repair_store_name_code_blocks,
+    validate_card_tiered,
+)
 from src.services.entity_resolver import EntityResolver
 
 logger = logging.getLogger(__name__)
@@ -187,44 +193,79 @@ class EvaluationEngine:
         }
 
     async def evaluate_tier3_guardrail(self, case: dict[str, Any]) -> tuple[bool, dict[str, Any]]:
-        """Tier 3: 數值護欄與格式遵從度評測"""
+        """Tier 3: 數值護欄與格式遵從度評測 (接線真實 Validator / Sanitizer / Fallback 管線)"""
         rules = case.get("guardrail_rules", {})
         if not rules:
             return True, {"skipped": True}
 
-        # 模擬推薦卡片輸出
-        sample_store_name = case.get("entity_match_sample", {}).get("tabelog_name") or "特選名店"
-        sample_card = (
-            f"🍱 **店名**：`{sample_store_name}`\n"
-            f"🚶 **步行距離**：從「{case['expected'].get('location') or '新宿'}」步行約 4 分鐘 (320m)\n"
-            f"⭐️ Tabelog 3.75 分 (1,200 則評價) / Google 4.3\n"
-            f"💳 **支付方式**：可使用 PayPay / 信用卡\n"
-        )
-
         passed = True
-        reasons = []
+        reasons: list[str] = []
+        expected = case.get("expected", {})
 
-        # 1. 檢驗店名是否包含在 Code block
-        if rules.get("require_code_block"):
-            if f"`{sample_store_name}`" not in sample_card:
+        # 1. 追問上下文驗證 (如 eval_006 / eval_007 / eval_017)
+        if rules.get("require_target_store_context"):
+            last_stores = case.get("session_context", {}).get("last_recommended_stores", [])
+            target_idx = int(expected.get("target_index") or 1)
+            if not isinstance(last_stores, list) or len(last_stores) < target_idx:
                 passed = False
-                reasons.append("店名未獨立包含在反引號 Code 區塊")
+                reasons.append(f"追問目標索引 ({target_idx}) 超出 session_context.last_recommended_stores 範圍")
 
-        # 2. 檢驗是否包含起點步行距離
-        if rules.get("require_walking_distance"):
-            if "🚶 **步行距離**" not in sample_card or "步行約" not in sample_card:
-                passed = False
-                reasons.append("缺少標準起點步行距離標記")
-
-        # 3. 檢驗多輪排除名單
+        # 2. 多輪排除名單驗證
         disallow_ids = rules.get("disallow_seen_place_ids", [])
         if disallow_ids:
-            # 驗證排除集合中確實記錄了已看過店家
             seen_ids = set(case.get("session_context", {}).get("seen_place_ids", []))
             for bad_id in disallow_ids:
                 if bad_id not in seen_ids:
                     passed = False
                     reasons.append(f"未正確追蹤需排除的店家 ID: {bad_id}")
+
+        # 3. 真實推薦卡片護欄管線驗證 (require_code_block / require_walking_distance / candidate_card)
+        has_card_rules = bool(
+            rules.get("require_code_block") or rules.get("require_walking_distance") or "candidate_card" in case
+        )
+        if has_card_rules:
+            sample_store_name = case.get("entity_match_sample", {}).get("tabelog_name") or "特選名店"
+            stores = case.get("candidate_stores")
+            if not stores:
+                loc = expected.get("location") or "新宿"
+                stores = [
+                    {
+                        "name": sample_store_name,
+                        "name_ja": sample_store_name,
+                        "tabelog_rating": 3.75,
+                        "rating": 4.3,
+                        "review_count": 1200,
+                        "walking_desc": f"從「{loc}」步行約 4 分鐘 (320m)",
+                        "payment_methods_desc": "可使用 PayPay / 信用卡",
+                        "tabelog_url": "https://tabelog.com/tokyo/A1304/A130401/13000001/",
+                    }
+                ]
+
+            cuisine = expected.get("cuisine") or "熱門美食"
+            if "candidate_card" in case:
+                card_text = str(case["candidate_card"])
+                if rules.get("apply_repair_and_sanitize", True):
+                    card_text = sanitize_card_ratings(card_text, stores)
+                    card_text = repair_store_name_code_blocks(card_text, stores)
+                    card_text = repair_card_in_place(card_text, stores, cuisine=cuisine)
+            else:
+                card_text = render_template_fallback_card(stores, cuisine=cuisine)
+                card_text = sanitize_card_ratings(card_text, stores)
+                card_text = repair_store_name_code_blocks(card_text, stores)
+                card_text = repair_card_in_place(card_text, stores, cuisine=cuisine)
+
+            fatal_errors, minor_warnings = validate_card_tiered(card_text, stores)
+            expected_valid = case.get("expected_valid", True)
+            if expected_valid:
+                if fatal_errors or minor_warnings:
+                    passed = False
+                    reasons.extend(fatal_errors)
+                    reasons.extend(minor_warnings)
+            else:
+                # 負面測試案例：驗證護欄確實有攔截到缺陷
+                if not fatal_errors and not minor_warnings:
+                    passed = False
+                    reasons.append("預期護欄應攔截違規卡片，但實際未觸發任何錯誤或警告")
 
         return passed, {"reasons": reasons}
 
