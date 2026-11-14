@@ -559,11 +559,18 @@ def validate_follow_up_response(
             val = s.get(k)
             if isinstance(val, str) and val.strip():
                 scrubbed = scrubbed.replace(val.strip(), "")
-    if len(re.findall(r"[\u3040-\u309F\u30A0-\u30FF]", scrubbed)) >= 8:
+    if re.search(
+        r"(?:[\u3040-\u309F\u30A0-\u30FFー]{8,}|(?:[\u3040-\u309F\u30A0-\u30FFー]+[\u4E00-\u9FFF]{1,3}){2,}[\u3040-\u309F\u30A0-\u30FFー]+)",
+        scrubbed,
+    ):
         errors.append("追問回覆中夾帶未翻譯的生硬日文段落")
 
-    # 3. 單店純文字回覆直接進行評分一致性校正
+    # 3. 單店與多店追問回覆皆進行評分一致性校正
     if len(stores) == 1:
         sanitized = sanitize_single_store_ratings(sanitized, stores[0])
+    elif len(stores) >= 2:
+        from src.agent.stages.synthesis import sanitize_card_ratings
+
+        sanitized = sanitize_card_ratings(sanitized, stores)
 
     return sanitized, errors

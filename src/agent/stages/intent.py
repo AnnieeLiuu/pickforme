@@ -15,7 +15,7 @@ import time
 from typing import TYPE_CHECKING, Any, Literal, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from src.agent.gate import QuickPassGate
 from src.agent.schemas import IntentOutput, extract_preferences_from_text
 from src.agent.skill_loader import get_skill_loader
@@ -49,8 +49,10 @@ def is_prefecture_level_area(
 class FollowUpDecision(BaseModel):
     """追問 Tool Loop 決策合約"""
 
+    model_config = ConfigDict(extra="forbid")
+
     action: Literal["answer", "detail_lookup", "nearby_pairing"] = Field(
-        default="answer",
+        ...,
         description="answer: 既有資料足夠直接回答 | detail_lookup: 需查評論向量庫或詳細快取 | nearby_pairing: 需查周邊400m續攤店家",
     )
     tool_query: Optional[str] = Field(
@@ -716,7 +718,9 @@ async def execute_follow_up(
         },
     ]
 
-    fallback_ans = f"針對 `{store_name}` 的問題：該店評分為 {target_store.get('tabelog_rating') or target_store.get('rating')} 分，地址在 {target_store.get('address', '市區')}。"
+    rating_val = target_store.get("tabelog_rating") or target_store.get("rating")
+    rating_clause = f"該店評分為 {rating_val} 分，" if rating_val is not None else ""
+    fallback_ans = f"針對 `{store_name}` 的問題：{rating_clause}地址在 {target_store.get('address', '市區')}。"
 
     try:
         t0 = time.time()

@@ -32,6 +32,21 @@ def test_validate_follow_up_response_and_single_store_rating_sanitization():
     # 直接呼叫 sanitize_single_store_ratings
     assert "3.55" in sanitize_single_store_ratings("Tabelog 約 3.90 分", store)
 
+    # 3. 多個分散短日文料理名詞（總數 >= 8 但非連續 8 字以上）不應誤報日文洩漏
+    multi_terms = "這家有 お通し 小菜，也有 ラーメン 跟 つけ麺 可以選。"
+    _, multi_term_errs = validate_follow_up_response(multi_terms, [store])
+    assert multi_term_errs == []
+
+    # 4. 多店對比回覆同樣必須進行 Scoped Anchor 評分校正
+    store2 = {"name": "風雲兒", "name_ja": "風雲児", "tabelog_rating": 3.72, "google_rating": 4.3}
+    comparison_drift = (
+        "1. **麺匠 竹虎**：Tabelog 評分 3.99 分，Google 4.9 分。\n2. **風雲児**：Tabelog 評分 3.10 分，Google 3.2 分。"
+    )
+    sanitized_cmp, cmp_errs = validate_follow_up_response(comparison_drift, [store, store2])
+    assert cmp_errs == []
+    assert "3.55" in sanitized_cmp and "3.99" not in sanitized_cmp
+    assert "3.72" in sanitized_cmp and "3.10" not in sanitized_cmp
+
 
 @pytest.mark.asyncio
 async def test_follow_up_tool_loop_detail_lookup_and_nearby_pairing():
