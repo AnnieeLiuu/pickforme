@@ -3245,3 +3245,108 @@ async def test_case_45_place_typo_does_not_inherit_previous_turn_location():
     assert parsed["cuisine"] == "咖啡"
     assert geocode_calls == ["神樂坂"]
     assert "靜岡車站" not in geocode_calls
+
+
+@pytest.mark.asyncio
+async def test_case_46_incomplete_tabelog_cache_triggers_live_refresh_and_fallback():
+    """
+    Case 46 (Production bug 8b650743):
+    舊版曾寫入 Neon DB 的快取資料缺少預算 (price_lunch=None, price_dinner=None) 或缺少
+    tabelog_url / review_count，若僅因 7 天內且有 tabelog_rating 就直接命中快取，會導致推薦卡片
+    持續顯示「預算區間：資料未載明」。
+    防禦：enrich_single_place 必須透過 _is_tabelog_cache_complete 檢查核心欄位（評分、連結、
+    評價數、至少一項預算），缺漏時強制重抓並覆寫快取；若重抓無結果或失敗，再安全退回原快取以免
+    遺失既有 Tabelog 評分與連結。
+    """
+    from datetime import datetime, timezone
+
+    from src.agent.stages.enrichment import enrich_single_place
+
+    incomplete_cached = {
+        "id": "rest-hangetsu",
+        "tabelog_url": "https://tabelog.com/tokyo/A1311/A131103/13281905/",
+        "name_ja": "喫茶 半月",
+        "tabelog_rating": 3.6,
+        "review_count": 572,
+        "price_lunch": None,
+        "price_dinner": None,
+        "awards": [],
+        "supports_paypay": None,
+        "credit_cards": [],
+        "updated_at": datetime.now(timezone.utc),
+    }
+    place = {
+        "google_place_id": "gp-hangetsu",
+        "name": "喫茶 半月",
+        "address": "東京都台東区蔵前4-31-11",
+        "walking_minutes": 4,
+        "distance_meters": 262,
+    }
+
+    # 1. 快取缺預算 -> 強制重抓成功並補齊預算
+    fsm = MagicMock()
+    fsm.restaurant_repo = MagicMock(
+        get_by_google_place_id=AsyncMock(return_value=incomplete_cached),
+        save_restaurant_with_tabelog=AsyncMock(return_value="rest-hangetsu"),
+    )
+    fsm.tabelog_scraper = MagicMock(
+        search_tabelog_candidates=AsyncMock(
+            return_value=[
+                {
+                    "tabelog_url": "https://tabelog.com/tokyo/A1311/A131103/13281905/",
+                    "name_ja": "喫茶 半月",
+                    "tabelog_rating": 3.6,
+                    "review_count": 573,
+                    "price_lunch": "￥1,000～￥1,999",
+                    "price_dinner": "￥1,000～￥1,999",
+                }
+            ]
+        ),
+        scrape_restaurant_details=AsyncMock(
+            return_value={
+                "tabelog_rating": 3.6,
+                "review_count": 573,
+                "price_lunch": "￥1,000～￥1,999",
+                "price_dinner": "￥1,000～￥1,999",
+            }
+        ),
+    )
+    fsm.entity_resolver = MagicMock(
+        resolve_entity=AsyncMock(
+            return_value={
+                "match_found": True,
+                "confidence": 0.98,
+                "match_method": "rule_high",
+                "candidate": {
+                    "tabelog_url": "https://tabelog.com/tokyo/A1311/A131103/13281905/",
+                    "name_ja": "喫茶 半月",
+                    "tabelog_rating": 3.6,
+                    "review_count": 573,
+                    "price_lunch": "￥1,000～￥1,999",
+                    "price_dinner": "￥1,000～￥1,999",
+                },
+            }
+        )
+    )
+    fsm._index_store_reviews = AsyncMock()
+
+    refreshed = await enrich_single_place(fsm, place, area_hint="藏前")
+    assert refreshed["price_lunch"] == "￥1,000～￥1,999"
+    assert refreshed["price_dinner"] == "￥1,000～￥1,999"
+    assert refreshed["review_count"] == 573
+    fsm.tabelog_scraper.search_tabelog_candidates.assert_awaited_once()
+    fsm.restaurant_repo.save_restaurant_with_tabelog.assert_awaited_once()
+
+    # 2. 快取缺預算且重抓失敗 -> 安全退回既有快取，不降級成 Google-only
+    fsm_fail = MagicMock()
+    fsm_fail.restaurant_repo = MagicMock(
+        get_by_google_place_id=AsyncMock(return_value=incomplete_cached),
+        save_restaurant_with_tabelog=AsyncMock(),
+    )
+    fsm_fail.tabelog_scraper = MagicMock(search_tabelog_candidates=AsyncMock(return_value=[]))
+    fsm_fail._index_store_reviews = AsyncMock()
+
+    fallback = await enrich_single_place(fsm_fail, place, area_hint="藏前")
+    assert fallback["rating_source"] == "Tabelog"
+    assert fallback["tabelog_rating"] == 3.6
+    assert fallback["tabelog_url"] == "https://tabelog.com/tokyo/A1311/A131103/13281905/"

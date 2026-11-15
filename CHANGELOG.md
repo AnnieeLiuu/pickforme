@@ -7,6 +7,8 @@
 ## [Unreleased]
 
 ### Fixed
+- **不完整 Tabelog 快取自動重抓與安全退回 (`src/agent/stages/enrichment.py`, `tests/test_real_world_regressions.py`)**：
+  - 新增 `_is_tabelog_cache_complete()` 驗證 Neon DB 快取是否齊備推薦卡片所需核心欄位（評分、`tabelog_url`、`review_count` 與至少一項午/晚餐預算），缺漏時自動繞過舊快取強制重抓並覆寫更新，並於重抓無匹配或失敗時安全退回既有 Tabelog 快取（Case 46）。
 - **地名同音錯字糾正與意圖解析提示詞納管 (`config/prompts/intent_parser.md`, `src/agent/skill_loader.py`, `src/agent/stages/intent.py`, `tests/test_real_world_regressions.py`)**：
   - 修正生產環境問題 (`ae5b5b45`)：使用者輸入同音／繁簡錯別字地名（如「神樂版 咖啡」）時，要求模型直接運用世界知識糾正為正確日本地名（「神樂坂」），嚴禁將錯字地名塞入 `modifier` 並繼承上一輪 `location`，同時釐清單一具體車站／地區應設 `is_location_ambiguous=false`。
   - 將 `INTENT_PARSER_SYSTEM_PROMPT` 抽離至 `config/prompts/intent_parser.md` 統一管理，透過 `SkillLoader.load_prompt()` 與 `get_intent_parser_prompt()` 懶載入快取並安全注入 `IntentOutput` Schema，並新增離線回歸測試 Case 45。

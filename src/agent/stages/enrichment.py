@@ -247,6 +247,53 @@ def _align_walking_and_station(
     return p
 
 
+def _is_tabelog_cache_complete(cached: dict[str, Any]) -> bool:
+    """檢查 Tabelog 快取是否具備推薦卡片所需核心欄位 (評分、連結、評價數、至少一項預算)"""
+    has_budget = bool(cached.get("price_lunch") or cached.get("price_dinner"))
+    return bool(
+        cached.get("tabelog_rating")
+        and cached.get("tabelog_url")
+        and cached.get("review_count") is not None
+        and has_budget
+    )
+
+
+def _build_cached_tabelog_result(
+    place: dict[str, Any],
+    cached: dict[str, Any],
+    area_hint: Optional[str],
+) -> dict[str, Any]:
+    """將快取的 Tabelog 紀錄組裝為標準推薦店家字典"""
+    rid = cached.get("id")
+    store_name = place.get("name", "")
+    pay_cards = cached.get("credit_cards")
+    pay_desc = format_payment_methods(
+        supports_paypay=cached.get("supports_paypay"),
+        credit_cards=pay_cards,
+        accepts_credit_cards=place.get("accepts_credit_cards"),
+        accepts_cash_only=place.get("accepts_cash_only"),
+        accepts_nfc=place.get("accepts_nfc"),
+    )
+    res_dict = {
+        **place,
+        "restaurant_id": str(rid) if rid else None,
+        "tabelog_url": cached.get("tabelog_url"),
+        "name_ja": cached.get("name_ja") or store_name,
+        "tabelog_rating": float(cached["tabelog_rating"]) if cached.get("tabelog_rating") else None,
+        "review_count": cached.get("review_count"),
+        "price_lunch": cached.get("price_lunch"),
+        "price_dinner": cached.get("price_dinner"),
+        "awards": cached.get("awards") or [],
+        "supports_paypay": cached.get("supports_paypay"),
+        "credit_cards": pay_cards,
+        "payment_methods_desc": pay_desc,
+        "sample_reviews": place.get("reviews") or [],
+        "nearest_station_desc": place.get("nearest_station_desc"),
+        "rating_source": "Tabelog",
+    }
+    return _align_walking_and_station(res_dict, res_dict.get("nearest_station_desc"), area_hint)
+
+
 async def enrich_single_place(
     fsm: FoodRecommendationFSM,
     place: dict[str, Any],
@@ -263,6 +310,7 @@ async def enrich_single_place(
     except Exception as e:
         logger.warning(f"DB cache check error for {place_id}: {e}")
 
+    incomplete_cache_fallback: Optional[dict[str, Any]] = None
     if cached and cached.get("tabelog_rating"):
         is_fresh = True
         updated_at = cached.get("updated_at")
@@ -287,36 +335,18 @@ async def enrich_single_place(
                 if cached.get("id"):
                     asyncio.create_task(fsm.restaurant_repo.delete_by_id(cached["id"]))
 
+        if is_fresh and not _is_tabelog_cache_complete(cached):
+            logger.info(
+                f"Incomplete Tabelog cache for '{store_name}' (missing url/review_count/budget); refreshing via live scrape."
+            )
+            incomplete_cache_fallback = cached
+            is_fresh = False
+
         if is_fresh:
             rid = cached.get("id")
             if rid and place.get("reviews"):
                 asyncio.create_task(fsm._index_store_reviews(rid, place["reviews"]))
-            pay_cards = cached.get("credit_cards")
-            pay_desc = format_payment_methods(
-                supports_paypay=cached.get("supports_paypay"),
-                credit_cards=pay_cards,
-                accepts_credit_cards=place.get("accepts_credit_cards"),
-                accepts_cash_only=place.get("accepts_cash_only"),
-                accepts_nfc=place.get("accepts_nfc"),
-            )
-            res_dict = {
-                **place,
-                "restaurant_id": str(rid) if rid else None,
-                "tabelog_url": cached.get("tabelog_url"),
-                "name_ja": cached.get("name_ja") or store_name,
-                "tabelog_rating": float(cached["tabelog_rating"]) if cached.get("tabelog_rating") else None,
-                "review_count": cached.get("review_count"),
-                "price_lunch": cached.get("price_lunch"),
-                "price_dinner": cached.get("price_dinner"),
-                "awards": cached.get("awards") or [],
-                "supports_paypay": cached.get("supports_paypay"),
-                "credit_cards": pay_cards,
-                "payment_methods_desc": pay_desc,
-                "sample_reviews": place.get("reviews") or [],
-                "nearest_station_desc": place.get("nearest_station_desc"),
-                "rating_source": "Tabelog",
-            }
-            return _align_walking_and_station(res_dict, res_dict.get("nearest_station_desc"), area_hint)
+            return _build_cached_tabelog_result(place, cached, area_hint)
 
     # 1.5 雙源直通車：若該店已由 State 2 Tabelog-First 雙源獵店取得有效 Tabelog 評分或百名店，免重複搜尋清單
     if place.get("tabelog_seed") and (place.get("tabelog_rating") or place.get("awards") or place.get("hyakumeiten")):
@@ -482,6 +512,10 @@ async def enrich_single_place(
             return _align_walking_and_station(res_dict, nearest_st, area_hint)
     except Exception as e:
         logger.warning(f"Tabelog scraping / resolution failed for {store_name}: {e}")
+
+    if incomplete_cache_fallback is not None:
+        logger.info(f"Live refresh yielded no match for '{store_name}'; falling back to cached Tabelog record.")
+        return _build_cached_tabelog_result(place, incomplete_cache_fallback, area_hint)
 
     # 3. 爬蟲失敗或無資料保底：以 Google 評分呈現
     fallback_id = None
