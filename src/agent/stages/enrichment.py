@@ -89,7 +89,9 @@ def calculate_foodie_score(store: dict[str, Any]) -> float:
     if t_rating and float(t_rating) > 0:
         base_score = float(t_rating)
     else:
-        base_score = min(g_rating * 0.65, 3.05)  # Google 評分降權折算，確保 Tabelog 高分店絕對優先
+        # 沿用日本在地老店保護曲線：壓平超過 4.4 星之 Google 虛高分，避免無 Tabelog 店家靠單一 4.8 星輾壓候選
+        effective_g = min(g_rating, 4.4) if g_rating >= 3.8 else g_rating
+        base_score = min(effective_g * 0.65, 3.05)  # Google 評分降權折算，確保 Tabelog 高分店絕對優先
 
     # 2. 老饕榮譽加分
     award_bonus = 0.0
@@ -770,10 +772,11 @@ async def execute_state_3_parallel_tabelog(
 
     final_enriched = list(tier1_results)
 
-    # 3. 自適應決策：若品質不足且有 Tier 2 備選店家，啟動動態查驗；否則觸發 Early Stopping
-    if high_score_count < 2 and tier2_places:
+    # 3. 自適應決策：若品質不足、或使用者有明確預算條件 (需查完 Tier 2 才能撈出平價店)，啟動 Tier 2 查驗
+    if (high_score_count < 2 or budget_max_jpy is not None) and tier2_places:
         logger.info(
-            f"Tier 1 high-score stores count is {high_score_count} (<2). Triggering Tier 2 adaptive rescue for {len(tier2_places)} stores."
+            f"Triggering Tier 2 enrichment for {len(tier2_places)} stores "
+            f"(high_score_count={high_score_count}, budget_max_jpy={budget_max_jpy})."
         )
         tier2_tasks = [fsm._enrich_single_place(p, area_hint=area_hint) for p in tier2_places]
         tier2_results = await asyncio.gather(*tier2_tasks)

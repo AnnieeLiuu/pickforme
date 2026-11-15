@@ -3562,3 +3562,47 @@ def test_case_49_pure_ja_search_keyword_and_budget_soft_ranking():
     assert top[0].get("constraint_violation") is not True
     assert top[1]["name_ja"] == "高額ホテルラウンジ"
     assert top[1].get("constraint_violation") is True
+
+
+@pytest.mark.asyncio
+async def test_case_50_budget_disables_early_stopping_and_caps_google_44():
+    """Case 50 (ace8b4db 藏前咖啡): 有 budget_max_jpy 時不早停查完 Tier 2，且無 Tabelog 時壓平 Google >4.4 星"""
+    from src.agent.stages.enrichment import calculate_foodie_score, execute_state_3_parallel_tabelog
+
+    # 1. 無 Tabelog 時，4.8 星與 4.4 星皆套用 4.4 壓平保護
+    s_48 = {"rating": 4.8, "distance_meters": 200}
+    s_44 = {"rating": 4.4, "distance_meters": 200}
+    assert calculate_foodie_score(s_48) == pytest.approx(calculate_foodie_score(s_44))
+
+    # 2. 有 budget_max_jpy 時即使 Tier 1 已有 >=2 家高分店，仍應查驗 Tier 2 的平價店
+    places = [
+        {"name": "喫茶 半月", "google_place_id": "p1", "rating": 4.2},
+        {"name": "EN CAFE", "google_place_id": "p2", "rating": 3.9},
+        {"name": "Paradise Poke", "google_place_id": "p3", "rating": 4.8},
+        {"name": "角打ちカフェフタバ", "google_place_id": "p4", "rating": 4.4},
+        {"name": "コフィノワ", "google_place_id": "p5", "rating": 4.5},
+    ]
+
+    async def fake_enrich(place, area_hint=None):
+        pid = place["google_place_id"]
+        if pid == "p1":
+            return {**place, "tabelog_rating": 3.60, "price_dinner": "￥1,000～￥1,999", "tabelog_url": "u1"}
+        if pid == "p2":
+            return {**place, "tabelog_rating": 3.50, "price_lunch": "￥1,000～￥1,999", "tabelog_url": "u2"}
+        if pid == "p5":
+            return {**place, "tabelog_rating": 3.60, "price_dinner": "～￥999", "tabelog_url": "u5"}
+        return {**place, "tabelog_rating": None, "tabelog_url": None}
+
+    fsm = MagicMock()
+    fsm._enrich_single_place = AsyncMock(side_effect=fake_enrich)
+    fsm.rank_and_select_top_stores = lambda stores, top_k=3: sorted(stores, key=calculate_foodie_score, reverse=True)[
+        :top_k
+    ]
+    fsm.tabelog_scraper = MagicMock(fetch_tabelog_reviews=None)
+    fsm.trace_logger = AsyncMock()
+
+    top = await execute_state_3_parallel_tabelog(fsm, places, area_hint="藏前", budget_max_jpy=1000)
+    assert fsm._enrich_single_place.await_count == 5
+    top_names = [s["name"] for s in top]
+    assert "コフィノワ" in top_names
+    assert "Paradise Poke" not in top_names

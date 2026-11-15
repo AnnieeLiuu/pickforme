@@ -7,6 +7,8 @@
 ## [Unreleased]
 
 ### Fixed
+- **有預算條件時取消 State 3 早停並同步 Google >4.4 星壓平保護 (`src/agent/stages/enrichment.py`, `tests/test_real_world_regressions.py`)**：
+  - 依生產追蹤 `ace8b4db` 修復：當使用者指定 `budget_max_jpy` 時，`execute_state_3_parallel_tabelog` 不再於 Tier 1 早停，改為查完 Tier 2（第 5～6 家）再排序，讓排在 Tier 2 的平價名店（如 `コフィノワ` `～￥999`）能進入 Top 3；並於 `calculate_foodie_score` 同步對無 Tabelog 評分的店家壓平 Google `> 4.4` 星，防止非目標類型的高分餐廳擠掉候選（Case 50）。
 - **移除 LLM 卡片假名刪行誤殺並精簡預算說明防截斷 (`src/agent/validator.py`, `src/agent/stages/synthesis.py`, `tests/test_real_world_regressions.py`)**：
   - 依生產追蹤 `fc6c0f6e` 根因修復：移除 `validate_card_tiered` 與 `repair_card_in_place` 中對 LLM 卡片理由行的假名誤殺檢查（原本會因標籤 `(食べログ 口コミ)` 本身含假名而將 3 家店的 `📍 老饕推薦理由` 整行刪除），同時保留純程式保底模板的 `寧缺勿濫` 防護；並精簡 `synthesis` 預算差距提醒語氣，在維持 Groq `max_tokens: 800` 防 429 門檻下避免第 3 家卡片截斷。
 - **純淨日文搜尋詞 (`search_keyword_ja`) 與預算軟性重排防空 (`src/agent/schemas.py`, `config/prompts/intent_parser.md`, `src/agent/stages/places_search.py`, `src/agent/stages/enrichment.py`, `src/agent/stages/synthesis.py`, `src/agent/pipeline.py`, `tests/test_real_world_regressions.py`)**：
