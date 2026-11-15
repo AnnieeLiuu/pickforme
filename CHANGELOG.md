@@ -6,6 +6,14 @@
 
 ## [Unreleased]
 
+### Changed
+- **Enrichment Stage 模組化拆分 (`src/agent/stages/enrichment/`, `tests/test_enrichment_modularization.py`)**：
+  - 將原本 881 行的單體 `enrichment.py` 依單一職責解耦為無循環依賴的 8 個子模組（`formatting.py`、`scoring.py`、`geocoding.py`、`reviews.py`、`cache.py`、`crawler.py`、`single_place.py`、`orchestrator.py`）與向後相容 Facade `__init__.py`，並補齊獨立子模組單元測試。
+- **Step A：Stage 2 首頁全收三級預選 ＆ Stage 3 全查 Semaphore 限流 (`src/services/tabelog_scraper.py`, `src/agent/stages/places_search.py`, `src/agent/stages/enrichment/orchestrator.py`, `src/agent/pipeline.py`, `tests/test_real_world_regressions.py`)**：
+  - 移除 `_fetch_and_parse_grounding` 的 `>= 5: break` 硬上限，於 `discover_area_top_stores` 實作三級 Fail-Open 排序矩陣（Tier A 明確符合 > Tier B 未知保留 > Tier C 明確超標墊底，並納入 `is_relocated` 舊址降權）；同時廢除 Stage 3 Tier 1/2 早停，改為 `asyncio.Semaphore(4)` 限流全面並發查驗（更新 Case 12、Case 50 並新增 Case 51）。
+- **Step B：Stage 4 LLM 精簡 JSON + Python 確定性組卡片 (`src/agent/stages/enrichment/scoring.py`, `src/agent/stages/synthesis.py`, `src/agent/llm_client.py`, `config/skills/scenarios/card-synthesis.md`, `src/eval/reporter.py`, `tests/test_real_world_regressions.py`)**：
+  - `apply_deterministic_constraints` 新增結構化 `constraint_warnings`（記錄 `budget`、`payment`、`hours`、`dietary` 違規明細）；`execute_state_4_synthesis` 改為要求 LLM 輸出 `{"stores": [{"index", "reason", "must_order"}], "tip"}` 精簡 JSON 並由 Python 確定性拼裝客觀欄位、單店差異標註與 `search_meta` 候選數透明說明（Gemini fallback 放寬 `max_tokens=1500`，Groq 維持 `800`，並新增 Case 52）。
+
 ### Fixed
 - **有預算條件時取消 State 3 早停並同步 Google >4.4 星壓平保護 (`src/agent/stages/enrichment.py`, `tests/test_real_world_regressions.py`)**：
   - 依生產追蹤 `ace8b4db` 修復：當使用者指定 `budget_max_jpy` 時，`execute_state_3_parallel_tabelog` 不再於 Tier 1 早停，改為查完 Tier 2（第 5～6 家）再排序，讓排在 Tier 2 的平價名店（如 `コフィノワ` `～￥999`）能進入 Top 3；並於 `calculate_foodie_score` 同步對無 Tabelog 評分的店家壓平 Google `> 4.4` 星，防止非目標類型的高分餐廳擠掉候選（Case 50）。
