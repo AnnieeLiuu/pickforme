@@ -239,10 +239,10 @@ async def test_fsm_execute_follow_up(mock_fsm):
 async def test_fsm_walking_distance_and_prompt_loader(mock_fsm):
     from src.agent.pipeline import get_recommendation_card_prompt
 
-    # 1. 測試提示詞載入器
+    # 1. 測試提示詞載入器 (JSON 精簡輸出規範)
     prompt = get_recommendation_card_prompt()
-    assert "步行距離" in prompt
-    assert "特派員提醒" in prompt
+    assert "JSON" in prompt
+    assert "must_order" in prompt
 
     # 2. 測試階梯搜尋中的步行距離計算 (基準點 35.685, 139.710)
     mock_fsm.places_client.search_nearby.return_value = [
@@ -299,17 +299,17 @@ def test_guardrail_sanitizes_rating_drift(mock_fsm):
 
 
 def test_guardrail_contract_with_agent_system_prompt():
-    """合約測試 (Contract Test)：確保模組化卡片提示詞的規範與 Guardrail 正則錨點 100% 同步。
-    若未來有人改動 Prompt 格式而導致關鍵字不一致，CI 會立刻紅燈阻擋！"""
+    """合約測試 (Contract Test)：確保模組化卡片提示詞的 JSON Schema 契約與確定性組卡 100% 同步。"""
     from src.agent.pipeline import AGENT_SYSTEM_PROMPT_PATH, get_recommendation_card_prompt
 
     assert AGENT_SYSTEM_PROMPT_PATH.exists(), "agent_system.md 檔案不存在！"
     prompt_text = get_recommendation_card_prompt()
 
-    # 檢驗 Prompt 必須包含護欄仰賴的關鍵錨點關鍵字
-    assert "Tabelog" in prompt_text, "Prompt 缺少 'Tabelog' 評分錨點！"
-    assert "Google" in prompt_text, "Prompt 缺少 'Google' 評分錨點！"
-    assert "步行距離" in prompt_text, "Prompt 缺少 '步行距離' 錨點！"
+    # 檢驗 Prompt 必須包含 JSON 短評輸出 Schema 關鍵字
+    assert "JSON" in prompt_text, "Prompt 缺少 'JSON' 輸出規範！"
+    assert "index" in prompt_text, "Prompt 缺少 'index' 欄位！"
+    assert "must_order" in prompt_text, "Prompt 缺少 'must_order' 欄位！"
+    assert "tip" in prompt_text, "Prompt 缺少 'tip' 欄位！"
 
 
 def test_format_payment_methods():

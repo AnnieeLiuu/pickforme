@@ -59,6 +59,7 @@ class LLMClient:
         messages: list[dict[str, Any]],
         response_format: Optional[dict[str, Any]] = None,
         timeout: float = 60.0,
+        max_tokens: int = 800,
     ) -> tuple[dict[str, Any], int]:
         """以標準 OpenAI ChatCompletions REST API 發送請求"""
         headers = {
@@ -78,7 +79,7 @@ class LLMClient:
             "model": model,
             "messages": cleaned_messages,
             "temperature": 0.2,
-            "max_tokens": 800,
+            "max_tokens": max_tokens,
         }
         if response_format:
             body["response_format"] = response_format
@@ -196,6 +197,7 @@ class LLMClient:
                 messages=messages,
                 response_format=response_format,
                 timeout=30.0,
+                max_tokens=1500,
             )
             return str(msg_resp.get("content", "")), gemini_model, tokens
         except Exception as e:

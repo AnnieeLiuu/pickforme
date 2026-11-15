@@ -7,6 +7,7 @@ Scoped Anchor 評分防偽校正護欄、分級排版防禦 (Tiered Defense) 以
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 import time
@@ -18,11 +19,8 @@ from src.agent.stages.enrichment import format_payment_methods
 from src.agent.stages.places_search import is_wide_area_origin
 from src.agent.validator import (
     is_store_matched,
-    repair_card_in_place,
-    repair_store_name_code_blocks,
     sanitize_single_store_ratings,
     split_card_store_blocks,
-    validate_card_tiered,
 )
 from src.services.review_sanitizer import synthesize_store_recommendation_reason
 
@@ -131,13 +129,83 @@ def format_operating_hours(open_now: Optional[bool]) -> str:
     return "以店家當日公告為準"
 
 
+def _sanitize_llm_text(text: Any, max_len: int = 120) -> Optional[str]:
+    """清理 LLM 輸出的單行文字，移除反引號、Markdown 標題與網址注入"""
+    if not isinstance(text, str):
+        return None
+    cleaned = re.sub(r"https?://\S+", "", text)
+    cleaned = cleaned.replace("`", "").replace("\r", " ").replace("\n", " ")
+    cleaned = re.sub(r"^#{1,6}\s*", "", cleaned).strip()
+    if not cleaned or cleaned.lower() in ("null", "none", "n/a", "無"):
+        return None
+    if len(cleaned) > max_len:
+        cleaned = cleaned[:max_len].rstrip("，、。 ") + "…"
+    return cleaned
+
+
+def _is_rating_boilerplate(reason: str) -> bool:
+    """偵測是否為複述評分數值的空泛套話"""
+    return bool(re.search(r"(?:Tabelog|食べログ|Google)\s*(?:評分|評價)?\s*(?:高達|達)?\s*\d\.\d", reason, re.I))
+
+
+def _parse_synthesis_json(
+    raw_content: str,
+    store_count: int,
+) -> tuple[dict[int, dict[str, Optional[str]]], Optional[str]]:
+    """解析 State 4 LLM 精簡 JSON（index 1-based 對齊與防禦性清洗）"""
+    text = (raw_content or "").strip()
+    if not text:
+        return {}, None
+    fence_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+    if fence_match:
+        text = fence_match.group(1)
+    elif not text.startswith("{"):
+        brace_match = re.search(r"(\{.*\})", text, re.DOTALL)
+        if brace_match:
+            text = brace_match.group(1)
+
+    data = json.loads(text)
+    if not isinstance(data, dict):
+        return {}, None
+
+    raw_stores = data.get("stores")
+    if not isinstance(raw_stores, list):
+        return {}, None
+
+    notes: dict[int, dict[str, Optional[str]]] = {}
+    for item in raw_stores:
+        if not isinstance(item, dict):
+            continue
+        raw_idx = item.get("index")
+        try:
+            idx = int(raw_idx)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            continue
+        if not (1 <= idx <= store_count) or idx in notes:
+            continue
+
+        reason = _sanitize_llm_text(item.get("reason"), max_len=120)
+        if reason and _is_rating_boilerplate(reason):
+            reason = None
+
+        must_order = _sanitize_llm_text(item.get("must_order"), max_len=20)
+        notes[idx] = {"reason": reason, "must_order": must_order}
+
+    tip = _sanitize_llm_text(data.get("tip"), max_len=100)
+    return notes, tip
+
+
 def render_template_fallback_card(
     stores: list[dict[str, Any]],
     cuisine: str,
     is_format_fallback: bool = False,
     category: Optional[str] = None,
+    llm_notes: Optional[dict[int, dict[str, Optional[str]]]] = None,
+    llm_tip: Optional[str] = None,
+    search_meta: Optional[dict[str, Any]] = None,
+    budget_max_jpy: Optional[int] = None,
 ) -> str:
-    """LLM 連線失敗或格式回退時的純程式碼資料模板保底"""
+    """確定性卡片組裝器：兼作 LLM 短評 JSON 組卡渲染與連線/格式異常之純程式碼模板保底"""
     cat = resolve_card_category(cuisine=cuisine, category=category)
     if cat == "souvenir":
         badge = (
@@ -167,25 +235,43 @@ def render_template_fallback_card(
     lines = [badge]
     if not is_format_fallback:
         lines.append(f"精選「{cuisine or '熱門推薦'}」指標{entity_name}如下：\n")
+
+    if stores and all(s.get("constraint_warnings") for s in stores):
+        budget_note = f"（預算上限 ￥{budget_max_jpy:,}）" if budget_max_jpy else ""
+        lines.append(f"⚠️ 此區候選店家均略未完全符合設定條件{budget_note}，以下為最接近需求的精選推薦：\n")
+
     for idx, s in enumerate(stores, 1):
         name = s.get("name_ja") or s.get("name") or "精選餐廳"
         t_rating = s.get("tabelog_rating")
         g_rating = s.get("rating") or s.get("google_rating")
-
         walk_desc = s.get("walking_desc")
+        warnings_map = {
+            str(w["type"]): str(w["detail"])
+            for w in (s.get("constraint_warnings") or [])
+            if isinstance(w, dict) and w.get("type") and w.get("detail")
+        }
 
         rank_badge = s.get("rank_badge") or (["🥇", "🥈", "🥉"][idx - 1] if idx <= 3 else f"#{idx}")
         lines.append(f"### {rank_badge} 精選推薦 {idx}：`{name}`")
         if walk_desc:
             lines.append(f"🚶 **步行距離**：{walk_desc}")
-        lines.append(f"⏰ **營業狀態**：{format_operating_hours(s.get('open_now'))}")
+
+        hours_str = format_operating_hours(s.get("open_now"))
+        if "hours" in warnings_map:
+            hours_str += f"（⚠️ {warnings_map['hours']}）"
+        lines.append(f"⏰ **營業狀態**：{hours_str}")
+
         if t_rating:
             lines.append(f"⭐️ **Tabelog 評分**：{float(t_rating):.2f} 分 ({s.get('review_count', 0)} 則評價)")
         else:
             lines.append(f"⭐️ **評分資訊**：Google {g_rating or '4.0'} 分 (Tabelog 暫無評分，以 Google 評價為依據)")
 
-        if s.get("price_dinner"):
-            lines.append(f"💰 **預算**：晚餐 {s.get('price_dinner')}")
+        if s.get("price_dinner") or "budget" in warnings_map:
+            budget_val = f"晚餐 {s.get('price_dinner')}" if s.get("price_dinner") else "依現場菜單為準"
+            if "budget" in warnings_map:
+                budget_val += f"（⚠️ {warnings_map['budget']}）"
+            lines.append(f"💰 **預算**：{budget_val}")
+
         pay_desc = s.get("payment_methods_desc") or format_payment_methods(
             supports_paypay=s.get("supports_paypay"),
             credit_cards=s.get("credit_cards"),
@@ -193,8 +279,15 @@ def render_template_fallback_card(
             accepts_cash_only=s.get("accepts_cash_only"),
             accepts_nfc=s.get("accepts_nfc"),
         )
-        if pay_desc:
-            lines.append(f"💳 **支付方式**：{pay_desc}")
+        if pay_desc or "payment" in warnings_map:
+            pay_line = pay_desc or "支付資訊未完整標示"
+            if "payment" in warnings_map:
+                pay_line += f"（⚠️ {warnings_map['payment']}）"
+            lines.append(f"💳 **支付方式**：{pay_line}")
+
+        if "dietary" in warnings_map:
+            lines.append(f"⚠️ **飲食提醒**：{warnings_map['dietary']}")
+
         if s.get("address"):
             lines.append(f"📍 **地址**：{s.get('address')}")
         if s.get("tabelog_url"):
@@ -204,14 +297,40 @@ def render_template_fallback_card(
                 s.get("google_maps_url") or f"https://www.google.com/maps/place/?q=place_id:{s.get('google_place_id')}"
             )
             lines.append(f"🔗 [Google Maps 頁面]({g_url})")
-        # 老饕短評 (透過 ReviewSanitizer 淨化雜訊；無真實中文食評或獎項時寧缺勿濫)
-        rev_txt, rev_badge = synthesize_store_recommendation_reason(s, cuisine=cuisine)
-        if rev_txt:
-            lines.append(f"📍 **老饕推薦理由 ({rev_badge})**：{rev_txt}")
+
+        note = (llm_notes or {}).get(idx, {})
+        must_order = note.get("must_order")
+        if must_order:
+            lines.append(f"🍽️ **必點推薦**：{must_order}")
+
+        llm_reason = note.get("reason")
+        if llm_reason:
+            rev_source = s.get("foodie_review_source")
+            badge_label = (
+                "食べログ 口コミ"
+                if rev_source == "tabelog"
+                else ("Google 在地評價" if rev_source == "google" else "特派員精選")
+            )
+            lines.append(f"📍 **老饕推薦理由 ({badge_label})**：{llm_reason}")
+        else:
+            # 老饕短評 (透過 ReviewSanitizer 淨化雜訊；無真實中文食評或獎項時寧缺勿濫)
+            rev_txt, rev_badge = synthesize_store_recommendation_reason(s, cuisine=cuisine)
+            if rev_txt:
+                lines.append(f"📍 **老饕推薦理由 ({rev_badge})**：{rev_txt}")
         lines.append("")
 
     if len(stores) < 3:
-        lines.append(f"💡 **特派員提醒**：目前此範圍內精選出 {len(stores)} 家符合條件的名店；{explore_more_tip}\n")
+        stage2_count = int((search_meta or {}).get("stage2_count") or len(stores))
+        if stage2_count > len(stores):
+            reason_prefix = (
+                f"目前搜尋到 {stage2_count} 家候選，經去重與品質篩選後精選出 {len(stores)} 家符合條件的名店；"
+            )
+        else:
+            reason_prefix = f"目前搜尋範圍內僅找到 {len(stores)} 家高關聯名店；"
+        tail_tip = llm_tip or explore_more_tip
+        lines.append(f"💡 **特派員提醒**：{reason_prefix}{tail_tip}\n")
+    elif llm_tip:
+        lines.append(f"💡 **特派員提醒**：{llm_tip}\n")
 
     return "\n".join(lines).strip()
 
@@ -282,8 +401,9 @@ async def execute_state_4_synthesis(
     user_query: str = "",
     modifier: Optional[str] = None,
     budget_max_jpy: Optional[int] = None,
+    search_meta: Optional[dict[str, Any]] = None,
 ) -> str:
-    """State 4: 推薦卡片排版合成、護欄校驗與防禦回退"""
+    """State 4: LLM 精簡 JSON 短評 + Python 確定性卡片組裝與防禦回退"""
     t0 = time.time()
     cat = resolve_card_category(cuisine=cuisine, category=category)
 
@@ -402,29 +522,33 @@ async def execute_state_4_synthesis(
     ]
 
     try:
-        content, model, tokens = await fsm.llm_client.call_text(messages)
+        try:
+            content, model, tokens = await fsm.llm_client.call_text(messages, response_format={"type": "json_object"})
+        except TypeError:
+            content, model, tokens = await fsm.llm_client.call_text(messages)
         fsm._last_state_4_model = model
         fsm._last_state_4_tokens = tokens
-        card_text = content.strip()
-        if not card_text:
-            raise ValueError("LLM returned empty card content")
 
-        # 🛡️ 執行店名反引號代碼塊自動修復
-        card_text = repair_store_name_code_blocks(card_text, stores)
+        llm_notes: dict[int, dict[str, Optional[str]]] = {}
+        llm_tip: Optional[str] = None
+        parse_ok = False
+        try:
+            llm_notes, llm_tip = _parse_synthesis_json(content, len(stores))
+            parse_ok = bool(llm_notes)
+        except Exception as parse_err:
+            logger.warning(f"[CardSynthesis] JSON parse failed ({parse_err}). Falling back to deterministic card.")
 
-        # 🛡️ 執行 Scoped Anchor 毫秒級數值防偽校正護欄
-        card_text = fsm._sanitize_card_ratings(card_text, stores)
-
-        # 🛡️ 分級排版與真實性防禦 (Tiered Defense Guardrail)
-        fatal_errors, minor_warnings = validate_card_tiered(card_text, stores)
-        if fatal_errors:
-            logger.warning(
-                f"[CardGuardrail] Fatal violation detected ({', '.join(fatal_errors)}). "
-                f"Falling back to deterministic template card."
-            )
+        if not parse_ok:
             fsm._last_state_4_model = "template_fallback"
             fsm._last_state_4_tokens = 0
-            fallback_card = fsm._render_template_fallback_card(stores, cuisine, is_format_fallback=True, category=cat)
+            fallback_card = render_template_fallback_card(
+                stores,
+                cuisine,
+                is_format_fallback=True,
+                category=cat,
+                search_meta=search_meta,
+                budget_max_jpy=budget_max_jpy,
+            )
             latency = int((time.time() - t0) * 1000)
             await fsm.trace_logger.log_step(
                 action_type="state_4_synthesis",
@@ -433,19 +557,23 @@ async def execute_state_4_synthesis(
                     "stores_count": len(stores),
                     "cuisine": cuisine,
                     "category": cat,
-                    "fatal_errors": fatal_errors,
+                    "fatal_errors": ["invalid_json_output"],
                 },
                 tool_output={"card_content": fallback_card, "length": len(fallback_card)},
                 latency_ms=latency,
             )
             return fallback_card
 
-        if minor_warnings:
-            logger.info(
-                f"[CardGuardrail] Minor violations detected ({', '.join(minor_warnings)}). "
-                f"Performing in-place surgical repair."
-            )
-            card_text = repair_card_in_place(card_text, stores, cuisine=cuisine)
+        card_text = render_template_fallback_card(
+            stores,
+            cuisine,
+            is_format_fallback=True,
+            category=cat,
+            llm_notes=llm_notes,
+            llm_tip=llm_tip,
+            search_meta=search_meta,
+            budget_max_jpy=budget_max_jpy,
+        )
 
         latency = int((time.time() - t0) * 1000)
         await fsm.trace_logger.log_step(

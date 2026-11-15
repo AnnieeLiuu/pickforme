@@ -3654,3 +3654,91 @@ async def test_case_51_stage2_full_page_three_tier_seed_ranking_and_stage3_semap
     seed_names = [s["name_ja"] for s in seeds]
     # Tier A (平價 ～￥999 -> 0 <= 1500) > Tier B (None 疑罪從無) > Tier C (6000 > 1500) > is_relocated
     assert seed_names == ["平價拉麵TierA", "摘要缺價格名店", "高額高級店", "舊址移転高分"]
+
+
+@pytest.mark.asyncio
+async def test_case_52_step_b_deterministic_card_json_warnings_and_search_meta():
+    """Case 52 (Step B): 結構化 constraint_warnings + LLM 精簡 JSON 短評 + Python 確定性組卡 + search_meta 透明說明"""
+    import json
+
+    from src.agent.stages.enrichment import apply_deterministic_constraints
+    from src.agent.stages.synthesis import execute_state_4_synthesis
+
+    stores = [
+        {
+            "name_ja": "銀座 篝 本店",
+            "tabelog_rating": 3.72,
+            "review_count": 1200,
+            "price_dinner": "￥1,500～￥1,999",
+            "accepts_cash_only": True,
+            "open_now": False,
+            "tabelog_url": "https://tabelog.com/tokyo/A1301/A130101/13164198/",
+            "foodie_review_source": "tabelog",
+        },
+        {
+            "name_ja": "麺屋ひょっとこ",
+            "tabelog_rating": 3.65,
+            "review_count": 850,
+            "price_dinner": "￥1,200～￥1,999",
+            "accepts_cash_only": True,
+            "open_now": True,
+            "tabelog_url": "https://tabelog.com/tokyo/A1301/A130102/13049174/",
+            "foodie_review_source": "google",
+        },
+    ]
+
+    # 1. 驗證 apply_deterministic_constraints 產生結構化 constraint_warnings
+    apply_deterministic_constraints(
+        stores,
+        preferences={"payment_preferences": ["credit_card"]},
+        time_constraint="late_night",
+        budget_max_jpy=1000,
+    )
+    w_types_0 = {w["type"] for w in stores[0]["constraint_warnings"]}
+    assert w_types_0 == {"payment", "hours", "budget"}
+    assert stores[0]["constraint_violation"] is True
+
+    # 2. 驗證 execute_state_4_synthesis 解析 JSON 短評並確定性拼裝卡片 + warnings + search_meta
+    llm_json = json.dumps(
+        {
+            "stores": [
+                {
+                    "index": 1,
+                    "reason": "濃郁雞白湯順口不膩，搭配季節野菜口感豐富。",
+                    "must_order": "鶏白湯SOBA",
+                },
+                {
+                    "index": 2,
+                    "reason": "柚子清湯香氣撲鼻，叉燒軟嫩。",
+                    "must_order": None,
+                },
+            ],
+            "tip": "此區名店多僅收現金，建議備足現鈔。",
+        },
+        ensure_ascii=False,
+    )
+
+    fsm = MagicMock()
+    fsm.llm_client = MagicMock(call_text=AsyncMock(return_value=(llm_json, "llama-3.3-70b-versatile", 220)))
+    fsm.trace_logger = AsyncMock()
+
+    card = await execute_state_4_synthesis(
+        fsm,
+        stores,
+        cuisine="拉麵",
+        location_name="銀座",
+        budget_max_jpy=1000,
+        search_meta={"stage2_count": 2},
+    )
+
+    assert fsm._last_state_4_model == "llama-3.3-70b-versatile"
+    assert "`銀座 篝 本店`" in card
+    assert "`麺屋ひょっとこ`" in card
+    assert "🍽️ **必點推薦**：鶏白湯SOBA" in card
+    assert card.count("🍽️ **必點推薦**") == 1  # index 2 must_order=None 不渲染
+    assert "略高於預算 ￥1,000" in card
+    assert "不符刷卡需求" in card
+    assert "目前非營業時段／今日公休" in card
+    assert "此區候選店家均略未完全符合設定條件（預算上限 ￥1,000）" in card
+    assert "目前搜尋範圍內僅找到 2 家高關聯名店" in card
+    assert "此區名店多僅收現金，建議備足現鈔。" in card

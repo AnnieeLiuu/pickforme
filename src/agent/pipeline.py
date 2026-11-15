@@ -215,6 +215,7 @@ class FoodRecommendationFSM:
         user_query: str = "",
         modifier: Optional[str] = None,
         budget_max_jpy: Optional[int] = None,
+        search_meta: Optional[dict[str, Any]] = None,
     ) -> str:
         """State 4: 推薦卡片排版合成與護欄校驗 (委派至 stages.synthesis)"""
         return await stage_execute_state_4_synthesis(
@@ -226,6 +227,7 @@ class FoodRecommendationFSM:
             user_query=user_query,
             modifier=modifier,
             budget_max_jpy=budget_max_jpy,
+            search_meta=search_meta,
         )
 
     async def execute_follow_up(
@@ -551,6 +553,7 @@ class FoodRecommendationFSM:
                 user_query=user_message,
                 modifier=run_ctx.modifier,
                 budget_max_jpy=run_ctx.budget_max_jpy,
+                search_meta={"stage2_count": len(candidates)},
             )
             telemetry.end_span(span_s4, output_data={"card_length": len(final_card)})
 

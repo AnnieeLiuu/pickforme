@@ -38,8 +38,8 @@ STEP_TOOL_LABELS: dict[str, str] = {
     "places_search_ladder": "🗺️ Places 智慧階梯檢索",
     "parallel_tabelog_enrichment": "📊 Tabelog 平行查驗 + Constraint Sensor",
     "tabelog_parallel_enrich": "📊 Tabelog 平行查驗 + Constraint Sensor",
-    "card_synthesis": "🛡️ Scoped Anchor 卡片合成",
-    "generate_recommendation_card": "🛡️ Scoped Anchor 卡片合成",
+    "card_synthesis": "🧩 JSON 短評 + 確定性卡片合成",
+    "generate_recommendation_card": "🧩 JSON 短評 + 確定性卡片合成",
     "llm_follow_up": "💬 Two-Tier Memory 追問直答",
     "llm_chitchat": "💬 親切禮貌引導回覆",
 }

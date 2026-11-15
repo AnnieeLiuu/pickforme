@@ -90,8 +90,14 @@ def apply_deterministic_constraints(
         return stores
 
     for store in stores:
-        violated = False
+        warnings: list[dict[str, str]] = []
+        seen_types: set[str] = set()
         store_name = str(store.get("name_ja") or store.get("name") or "")
+
+        def _add_warning(w_type: str, detail: str) -> None:
+            if w_type not in seen_types:
+                seen_types.add(w_type)
+                warnings.append({"type": w_type, "detail": detail})
 
         # 1. 支付條件檢驗
         if "credit_card" in payment_reqs:
@@ -99,27 +105,30 @@ def apply_deterministic_constraints(
             cards = store.get("credit_cards")
             no_cards = isinstance(cards, list) and len(cards) == 0 and store.get("accepts_credit_cards") is not True
             if is_cash_only or no_cards:
-                violated = True
+                _add_warning("payment", "不符刷卡需求")
 
         if "paypay" in payment_reqs:
             if store.get("supports_paypay") is False or store.get("accepts_cash_only") is True:
-                violated = True
+                _add_warning("payment", "不符 PayPay 行動支付需求")
 
         # 2. 飲食禁忌檢驗
+        matched_diet: list[str] = []
         if "不吃牛" in dietary_reqs and "牛" in store_name:
-            violated = True
+            matched_diet.append("牛")
         if "不吃豬" in dietary_reqs and any(k in store_name for k in ("豚", "豬", "猪")):
-            violated = True
+            matched_diet.append("豬")
         if "不吃生食" in dietary_reqs and any(k in store_name for k in ("寿司", "鮨", "刺身", "壽司")):
-            violated = True
+            matched_diet.append("生食")
         if "不吃辣" in dietary_reqs and any(k in store_name for k in ("激辛", "麻辣", "担々", "擔擔", "辛")):
-            violated = True
+            matched_diet.append("辣")
+        if matched_diet:
+            _add_warning("dietary", f"店名含忌口關鍵字（{'／'.join(matched_diet)}）")
 
         # 3. 營業時間與即時營業狀態檢驗 (Deterministic Hours Sensor)
         # 嚴格守門：只有在明確標註已打烊/今日公休 (open_now is False) 時才懲罰；若無資料 (open_now is None) 則保護不扣分
         if time_constraint in ("now", "late_night", "breakfast"):
             if store.get("open_now") is False:
-                violated = True
+                _add_warning("hours", "目前非營業時段／今日公休")
 
         # 4. 預算上限軟性檢驗 (Deterministic Budget Sensor)
         # 僅在明確取得下界金額且高於 budget_max_jpy 時標記降權，絕不刪除候選店家
@@ -132,10 +141,11 @@ def apply_deterministic_constraints(
                 candidates_min = [p for p in (lunch_min, dinner_min) if p is not None]
                 effective_min = min(candidates_min) if candidates_min else None
             if effective_min is not None and effective_min > budget_max_jpy:
-                violated = True
+                _add_warning("budget", f"略高於預算 ￥{budget_max_jpy:,}")
 
-        if violated:
+        if warnings:
             store["constraint_violation"] = True
+            store["constraint_warnings"] = warnings
 
     return stores
 
