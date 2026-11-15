@@ -241,6 +241,8 @@ async def _hydrate_tabelog_seeds_with_places(
     keyword: str,
     max_radius: int,
     exclude_set: set[str],
+    budget_max_jpy: Optional[int] = None,
+    preferences: Optional[dict[str, Any]] = None,
 ) -> list[dict[str, Any]]:
     """源頭 A：主動從 Tabelog 獵取該地區高分/百名店名單，並反查 Google Places 錨定座標與步行距離"""
     if not origin_name:
@@ -253,7 +255,22 @@ async def _hydrate_tabelog_seeds_with_places(
         return []
 
     try:
-        res = discover_fn(area_name=origin_name, cuisine=keyword, max_seeds=3)
+        discover_kwargs: dict[str, Any] = {
+            "area_name": origin_name,
+            "cuisine": keyword,
+            "max_seeds": 4,
+        }
+        try:
+            sig = inspect.signature(discover_fn)
+            has_varkw = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
+            if has_varkw or "budget_max_jpy" in sig.parameters:
+                discover_kwargs["budget_max_jpy"] = budget_max_jpy
+            if has_varkw or "preferences" in sig.parameters:
+                discover_kwargs["preferences"] = preferences
+        except (ValueError, TypeError):
+            pass
+
+        res = discover_fn(**discover_kwargs)
         tabelog_seeds = await res if inspect.isawaitable(res) else res
         if not isinstance(tabelog_seeds, list) or not tabelog_seeds:
             return []
@@ -261,19 +278,22 @@ async def _hydrate_tabelog_seeds_with_places(
         logger.debug(f"Tabelog area seed discovery skipped: {e}")
         return []
 
+    seed_sem = asyncio.Semaphore(4)
+
     async def _resolve_one_seed(seed: dict[str, Any]) -> Optional[dict[str, Any]]:
         name_ja = (seed.get("name_ja") or "").strip()
         if not name_ja:
             return None
         try:
-            call_res = search_text_fn(
-                query=f"{name_ja} {origin_name}",
-                lat=lat,
-                lng=lng,
-                radius=max_radius,
-                max_results=1,
-            )
-            found = await call_res if inspect.isawaitable(call_res) else call_res
+            async with seed_sem:
+                call_res = search_text_fn(
+                    query=f"{name_ja} {origin_name}",
+                    lat=lat,
+                    lng=lng,
+                    radius=max_radius,
+                    max_results=1,
+                )
+                found = await call_res if inspect.isawaitable(call_res) else call_res
             if not isinstance(found, list) or not found:
                 return None
             place = dict(found[0])
@@ -338,6 +358,8 @@ async def execute_state_2_places_ladder(
     exclude_place_ids: Optional[set[str]] = None,
     max_candidates: int = 6,
     custom_radii: Optional[list[int]] = None,
+    budget_max_jpy: Optional[int] = None,
+    preferences: Optional[dict[str, Any]] = None,
 ) -> list[dict[str, Any]]:
     """State 2: Google Places 智慧階梯檢索 (800m ➔ 1200m ➔ 1800m ➔ 2500m 擴圈保底) + 潛力預篩"""
     t0 = time.time()
@@ -357,6 +379,8 @@ async def execute_state_2_places_ladder(
             keyword=keyword,
             max_radius=max_seed_radius,
             exclude_set=exclude_set,
+            budget_max_jpy=budget_max_jpy,
+            preferences=preferences,
         )
     )
 

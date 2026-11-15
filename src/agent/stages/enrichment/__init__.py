@@ -21,11 +21,7 @@ from src.agent.stages.enrichment.geocoding import (
     _align_walking_and_station,
     _hydrate_station_walking_distances,
 )
-from src.agent.stages.enrichment.orchestrator import (
-    count_high_score_stores,
-    execute_state_3_parallel_tabelog,
-    should_trigger_tier2,
-)
+from src.agent.stages.enrichment.orchestrator import execute_state_3_parallel_tabelog
 from src.agent.stages.enrichment.reviews import (
     enrich_foodie_reviews,
     index_store_reviews,
@@ -65,8 +61,6 @@ __all__ = [
     "search_and_resolve_tabelog",
     # Single Place
     "enrich_single_place",
-    # Orchestrator & Early Stopping
-    "count_high_score_stores",
-    "should_trigger_tier2",
+    # Orchestrator
     "execute_state_3_parallel_tabelog",
 ]

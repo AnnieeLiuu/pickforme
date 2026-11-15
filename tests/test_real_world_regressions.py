@@ -596,15 +596,15 @@ async def test_case12_smart_prefiltering_early_stopping_and_foodie_ranking():
 
     fsm._enrich_single_place = AsyncMock(side_effect=mock_enrich)
 
-    # 執行 State 3：因為 Tier 1 已有 Shop 1 (3.55) 與 Shop 2 (3.48) 兩家高分店，應直接觸發 Early Stopping！
+    # 執行 State 3：全面查驗 6 家候選（不因前 4 家達標而早停漏掉 3.60 的 Shop 5）
     final_top3 = await fsm.execute_state_3_parallel_tabelog(all_6_seeds, area_hint="橫濱")
 
-    # 驗證只查驗了 Tier 1 的 4 家，Tier 2 的 p5 與 p6 完全未被呼叫！
-    assert len(called_pids) == 4
-    assert "p5" not in called_pids
-    assert "p6" not in called_pids
+    # 驗證 6 家全數查驗，且原本在後 2 家的 Shop 5 (3.60) 成功登上第一名！
+    assert len(called_pids) == 6
+    assert "p5" in called_pids
+    assert "p6" in called_pids
     assert len(final_top3) == 3
-    assert final_top3[0]["name_ja"] == "Shop 1"
+    assert final_top3[0]["name_ja"] == "Shop 5"
     assert final_top3[0]["rank_badge"] == "🥇"
 
 
@@ -3566,7 +3566,7 @@ def test_case_49_pure_ja_search_keyword_and_budget_soft_ranking():
 
 @pytest.mark.asyncio
 async def test_case_50_budget_disables_early_stopping_and_caps_google_44():
-    """Case 50 (ace8b4db 藏前咖啡): 有 budget_max_jpy 時不早停查完 Tier 2，且無 Tabelog 時壓平 Google >4.4 星"""
+    """Case 50 (ace8b4db 藏前咖啡): 全面查完候選以納入平價店，且無 Tabelog 時壓平 Google >4.4 星"""
     from src.agent.stages.enrichment import calculate_foodie_score, execute_state_3_parallel_tabelog
 
     # 1. 無 Tabelog 時，4.8 星與 4.4 星皆套用 4.4 壓平保護
@@ -3606,3 +3606,51 @@ async def test_case_50_budget_disables_early_stopping_and_caps_google_44():
     top_names = [s["name"] for s in top]
     assert "コフィノワ" in top_names
     assert "Paradise Poke" not in top_names
+
+
+@pytest.mark.asyncio
+async def test_case_51_stage2_full_page_three_tier_seed_ranking_and_stage3_semaphore():
+    """Case 51 (Step A): Stage 2 首頁全收 (>5) + 三級 Fail-Open 預選 (Tier A > Tier B None > Tier C)，Stage 3 全查 Semaphore(4)"""
+    from src.services.tabelog_scraper import TabelogScraper
+
+    scraper = TabelogScraper()
+
+    # 1. 驗證 _fetch_and_parse_grounding 不再於 5 家截斷，可解析第 1 頁全部 7 家結果
+    cards_html = "".join(
+        f'<section class="sw-Card"><h3><a href="https://tabelog.com/tokyo/A1301/A130101/{13000000 + i}/">'
+        f"名店{i}</a></h3><p>食べログ 3.5{i} 口コミ 10件 ￥1,000～￥1,999</p></section>"
+        for i in range(1, 8)
+    )
+    fake_resp = MagicMock(status_code=200, text=f"<html><body>{cards_html}</body></html>")
+    fake_client = AsyncMock()
+    fake_client.get = AsyncMock(return_value=fake_resp)
+    fake_client.__aenter__ = AsyncMock(return_value=fake_client)
+    fake_client.__aexit__ = AsyncMock(return_value=None)
+
+    with patch("src.services.tabelog_scraper.httpx.AsyncClient", return_value=fake_client):
+        parsed = await scraper._fetch_and_parse_grounding("銀座 拉麵", "拉麵")
+    assert len(parsed) == 7
+
+    # 2. 驗證 discover_area_top_stores 三級 Fail-Open 排序與移転防護
+    mock_candidates = [
+        {"name_ja": "高額高級店", "tabelog_rating": 3.85, "price_dinner": "￥6,000～￥7,999", "is_relocated": False},
+        {"name_ja": "舊址移転高分", "tabelog_rating": 3.90, "price_dinner": "～￥999", "is_relocated": True},
+        {
+            "name_ja": "摘要缺價格名店",
+            "tabelog_rating": 3.75,
+            "price_lunch": None,
+            "price_dinner": None,
+            "is_relocated": False,
+        },
+        {"name_ja": "平價拉麵TierA", "tabelog_rating": 3.55, "price_dinner": "～￥999", "is_relocated": False},
+    ]
+    scraper.search_via_grounding = AsyncMock(return_value=mock_candidates)
+    seeds = await scraper.discover_area_top_stores(
+        area_name="銀座",
+        cuisine="拉麵",
+        max_seeds=4,
+        budget_max_jpy=1500,
+    )
+    seed_names = [s["name_ja"] for s in seeds]
+    # Tier A (平價 ～￥999 -> 0 <= 1500) > Tier B (None 疑罪從無) > Tier C (6000 > 1500) > is_relocated
+    assert seed_names == ["平價拉麵TierA", "摘要缺價格名店", "高額高級店", "舊址移転高分"]

@@ -320,18 +320,47 @@ class TabelogScraper:
                 }
             )
             seen_urls.add(clean_url)
-            if len(candidates) >= 5:
-                break
 
         return candidates
+
+    @staticmethod
+    def _extract_min_budget_jpy(price_str: Optional[str]) -> Optional[int]:
+        """從 Tabelog 預算區間字串解析最低消費金額 (日圓)
+
+        - 「～￥999」等僅有上限者，下界視為 0（不會誤殺低預算查詢）
+        - 「￥1,000～￥1,999」或「￥10,000～」等具明確下界者，回傳下界整數
+        - 無效或缺失字串（如 None / "-"）回傳 None
+        """
+        if not isinstance(price_str, str):
+            return None
+        s = price_str.strip()
+        if not s or s == "-":
+            return None
+        if s[0] in ("～", "~"):
+            return 0
+        m = re.search(r"[￥¥]?\s*([0-9][0-9,]*)", s)
+        if not m:
+            return None
+        try:
+            return int(m.group(1).replace(",", ""))
+        except ValueError:
+            return None
 
     async def discover_area_top_stores(
         self,
         area_name: str,
         cuisine: str,
-        max_seeds: int = 3,
+        max_seeds: int = 4,
+        budget_max_jpy: Optional[int] = None,
+        preferences: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
-        """主動獵取指定地區與料理類別之 Tabelog 高分/百名店原生名單 (Tabelog-First Discovery)"""
+        """主動獵取指定地區與料理類別之 Tabelog 高分/百名店原生名單 (Tabelog-First Discovery)
+
+        支援三級優先權（Fail-Open 疑罪從無）：
+        - Tier A (2): 明確符合預算/支付條件且無違規
+        - Tier B (1): 摘要缺欄 (None) 未知，中立保留交由 Stage 3 查證
+        - Tier C (0): 明確超標或違規，大幅降權墊底但不直接丟棄
+        """
         clean_area = (area_name or "").strip()
         clean_cuisine = (cuisine or "").strip()
         if not clean_area:
@@ -344,10 +373,62 @@ class TabelogScraper:
         if not raw_candidates:
             return []
 
-        def _seed_priority(c: dict[str, Any]) -> float:
+        payment_reqs: set[str] = set()
+        if isinstance(preferences, dict):
+            pay_list = preferences.get("payment_preferences")
+            if isinstance(pay_list, list):
+                payment_reqs.update(str(p) for p in pay_list if p)
+
+        has_budget = budget_max_jpy is not None and budget_max_jpy > 0
+        has_conditions = has_budget or bool(payment_reqs)
+
+        def _evaluate_tier(c: dict[str, Any]) -> int:
+            if not has_conditions:
+                return 0
+            explicit_match = False
+            unknown = False
+
+            if has_budget and budget_max_jpy is not None:
+                lunch_min = self._extract_min_budget_jpy(c.get("price_lunch"))
+                dinner_min = self._extract_min_budget_jpy(c.get("price_dinner"))
+                mins = [p for p in (lunch_min, dinner_min) if p is not None]
+                if not mins:
+                    unknown = True
+                elif min(mins) > budget_max_jpy:
+                    return 0  # Tier C: 明確超標
+                else:
+                    explicit_match = True
+
+            if "credit_card" in payment_reqs:
+                cards = c.get("credit_cards")
+                if cards is None:
+                    unknown = True
+                elif isinstance(cards, list) and len(cards) == 0:
+                    return 0  # Tier C: 明確不收信用卡
+                elif isinstance(cards, list) and len(cards) > 0:
+                    explicit_match = True
+                else:
+                    unknown = True
+
+            if "paypay" in payment_reqs:
+                pp = c.get("supports_paypay")
+                if pp is None:
+                    unknown = True
+                elif pp is False:
+                    return 0  # Tier C: 明確不支援 PayPay
+                elif pp is True:
+                    explicit_match = True
+
+            if explicit_match and not unknown:
+                return 2  # Tier A: 明確符合
+            return 1  # Tier B: 疑罪從無（未知保留）
+
+        def _seed_priority(c: dict[str, Any]) -> tuple[int, int, float]:
+            not_relocated = 0 if c.get("is_relocated") else 1
+            tier_rank = _evaluate_tier(c)
             rating = float(c.get("tabelog_rating") or 0.0)
             has_award = bool(c.get("hyakumeiten") or c.get("awards"))
-            return rating + (0.5 if has_award else 0.0)
+            return (not_relocated, tier_rank, rating + (0.5 if has_award else 0.0))
 
         sorted_cands = sorted(raw_candidates, key=_seed_priority, reverse=True)
         return sorted_cands[:max_seeds]

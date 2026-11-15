@@ -20,7 +20,6 @@ from src.agent.stages.enrichment import (
     calculate_foodie_score,
     check_cached_store,
     check_seed_store,
-    count_high_score_stores,
     enrich_foodie_reviews,
     enrich_single_place,
     execute_state_3_parallel_tabelog,
@@ -29,7 +28,6 @@ from src.agent.stages.enrichment import (
     rank_and_select_top_stores,
     search_and_resolve_tabelog,
     semantic_rerank_reviews,
-    should_trigger_tier2,
 )
 
 
@@ -116,27 +114,34 @@ def test_ranking_and_deduplication():
     assert top[2]["name_ja"] == "拉麵 一蘭"
 
 
-def test_early_stopping_policy():
-    # High score stores count
-    stores_high = [
-        {"tabelog_rating": 3.55},
-        {"awards": ["百名店"]},
-        {"tabelog_rating": 3.2},
-    ]
-    assert count_high_score_stores(stores_high) == 2
+@pytest.mark.asyncio
+async def test_orchestrator_semaphore_bounded_full_enrichment():
+    """Verify State 3 enriches all up to 6 candidates concurrently with Semaphore(4) bound."""
+    import asyncio
 
-    # Should trigger tier 2:
-    # 1. high score >= 2 and no budget: should NOT trigger tier 2 (early stopping satisfied)
-    assert should_trigger_tier2(high_score_count=2, budget_max_jpy=None, has_tier2_places=True) is False
+    active = 0
+    max_active = 0
 
-    # 2. high score < 2 and no budget: should trigger tier 2
-    assert should_trigger_tier2(high_score_count=1, budget_max_jpy=None, has_tier2_places=True) is True
+    async def fake_enrich(place, area_hint=None):
+        nonlocal active, max_active
+        active += 1
+        max_active = max(max_active, active)
+        await asyncio.sleep(0.01)
+        active -= 1
+        return {**place, "tabelog_rating": 3.55}
 
-    # 3. high score >= 2 BUT budget_max_jpy is specified: should trigger tier 2 (to find budget stores)
-    assert should_trigger_tier2(high_score_count=2, budget_max_jpy=1000, has_tier2_places=True) is True
+    fsm = MagicMock()
+    fsm._enrich_single_place = AsyncMock(side_effect=fake_enrich)
+    fsm.rank_and_select_top_stores = MagicMock(side_effect=lambda stores, top_k=3: stores[:top_k])
+    fsm.places_client = MagicMock(geocode_location=AsyncMock(return_value=None))
+    fsm.tabelog_scraper = MagicMock(fetch_tabelog_reviews=None)
+    fsm.trace_logger = AsyncMock()
 
-    # 4. No tier 2 places available: should NOT trigger tier 2
-    assert should_trigger_tier2(high_score_count=0, budget_max_jpy=1000, has_tier2_places=False) is False
+    places = [{"id": f"p{i}", "name": f"店{i}"} for i in range(6)]
+    top = await execute_state_3_parallel_tabelog(fsm, places, area_hint="東京")
+    assert len(top) == 3
+    assert fsm._enrich_single_place.await_count == 6
+    assert max_active <= 4
 
 
 @pytest.mark.asyncio
@@ -317,10 +322,10 @@ async def test_orchestrator_execution_end_to_end():
         {"id": "p5", "name": "店5", "rating": 4.1},
     ]
 
-    # No budget constraint, Tier 1 has 2 high score stores (p1, p2) -> Early stopping, only 4 places enriched!
+    # Full enrichment without early stopping -> all 5 places enriched!
     top = await execute_state_3_parallel_tabelog(fsm, places, area_hint="東京")
     assert len(top) == 3
-    assert fsm._enrich_single_place.await_count == 4
+    assert fsm._enrich_single_place.await_count == 5
     fsm.trace_logger.log_step.assert_called_once()
 
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""State 3 Orchestrator: Adaptive Early Stopping, parallel execution, and foodie ranking."""
+"""State 3 Orchestrator: Semaphore-bounded parallel enrichment and foodie ranking."""
 
 from __future__ import annotations
 
@@ -18,31 +18,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def count_high_score_stores(stores: list[dict[str, Any]]) -> int:
-    """計算符合 Tabelog 高分名店標準 (tabelog_rating >= 3.45 或百名店/獲獎) 的店家數量"""
-    return sum(
-        1
-        for s in stores
-        if (s.get("tabelog_rating") and float(s["tabelog_rating"]) >= 3.45)
-        or bool(s.get("awards"))
-        or bool(s.get("hyakumeiten"))
-    )
-
-
-def should_trigger_tier2(
-    high_score_count: int,
-    budget_max_jpy: Optional[int],
-    has_tier2_places: bool,
-) -> bool:
-    """評估是否滿足自適應早停條件。
-
-    規則：
-    - 若已有 >= 2 家高分名店且無預算限制，觸發早停 (回傳 False)。
-    - 若高分店不足 (< 2) 或使用者指定預算上限 (需查完全部候選以挑選平價店)，且存在 Tier 2 店家，啟動 Tier 2 (回傳 True)。
-    """
-    return bool(has_tier2_places and (high_score_count < 2 or budget_max_jpy is not None))
-
-
 async def execute_state_3_parallel_tabelog(
     fsm: FoodRecommendationFSM,
     places: list[dict[str, Any]],
@@ -52,30 +27,17 @@ async def execute_state_3_parallel_tabelog(
     time_constraint: Optional[str] = None,
     budget_max_jpy: Optional[int] = None,
 ) -> list[dict[str, Any]]:
-    """State 3: 自適應漸進查驗 (Adaptive Early Stopping) + Tabelog 老饕綜合重排"""
+    """State 3: 全候選店 Semaphore 限流並發查驗 + Tabelog 老饕綜合重排"""
     t0 = time.time()
-    tier1_places = places[:4]
-    tier2_places = places[4:6]
+    candidate_places = places[:6]
+    enrich_sem = asyncio.Semaphore(4)
 
-    # 1. Tier 1 平行查驗 (前 4 家高潛力種子)
-    tier1_tasks = [fsm._enrich_single_place(p, area_hint=area_hint) for p in tier1_places]
-    tier1_results = await asyncio.gather(*tier1_tasks)
+    async def _bounded_enrich(place: dict[str, Any]) -> dict[str, Any]:
+        async with enrich_sem:
+            return await fsm._enrich_single_place(place, area_hint=area_hint)
 
-    # 2. 品質門檻檢驗：若已有 >= 2 家達到 Tabelog 高分名店標準 (tabelog_rating >= 3.45 或百名店)
-    high_score_count = count_high_score_stores(list(tier1_results))
-    final_enriched = list(tier1_results)
-
-    # 3. 自適應決策：若品質不足、或使用者有明確預算條件 (需查完 Tier 2 才能撈出平價店)，啟動 Tier 2 查驗
-    if should_trigger_tier2(high_score_count, budget_max_jpy, bool(tier2_places)):
-        logger.info(
-            f"Triggering Tier 2 enrichment for {len(tier2_places)} stores "
-            f"(high_score_count={high_score_count}, budget_max_jpy={budget_max_jpy})."
-        )
-        tier2_tasks = [fsm._enrich_single_place(p, area_hint=area_hint) for p in tier2_places]
-        tier2_results = await asyncio.gather(*tier2_tasks)
-        final_enriched.extend(tier2_results)
-    else:
-        logger.info(f"Tier 1 high-score count={high_score_count}. Early stopping satisfied, skipping Tier 2.")
+    # 1. 全候選平行查驗（Semaphore(4) 限流防 Tabelog 403，同時確保無早停遺珠）
+    final_enriched = list(await asyncio.gather(*[_bounded_enrich(p) for p in candidate_places]))
 
     # 4. 預算與硬性條件預先加權評估（於挑選 Top 3 前執行，避免符合預算者被高價店擠出名單）
     if modifier or preferences or time_constraint or budget_max_jpy is not None:

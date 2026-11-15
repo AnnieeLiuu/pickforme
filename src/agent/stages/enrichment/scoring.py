@@ -8,6 +8,9 @@ from typing import Any, Optional
 
 from src.agent.schemas import extract_preferences_from_text
 from src.agent.stages.places_search import is_wide_area_origin
+from src.services.tabelog_scraper import TabelogScraper
+
+_extract_min_budget_jpy = TabelogScraper._extract_min_budget_jpy
 
 
 def calculate_foodie_score(store: dict[str, Any]) -> float:
@@ -46,29 +49,6 @@ def calculate_foodie_score(store: dict[str, Any]) -> float:
     constraint_penalty = 0.45 if store.get("constraint_violation") is True else 0.0
 
     return base_score + award_bonus - dist_penalty - constraint_penalty
-
-
-def _extract_min_budget_jpy(price_str: Optional[str]) -> Optional[int]:
-    """從 Tabelog 預算區間字串解析最低消費金額 (日圓)
-
-    - 「～￥999」等僅有上限者，下界視為 0（不會誤殺低預算查詢）
-    - 「￥1,000～￥1,999」或「￥10,000～」等具明確下界者，回傳下界整數
-    - 無效或缺失字串（如 None / "-"）回傳 None
-    """
-    if not isinstance(price_str, str):
-        return None
-    s = price_str.strip()
-    if not s or s == "-":
-        return None
-    if s[0] in ("～", "~"):
-        return 0
-    m = re.search(r"[￥¥]?\s*([0-9][0-9,]*)", s)
-    if not m:
-        return None
-    try:
-        return int(m.group(1).replace(",", ""))
-    except ValueError:
-        return None
 
 
 def apply_deterministic_constraints(

@@ -135,6 +135,8 @@ class FoodRecommendationFSM:
         exclude_place_ids: Optional[set[str]] = None,
         max_candidates: int = 6,
         custom_radii: Optional[list[int]] = None,
+        budget_max_jpy: Optional[int] = None,
+        preferences: Optional[dict[str, Any]] = None,
     ) -> list[dict[str, Any]]:
         """State 2: Google Places 智慧階梯檢索 (委派至 stages.places_search)"""
         return await stage_execute_state_2_places_ladder(
@@ -146,6 +148,8 @@ class FoodRecommendationFSM:
             exclude_place_ids=exclude_place_ids,
             max_candidates=max_candidates,
             custom_radii=custom_radii,
+            budget_max_jpy=budget_max_jpy,
+            preferences=preferences,
         )
 
     async def _enrich_single_place(self, place: dict[str, Any], area_hint: Optional[str] = None) -> dict[str, Any]:
@@ -497,6 +501,8 @@ class FoodRecommendationFSM:
                 origin_name=run_ctx.location_name,
                 exclude_place_ids=run_ctx.exclude_place_ids,
                 custom_radii=run_ctx.radii_ladder,
+                budget_max_jpy=run_ctx.budget_max_jpy,
+                preferences=run_ctx.long_term_preferences,
             )
             telemetry.end_span(span_s2, output_data={"candidate_count": len(candidates)})
             if not candidates:
