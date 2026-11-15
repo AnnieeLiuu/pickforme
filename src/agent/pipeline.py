@@ -6,7 +6,6 @@ from typing import Any, Awaitable, Callable, Optional
 from src.agent.llm_client import LLMClient
 from src.agent.schemas import FSMRunContext
 from src.agent.stages.enrichment import (
-    apply_deterministic_constraints,
     calculate_foodie_score,
     enrich_single_place,
     format_payment_methods,
@@ -170,10 +169,24 @@ class FoodRecommendationFSM:
         return rank_and_select_top_stores(stores, top_k=top_k)
 
     async def execute_state_3_parallel_tabelog(
-        self, places: list[dict[str, Any]], area_hint: Optional[str] = None
+        self,
+        places: list[dict[str, Any]],
+        area_hint: Optional[str] = None,
+        modifier: Optional[str] = None,
+        preferences: Optional[dict[str, Any]] = None,
+        time_constraint: Optional[str] = None,
+        budget_max_jpy: Optional[int] = None,
     ) -> list[dict[str, Any]]:
         """State 3: 自適應漸進查驗 + Tabelog 老饕綜合重排 (委派至 stages.enrichment)"""
-        return await stage_execute_state_3_parallel_tabelog(self, places, area_hint=area_hint)
+        return await stage_execute_state_3_parallel_tabelog(
+            self,
+            places,
+            area_hint=area_hint,
+            modifier=modifier,
+            preferences=preferences,
+            time_constraint=time_constraint,
+            budget_max_jpy=budget_max_jpy,
+        )
 
     def _render_template_fallback_card(
         self,
@@ -196,10 +209,19 @@ class FoodRecommendationFSM:
         location_name: Optional[str],
         category: Optional[str] = None,
         user_query: str = "",
+        modifier: Optional[str] = None,
+        budget_max_jpy: Optional[int] = None,
     ) -> str:
         """State 4: 推薦卡片排版合成與護欄校驗 (委派至 stages.synthesis)"""
         return await stage_execute_state_4_synthesis(
-            self, stores, cuisine, location_name, category=category, user_query=user_query
+            self,
+            stores,
+            cuisine,
+            location_name,
+            category=category,
+            user_query=user_query,
+            modifier=modifier,
+            budget_max_jpy=budget_max_jpy,
         )
 
     async def execute_follow_up(
@@ -405,9 +427,15 @@ class FoodRecommendationFSM:
             cuisine = parsed.get("cuisine") or "熱門美食"
             loc_name = parsed.get("location")
             modifier = parsed.get("modifier")
+            search_keyword_ja = parsed.get("search_keyword_ja")
+            budget_max_jpy = parsed.get("budget_max_jpy")
 
-            # 結構化搜尋約束解析：解耦料理核心詞、物理半徑階梯與風格修飾語 (杜絕關鍵字污染)
-            search_keyword, radii_ladder, style_tag = resolve_search_constraints(cuisine=cuisine, modifier=modifier)
+            # 結構化搜尋約束解析：解耦料理核心詞、純淨日文搜尋詞、物理半徑階梯與風格修飾語 (杜絕關鍵字污染)
+            search_keyword, radii_ladder, style_tag = resolve_search_constraints(
+                cuisine=cuisine,
+                modifier=modifier,
+                search_keyword_ja=search_keyword_ja,
+            )
 
             # 若為換一批 (intent: more)，取得過去累積看過的所有店家 ID 進行黑名單過濾
             exclude_ids: set[str] = set()
@@ -441,6 +469,7 @@ class FoodRecommendationFSM:
                 cuisine=cuisine,
                 modifier=modifier,
                 search_keyword=search_keyword,
+                budget_max_jpy=budget_max_jpy,
                 time_constraint=parsed.get("time_constraint"),
                 radii_ladder=radii_ladder,
                 style_tag=style_tag,
@@ -472,25 +501,22 @@ class FoodRecommendationFSM:
             telemetry.end_span(span_s2, output_data={"candidate_count": len(candidates)})
             if not candidates:
                 await self.trace_logger.finish_run(status="completed")
-                no_cand_msg = f"抱歉，在 {run_ctx.location_name or '該地點'} 週邊暫時未檢索到更多符合「{run_ctx.search_keyword}」的高評價餐廳，建議可更換地標或料理關鍵字再次搜尋。"
+                no_cand_msg = f"抱歉，在 {run_ctx.location_name or '該地點'} 週邊暫時未檢索到更多符合「{run_ctx.cuisine}」的高評價餐廳，建議可更換地標或料理關鍵字再次搜尋。"
                 telemetry.end_trace(trace, output_data=no_cand_msg)
                 return no_cand_msg
 
-            # 3. State 3: 3 店家平行 Tabelog 查驗
+            # 3. State 3: 候選店家平行 Tabelog 查驗 + 預算/硬性條件預先加權重排
             span_s3 = telemetry.start_span(
                 "enrich-restaurants", input_data={"candidates": [c.get("name") for c in candidates]}
             )
-            enriched_stores = await self.execute_state_3_parallel_tabelog(candidates, area_hint=run_ctx.location_name)
-
-            # 3.2 Deterministic Constraint Sensor: 根據當輪 modifier 與長期偏好進行硬性條件降權與重排
-            enriched_stores = apply_deterministic_constraints(
-                enriched_stores,
+            enriched_stores = await self.execute_state_3_parallel_tabelog(
+                candidates,
+                area_hint=run_ctx.location_name,
                 modifier=run_ctx.modifier,
                 preferences=run_ctx.long_term_preferences,
                 time_constraint=run_ctx.time_constraint,
+                budget_max_jpy=run_ctx.budget_max_jpy,
             )
-            if any(s.get("constraint_violation") is True for s in enriched_stores):
-                enriched_stores = self.rank_and_select_top_stores(enriched_stores, top_k=len(enriched_stores))
 
             # 3.5 pgvector 語意重排與食評亮點萃取 (RAG)
             rerank_query = f"{run_ctx.user_message} {run_ctx.modifier}" if run_ctx.modifier else run_ctx.user_message
@@ -513,10 +539,12 @@ class FoodRecommendationFSM:
             )
             final_card = await self.execute_state_4_synthesis(
                 stores=enriched_stores,
-                cuisine=run_ctx.search_keyword,
+                cuisine=run_ctx.cuisine,
                 location_name=run_ctx.location_name,
                 category=run_ctx.explore_category,
                 user_query=user_message,
+                modifier=run_ctx.modifier,
+                budget_max_jpy=run_ctx.budget_max_jpy,
             )
             telemetry.end_span(span_s4, output_data={"card_length": len(final_card)})
 
@@ -527,8 +555,10 @@ class FoodRecommendationFSM:
                         chat_id=run_ctx.chat_id,
                         recommended_ids=enriched_stores,
                         accumulate=(run_ctx.intent == "more"),
-                        last_cuisine=run_ctx.search_keyword,
+                        last_cuisine=run_ctx.cuisine,
                         last_location=run_ctx.location_name,
+                        last_search_keyword_ja=search_keyword_ja,
+                        last_budget_max_jpy=run_ctx.budget_max_jpy,
                     )
                 except Exception as e:
                     logger.warning(f"Could not persist recommended stores to session: {e}")

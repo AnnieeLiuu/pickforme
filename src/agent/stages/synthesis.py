@@ -37,8 +37,8 @@ AGENT_SYSTEM_PROMPT_PATH = PROMPTS_DIR / "agent_system.md"
 RECOMMENDATION_CARD_SYSTEM_PROMPT = """你是一位專業、熱情的日本美食特派員「PickForMe (美食導航員)」，請依據所提供的候選店家完整資料，以繁體中文為使用者排版生成引人入勝、專業的美食推薦卡片。
 
 排版規範：
-1. 動態精選推薦梯隊（真實呈現 1 ~ 4 家，絕不湊數）：
-   - 根據給予的候選餐廳清單推薦符合條件的店家。
+1. 動態精選推薦梯隊（真實呈現 1 ~ 4 家，絕不湊數，亦絕不篩成 0 家）：
+   - 根據給予的候選餐廳清單，優先推薦符合條件的店家；若無完全符合預算或風格者，不可全部淘汰成 0 家，請誠實標註差距並呈現最接近需求的 1 ~ 3 家。
    - 【嚴格真實性禁令】：絕對禁止自行補充、腦補或推薦任何未列於輸入候選清單中的店家！若候選名單只有 1~2 家，就只誠實呈現該 1~2 家；店家連結必須使用輸入提供的真實連結，嚴禁自行產生 google.com/maps/search/ 搜尋字串或捏造網址！
 2. 每家餐廳排版格式規範（嚴格依序）：
    - 🍱 **店名**：請務必將「日文原名」單獨放在 Code 區塊中（例如：`寿々喜家 本店`），方便 Telegram 一鍵點擊複製！
@@ -280,6 +280,8 @@ async def execute_state_4_synthesis(
     location_name: Optional[str],
     category: Optional[str] = None,
     user_query: str = "",
+    modifier: Optional[str] = None,
+    budget_max_jpy: Optional[int] = None,
 ) -> str:
     """State 4: 推薦卡片排版合成、護欄校驗與防禦回退"""
     t0 = time.time()
@@ -302,9 +304,22 @@ async def execute_state_4_synthesis(
     if len(stores) < 3:
         honest_notice = f"（特別提醒：目前此範圍內符合條件之{honest_label}僅有 {len(stores)} 家，請誠實僅呈現這 {len(stores)} 家，絕對禁止無中生有自行腦補其他店家或搜尋連結，並請在特派員提醒中建議使用者若想看更多可擴大半徑或換個商圈）\n"
 
+    constraint_notice = ""
+    if modifier or budget_max_jpy:
+        cond_parts: list[str] = []
+        if modifier:
+            cond_parts.append(f"條件「{modifier}」")
+        if budget_max_jpy:
+            cond_parts.append(f"預算上限約 ￥{budget_max_jpy:,}")
+        cond_str = " / ".join(cond_parts)
+        constraint_notice = (
+            f"（偏好篩選提醒：使用者期望 {cond_str}。請優先推薦符合該條件的店家；"
+            f"若無完全符合者，絕不可全部淘汰成 0 家，請誠實說明差距並推薦最接近的 1~{len(stores)} 家）\n"
+        )
+
     prompt_content = (
         f"目標地點：{location_name or '指定區域'}\n{category_header}：{cuisine or '熱門推薦'}\n"
-        f"{entity_label}總數：共 {len(stores)} 家 {honest_notice}\n{entity_label}詳細數據如下：\n"
+        f"{entity_label}總數：共 {len(stores)} 家 {honest_notice}{constraint_notice}\n{entity_label}詳細數據如下：\n"
     )
     for idx, s in enumerate(stores, 1):
         rank_badge = s.get("rank_badge") or (["🥇", "🥈", "🥉"][idx - 1] if idx <= 3 else f"#{idx}")

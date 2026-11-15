@@ -112,13 +112,37 @@ def calculate_foodie_score(store: dict[str, Any]) -> float:
     return base_score + award_bonus - dist_penalty - constraint_penalty
 
 
+def _extract_min_budget_jpy(price_str: Optional[str]) -> Optional[int]:
+    """從 Tabelog 預算區間字串解析最低消費金額 (日圓)
+
+    - 「～￥999」等僅有上限者，下界視為 0（不會誤殺低預算查詢）
+    - 「￥1,000～￥1,999」或「￥10,000～」等具明確下界者，回傳下界整數
+    - 無效或缺失字串（如 None / "-"）回傳 None
+    """
+    if not isinstance(price_str, str):
+        return None
+    s = price_str.strip()
+    if not s or s == "-":
+        return None
+    if s[0] in ("～", "~"):
+        return 0
+    m = re.search(r"[￥¥]?\s*([0-9][0-9,]*)", s)
+    if not m:
+        return None
+    try:
+        return int(m.group(1).replace(",", ""))
+    except ValueError:
+        return None
+
+
 def apply_deterministic_constraints(
     stores: list[dict[str, Any]],
     modifier: Optional[str] = None,
     preferences: Optional[dict[str, Any]] = None,
     time_constraint: Optional[str] = None,
+    budget_max_jpy: Optional[int] = None,
 ) -> list[dict[str, Any]]:
-    """Deterministic Constraint Sensor: 根據當輪 modifier、長期偏好與時間/營業狀態對明確違反硬性條件的店家標記降權"""
+    """Deterministic Constraint Sensor: 根據當輪 modifier、長期偏好、預算與時間對明確違反條件的店家標記降權"""
     if not stores:
         return []
 
@@ -146,7 +170,7 @@ def apply_deterministic_constraints(
             elif any(k in modifier for k in ("現在有開", "現在開著", "營業中")):
                 time_constraint = "now"
 
-    if not payment_reqs and not dietary_reqs and not time_constraint:
+    if not payment_reqs and not dietary_reqs and not time_constraint and budget_max_jpy is None:
         return stores
 
     for store in stores:
@@ -179,6 +203,19 @@ def apply_deterministic_constraints(
         # 嚴格守門：只有在明確標註已打烊/今日公休 (open_now is False) 時才懲罰；若無資料 (open_now is None) 則保護不扣分
         if time_constraint in ("now", "late_night", "breakfast"):
             if store.get("open_now") is False:
+                violated = True
+
+        # 4. 預算上限軟性檢驗 (Deterministic Budget Sensor)
+        # 僅在明確取得下界金額且高於 budget_max_jpy 時標記降權，絕不刪除候選店家
+        if budget_max_jpy is not None and budget_max_jpy > 0:
+            lunch_min = _extract_min_budget_jpy(store.get("price_lunch"))
+            dinner_min = _extract_min_budget_jpy(store.get("price_dinner"))
+            if time_constraint == "late_night":
+                effective_min = dinner_min if dinner_min is not None else lunch_min
+            else:
+                candidates_min = [p for p in (lunch_min, dinner_min) if p is not None]
+                effective_min = min(candidates_min) if candidates_min else None
+            if effective_min is not None and effective_min > budget_max_jpy:
                 violated = True
 
         if violated:
@@ -708,6 +745,10 @@ async def execute_state_3_parallel_tabelog(
     fsm: FoodRecommendationFSM,
     places: list[dict[str, Any]],
     area_hint: Optional[str] = None,
+    modifier: Optional[str] = None,
+    preferences: Optional[dict[str, Any]] = None,
+    time_constraint: Optional[str] = None,
+    budget_max_jpy: Optional[int] = None,
 ) -> list[dict[str, Any]]:
     """State 3: 自適應漸進查驗 (Adaptive Early Stopping) + Tabelog 老饕綜合重排"""
     t0 = time.time()
@@ -740,7 +781,17 @@ async def execute_state_3_parallel_tabelog(
     else:
         logger.info(f"Tier 1 high-score count={high_score_count}. Early stopping satisfied, skipping Tier 2.")
 
-    # 4. 老饕綜合加權重排，精選 Top 3
+    # 4. 預算與硬性條件預先加權評估（於挑選 Top 3 前執行，避免符合預算者被高價店擠出名單）
+    if modifier or preferences or time_constraint or budget_max_jpy is not None:
+        final_enriched = apply_deterministic_constraints(
+            final_enriched,
+            modifier=modifier,
+            preferences=preferences,
+            time_constraint=time_constraint,
+            budget_max_jpy=budget_max_jpy,
+        )
+
+    # 5. 老饕綜合加權重排，精選 Top 3
     top_stores = fsm.rank_and_select_top_stores(final_enriched, top_k=3)
 
     # 5. 為最終入選的 Top 店家平行豐富定向老饕食評 (Tabelog 口コミ絕對優先合約)
@@ -752,7 +803,7 @@ async def execute_state_3_parallel_tabelog(
             search_name = store.get("name_ja") or store.get("name") or ""
             tabelog_revs: list[dict[str, Any]] = []
             try:
-                res = tabelog_fetcher(search_name, max_reviews=5)
+                res = tabelog_fetcher(search_name)
                 if asyncio.iscoroutine(res):
                     raw_revs = await res
                     if isinstance(raw_revs, list):

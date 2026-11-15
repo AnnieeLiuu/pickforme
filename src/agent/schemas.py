@@ -63,6 +63,14 @@ class IntentOutput(BaseModel):
         default=None,
         description='料理類別或食物核心名詞（例如「壽喜燒」、「拉麵」，嚴禁包含距離或時間詞；若 search 未指定則預設為 "熱門人氣美食"）',
     )
+    search_keyword_ja: Optional[str] = Field(
+        default=None,
+        description='純淨日文核心搜尋詞，專供 Google Places 與 Tabelog 檢索使用（例如「咖啡」→"カフェ"、「拉麵」→"ラーメン"、「壽喜燒」→"すき焼き"）；嚴禁包含地名、預算、距離或風格修飾語',
+    )
+    budget_max_jpy: Optional[int] = Field(
+        default=None,
+        description="若使用者明確指定預算上限，請換算為日圓整數（台幣約以 1:5 換算，例如「200台幣以下」→ 1000、「3000日幣內」→ 3000）；無具體數字金額上限時請設為 null",
+    )
     modifier: Optional[str] = Field(
         default=None,
         description='修飾語或新要求（例如 "更在地老店"、"平價"、"走路15分鐘內"，若無請設為 null）',
@@ -118,12 +126,14 @@ class IntentOutput(BaseModel):
     @model_validator(mode="after")
     def validate_semantic_consistency(self) -> "IntentOutput":
         """跨欄位語意一致性驗證器 (借鏡 PydanticAI @result_validator)"""
-        # 1. 正規化空白字串為 None
-        for attr in ("location", "cuisine", "modifier", "question"):
+        # 1. 正規化空白字串為 None，並保護無效非正數預算
+        for attr in ("location", "cuisine", "search_keyword_ja", "modifier", "question"):
             val = getattr(self, attr)
             if isinstance(val, str):
                 cleaned = val.strip()
                 setattr(self, attr, cleaned if cleaned else None)
+        if self.budget_max_jpy is not None and self.budget_max_jpy <= 0:
+            self.budget_max_jpy = None
 
         # 2. 若為 search 且未指定 cuisine，自動補齊預設值
         if self.intent == "search" and not self.cuisine:
@@ -169,6 +179,7 @@ class FSMRunContext(BaseModel):
     cuisine: str = "熱門美食"
     modifier: Optional[str] = None
     search_keyword: str = "熱門美食"
+    budget_max_jpy: Optional[int] = None
     time_constraint: Optional[str] = None
     radii_ladder: list[int] = Field(default_factory=lambda: [800, 1200, 1800])
     style_tag: Optional[str] = None

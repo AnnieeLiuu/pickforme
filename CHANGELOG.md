@@ -7,6 +7,9 @@
 ## [Unreleased]
 
 ### Fixed
+- **純淨日文搜尋詞 (`search_keyword_ja`) 與預算軟性重排防空 (`src/agent/schemas.py`, `config/prompts/intent_parser.md`, `src/agent/stages/places_search.py`, `src/agent/stages/enrichment.py`, `src/agent/stages/synthesis.py`, `src/agent/pipeline.py`, `tests/test_real_world_regressions.py`)**：
+  - 依生產追蹤 `211f181a`（「藏前 咖啡 200台幣以下」）根因修復：`IntentOutput` 新增 `search_keyword_ja`（純淨日文搜尋詞如 `カフェ`）與 `budget_max_jpy`（金額上限日圓換算，如 `1000`），`resolve_search_constraints` 徹底停止將 `modifier` 拼入搜尋詞，防止 Google Places 與 Tabelog 獵店搜尋脫靶。
+  - 將 `apply_deterministic_constraints` 移入 `execute_state_3_parallel_tabelog` 挑選 Top 3 之前執行並新增預算軟性扣分（正確處理 `～￥999` 下界為 `0`），同時於 `card-synthesis.md` 與 `synthesis.py` 加入「防篩空保底原則」（無完全符合者絕不淘汰成 0 家），並同步更新 Case 13、新增 Case 49 回歸測試。
 - **Tabelog SEO 樣板句過濾與移除背景評論翻譯 (`src/services/review_sanitizer.py`, `src/services/tabelog_scraper.py`, `src/agent/stages/enrichment.py`, `tests/test_real_world_regressions.py`)**：
   - `review_sanitizer.py` 新增 `TABELOG_SEO_BOILERPLATE_PATTERNS`（優先於食物關鍵字白名單攔截 4 類 Tabelog SEO 樣板句，並相容 Yahoo Search `<b>` 高亮空白）；`fetch_tabelog_reviews` 預設 `max_reviews` 調整為 `8`，避免樣板句佔滿 5 則名額擠掉真實食記（Case 48）。
   - 移除 `enrichment.py` 的 `_translate_reviews_batch_fail_open` 背景翻譯，改由前景 `state_4_synthesis` 主 LLM 直接讀懂日文原文產出繁中推薦理由，並同步更新 Case 37 回歸測試，徹底消除背景與前景爭搶 Groq 配額造成的 `429` 連鎖超時。

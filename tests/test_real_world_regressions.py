@@ -631,21 +631,22 @@ async def test_case13_distance_modifier_cleansing_and_review_noise_filtering() -
     assert "走路" not in kw1
     assert "15分鐘" not in kw1
 
-    # 測試情境 B: 包含實質風格詞「更在地老店」
+    # 測試情境 B: 包含實質風格詞「更在地老店」—— 風格詞留存 style_tag，絕不污染 search_keyword
     kw2, radii2, style2 = resolve_search_constraints(
         cuisine="壽喜燒",
         modifier="我想找更在地老店",
     )
-    assert "老店" in kw2
+    assert kw2 == "壽喜燒"
     assert radii2 == [800, 1200, 1800]
     assert style2 == "我想找更在地老店"
 
-    # 測試情境 C: 空間與風格混合「走路10分鐘以內、平價一點」
+    # 測試情境 C: 空間與風格混合「走路10分鐘以內、平價一點」—— keyword 保持純淨「拉麵」
     kw3, radii3, style3 = resolve_search_constraints(
         cuisine="拉麵",
         modifier="走路10分鐘以內 平價一點",
     )
-    assert "平價一點" in kw3
+    assert kw3 == "拉麵"
+    assert style3 == "平價一點"
     assert "走路" not in kw3
     assert "10分鐘" not in kw3
     assert radii3[0] == 800  # 10 * 80 = 800m
@@ -3510,3 +3511,57 @@ async def test_case_48_tabelog_seo_boilerplate_filtered_and_default_limit_8():
     assert len(revs) == 1
     assert "珈琲専門店 伯爵巣鴨店" in revs[0]["text"]
     assert "サイフォン" in revs[0]["text"]
+
+
+def test_case_49_pure_ja_search_keyword_and_budget_soft_ranking():
+    """Case 49 (211f181a 藏前咖啡 200台幣以下): 搜尋詞純淨用 search_keyword_ja，預算改由 Stage 3 軟性重排且絕不篩成 0 家"""
+    from src.agent.stages.enrichment import (
+        _extract_min_budget_jpy,
+        apply_deterministic_constraints,
+        rank_and_select_top_stores,
+    )
+
+    # 1. resolve_search_constraints 優先採用純淨日文搜尋詞，絕不拼接「200台幣以下」
+    kw, radii, style_tag = resolve_search_constraints(
+        cuisine="咖啡",
+        modifier="200台幣以下",
+        search_keyword_ja="カフェ",
+    )
+    assert kw == "カフェ"
+    assert "200台幣" not in kw
+    assert style_tag == "200台幣以下"
+    assert radii == [800, 1200, 1800]
+
+    # 2. 預算解析邊界：「～￥999」下界應為 0，不可誤殺 budget_max_jpy=800
+    assert _extract_min_budget_jpy("～￥999") == 0
+    assert _extract_min_budget_jpy("￥1,000～￥1,999") == 1000
+    assert _extract_min_budget_jpy("￥4,000～￥4,999") == 4000
+    assert _extract_min_budget_jpy("-") is None
+    assert _extract_min_budget_jpy(None) is None
+
+    # 3. Stage 3 預算軟性重排：￥4,000+ 高價飯店扣分，讓 ～￥999 咖啡店擠進 Top 3，且全超預算時也不變 0 家
+    candidates = [
+        {
+            "name_ja": "高額ホテルラウンジ",
+            "tabelog_url": "https://tabelog.com/tokyo/A1311/A131103/13000001/",
+            "tabelog_rating": 3.70,
+            "price_lunch": "￥4,000～￥4,999",
+            "price_dinner": "￥6,000～￥7,999",
+            "distance_meters": 200,
+        },
+        {
+            "name_ja": "喫茶 半月",
+            "tabelog_url": "https://tabelog.com/tokyo/A1311/A131103/13000002/",
+            "tabelog_rating": 3.55,
+            "price_lunch": "～￥999",
+            "price_dinner": "～￥999",
+            "distance_meters": 250,
+        },
+    ]
+    scored = apply_deterministic_constraints(candidates, budget_max_jpy=1000)
+    top = rank_and_select_top_stores(scored, top_k=3)
+    assert len(top) == 2
+    assert top[0]["name_ja"] == "喫茶 半月"
+    assert top[0].get("constraint_violation") is not True
+    assert top[1]["name_ja"] == "高額ホテルラウンジ"
+    assert top[1].get("constraint_violation") is True

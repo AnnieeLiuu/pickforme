@@ -134,14 +134,15 @@ def format_walking_description(
 def resolve_search_constraints(
     cuisine: str,
     modifier: Optional[str] = None,
+    search_keyword_ja: Optional[str] = None,
 ) -> tuple[str, list[int], Optional[str]]:
-    """解析並分離料理名稱、風格修飾語與物理距離約束 (非 Hardcode，杜絕 Places 搜尋脫靶)
+    """解析並分離料理名稱、日文純淨搜尋詞、風格修飾語與物理距離約束 (杜絕 Places 搜尋脫靶)
 
     Returns:
         tuple[str, list[int], Optional[str]]:
-            - clean_keyword: 純淨之 Google Places 檢索關鍵字 (例: "壽喜燒")
+            - clean_keyword: 純淨之 Google Places / Tabelog 檢索關鍵字 (優先採用 search_keyword_ja，絕不拼接 modifier)
             - radii_ladder: 物理階梯半徑清單 (例: 15分鐘步行 -> [1200, 1700, 2500])
-            - style_tag: 僅供卡片或語意重排之風格標籤 (例: "老店", "平價")
+            - style_tag: 僅供 Stage 3/4 篩選與語意重排之風格/預算標籤 (例: "老店", "200台幣以下")
     """
     clean_cuisine = (cuisine or "熱門美食").strip()
 
@@ -154,8 +155,9 @@ def resolve_search_constraints(
     radii_ladder = [800, 1200, 1800]
     style_tag: Optional[str] = None
 
+    clean_keyword = (search_keyword_ja or "").strip() or clean_cuisine
     if not modifier:
-        return clean_cuisine, radii_ladder, None
+        return clean_keyword, radii_ladder, None
 
     mod = modifier.strip()
 
@@ -179,11 +181,8 @@ def resolve_search_constraints(
         rem_style,
     ).strip()
 
-    clean_keyword = clean_cuisine
     if rem_style and len(rem_style) >= 2:
         style_tag = rem_style
-        # 只有實質風格詞才安全疊加到 keyword
-        clean_keyword = f"{clean_cuisine} {rem_style}"
 
     return clean_keyword, radii_ladder, style_tag
 

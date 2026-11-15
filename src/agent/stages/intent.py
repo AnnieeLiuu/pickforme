@@ -329,16 +329,32 @@ async def execute_state_1_intent(
             parsed["intent"] = "need_location"
         return parsed
 
-    # 若為 "more" 且缺少料理或地名，優先從 Working Memory 繼承
-    if intent == "more" and chat_id and (not parsed.get("cuisine") or not parsed.get("location")):
+    # 若為 "more" 且缺少料理、地名、日文搜尋詞或預算上限，優先從 Working Memory 繼承
+    if (
+        intent == "more"
+        and chat_id
+        and (
+            not parsed.get("cuisine")
+            or not parsed.get("location")
+            or not parsed.get("search_keyword_ja")
+            or parsed.get("budget_max_jpy") is None
+        )
+    ):
         try:
             wm_fn = getattr(fsm.session_repo, "get_working_memory", None)
             if callable(wm_fn):
                 wm_res = wm_fn(chat_id)
                 wm = await wm_res if inspect.isawaitable(wm_res) else wm_res
                 if isinstance(wm, dict):
-                    if not parsed.get("cuisine") and wm.get("last_cuisine"):
+                    orig_cuisine = parsed.get("cuisine")
+                    if not orig_cuisine and wm.get("last_cuisine"):
                         parsed["cuisine"] = wm["last_cuisine"]
+                    if not parsed.get("search_keyword_ja") and wm.get("last_search_keyword_ja"):
+                        if not orig_cuisine or orig_cuisine == wm.get("last_cuisine"):
+                            parsed["search_keyword_ja"] = wm["last_search_keyword_ja"]
+                    if parsed.get("budget_max_jpy") is None and wm.get("last_budget_max_jpy") is not None:
+                        if not orig_cuisine or orig_cuisine == wm.get("last_cuisine"):
+                            parsed["budget_max_jpy"] = wm["last_budget_max_jpy"]
                     if not parsed.get("location") and wm.get("last_location"):
                         parsed["location"] = wm["last_location"]
         except Exception as e:
