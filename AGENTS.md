@@ -37,9 +37,9 @@ python -m ruff format src/ tests/ && python -m ruff check src/ tests/ && python 
 
 ## 📋 計畫制定與 Subagent 交叉審查規範 (Plan & Subagent Review Mandate)
 
-Whenever designing architectural changes, multi-step features, or refactoring:
+Whenever designing architectural changes, multi-step features, pipeline/guardrail fixes, or refactoring:
 1. **Plan First**: Always create/update a formal plan in `docs/plans/` before writing implementation code.
-2. **Autonomous Subagent Review**: Proactively invoke an independent Research Subagent to read related files and rigorously review the plan for edge cases and regressions before starting implementation.
+2. **Autonomous Subagent Review**: Proactively invoke an independent Research Subagent to read related files and rigorously review the plan for edge cases, regressions, and full-chain E2E impact (downstream assumptions, early-stopping/cache/token-limit interactions, and real dirty payloads per [`docs/SOP_ROOT_CAUSE_DEBUGGING.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/SOP_ROOT_CAUSE_DEBUGGING.md)) before starting implementation.
 
 ---
 
