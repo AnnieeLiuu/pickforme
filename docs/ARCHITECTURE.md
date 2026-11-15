@@ -189,8 +189,8 @@ flowchart TD
 
     S2Select --> Progress2["Telegram 狀態推播 2:<br/>📊 正在彙整 Google 與 Tabelog 雙平台評分卡片..."]
 
-    subgraph State3 ["State 3: Tabelog 交通手段解析、實體對齊與步行指引格式化 (src/agent/stages/enrichment.py)"]
-        Progress2 --> ParallelGather["asyncio.gather 平行對齊 3~5 家候選店"]
+    subgraph State3 ["State 3: Tabelog 交通手段解析、實體對齊與步行指引格式化 (src/agent/stages/enrichment/)"]
+        Progress2 --> ParallelGather["asyncio.gather + Semaphore(4) 全候選 (最多 6 家) 平行對齊"]
         
         subgraph PerStore ["每家候選店對齊邏輯"]
             ParallelGather --> CheckCache{"Neon tabelog_cache 快取?"}
@@ -218,7 +218,7 @@ flowchart TD
         ResolveCardCat -- "drink (名茶/地酒/咖啡)" --> CatDrink["稱謂:「茶房／名店」<br/>徽章: 🍵 指標推薦茶房<br/>專屬注入: 焙火、茶湯、咖啡豆香、地酒吟釀點評"]
         ResolveCardCat -- "souvenir (伴手禮/銘菓)" --> CatSouvenir["稱謂:「老舖／名店」<br/>徽章: 🎁 指標伴手禮老舖<br/>專屬注入: 常溫送禮、包裝、保存期限、名產特色點評"]
 
-        CatFood --> LLMSynthesis["LLMClient 單次生成高美感卡片<br/>(注入品類指引 + 景區最近車站保護指引 + 廣域特派員提醒)"]
+        CatFood --> LLMSynthesis["LLMClient 精簡 JSON 短評生成 (reason, must_order, tip)<br/>+ Python 確定性組卡片 (含 constraint_warnings 與 search_meta 透明說明)"]
         CatDrink --> LLMSynthesis
         CatSouvenir --> LLMSynthesis
 
@@ -294,9 +294,9 @@ flowchart TD
 - **Pydantic v2 結構化合約與 Self-Correction 自癒迴圈 (`src/agent/schemas.py` & `src/agent/llm_client.py`)**：
   - **嚴格資料邊界校驗**：以 Pydantic v2 `BaseModel` 定義 `IntentOutput`（含 `target_index` 1~3 邊界、`dietary_restrictions`、`payment_preferences`）以及 `GeocodeArgs`、`SearchNearbyArgs`、`TabelogInfoArgs` 工具參數驗證。
   - **ValidationError 自癒重試 (Self-Correction Loop)**：`LLMClient.call_structured_json(messages, schema=IntentOutput, max_retries=1)` 在解析 JSON 後自動執行 Pydantic 驗證；若模型輸出違反 Schema（如欄位型別錯誤或非法枚舉值），自動將 `ValidationError` 詳細錯誤附加回對話訊息要求模型即時修正重試，重試仍失敗時平滑降級至安全預設結構。
-- **Stage 3 確定性硬性條件感測器 (`src/agent/stages/enrichment.py` - `apply_deterministic_constraints`)**：
-  - **硬性飲食與支付偏好掃描**：透過 `extract_preferences_from_text` 結合當輪 `modifier` 與跨輪 `long_term_preferences`（支援 `credit_card`、`paypay`、`不吃牛`、`不吃豬`、`不吃生食`、`不吃辣`），在 Stage 3 對候選店家的支付屬性與店名特徵進行確定性稽核。
-  - **違規降權與自動重排**：一旦偵測到店家違反硬性條件（例如要求刷卡但店家為 `accepts_cash_only=True`，或忌牛卻為牛丼/燒肉名店），自動標記 `constraint_violation = True`，於 `calculate_foodie_score` 施加 `-0.45` 重度懲罰並重新執行 `rank_and_select_top_stores` 排序。
+- **Stage 3 確定性硬性條件感測器 (`src/agent/stages/enrichment/scoring.py` - `apply_deterministic_constraints`)**：
+  - **硬性飲食、支付、時段與預算掃描**：透過 `extract_preferences_from_text` 結合當輪 `modifier`、`budget_max_jpy`、`time_constraint` 與跨輪 `long_term_preferences`（支援 `credit_card`、`paypay`、`不吃牛`、`不吃豬`、`不吃生食`、`不吃辣`），在 Stage 3 對候選店家進行確定性稽核。
+  - **違規降權與結構化原因透傳**：一旦偵測到店家違反硬性條件，自動標記 `constraint_violation = True` 並記錄結構化 `constraint_warnings`（`budget`、`payment`、`hours`、`dietary`），於 `calculate_foodie_score` 施加 `-0.45` 重度懲罰重排，並由 Stage 4 確定性標註於推薦卡片旁。
 - **痛點與挑戰 (The Problem)**：
   - LLM 在生成高生動度推薦卡片時存在機率性微調數值幻覺（如將 3.78 筆誤寫成 3.70），高敏感美食評分失真將嚴重損害用戶信任。
   - 若使用二次 LLM 審核（LLM-as-a-Judge）會增加 >1s 延遲與 Token 成本；若使用寬鬆正則，極易誤傷內文中的非評分數值（如「排隊 3.5 小時」）。
@@ -313,9 +313,9 @@ flowchart TD
 - **實體對齊漏斗與階梯備援 (`src/services/entity_resolver.py`)**：
   - **商圈錨定檢索**：自動附加搜尋區域以確保在地分店優先進榜；支援日本電話號碼精準檢索與階梯備援，杜絕搜尋雜訊阻斷。
   - **跨語言 Micro-LLM 智慧裁決**：當字面相似度因跨語系落差過大時，自動流向 Level 2 Micro-LLM，結合地址、品類與發音進行語意判定。
-- **老饕潛力預篩、自適應查驗與重排演算法 (`src/agent/pipeline.py`)**：
-  - **Google 記憶體端老饕潛力預篩 (State 2.5)**：Google Places 單次調用直取 20 筆周邊店家，在記憶體中依評分、評論數與距離綜合預篩出 4 筆主選與 2 筆備選種子。
-  - **自適應漸進查驗與提早終止 (State 3.1 & 3.2)**：第一梯隊並行查驗 4 家；若高分名店（Tabelog $\ge 3.45$ 或百名店）$\ge 2$ 家即觸發 Early Stop 提早終止，多數場景 0 額外延遲；品質不足時動態查驗備選店家救援。
+- **老饕潛力預篩、全候選查驗與重排演算法 (`src/agent/pipeline.py`, `src/agent/stages/enrichment/`)**：
+  - **Stage 2 首頁全收三級預篩**：`TabelogScraper.discover_area_top_stores` 全收第 1 頁候選並採三級 Fail-Open 優先權排序（Tier A 明確符合 > Tier B 未知保留 > Tier C 明確超標墊底），再與 Google Places 階梯檢索彙整出最多 6 家候選。
+  - **Stage 3 全候選 Semaphore(4) 並發查驗**：`orchestrator.py` 廢除 Tier 1/2 早停，以 `asyncio.Semaphore(4)` 對全部候選進行並發查驗，避免高潛力或符合預算/偏好的第 5～6 家遺珠被提前捨棄。
   - **$S_i$ 綜合老饕計分重排**：以 Tabelog 評分為核心權重（未命中時 Google 評分安全折算），疊加百名店/Award 加分、距離微幅懲罰與硬性條件違規懲罰 (`-0.45`)，精選 Top 3 店家並注入 `🥇/🥈/🥉` 排名徽章；並透過 `_is_tabelog_cache_complete()` 與 `_hydrate_station_walking_distances()` 確保缺漏預算時自動重抓、麵包屑車站透過 Google Geocoding 換算實際步行分鐘數。
 - **防腐保證：CI 雙向合約測試防禦 (Contract Testing in CI/CD)**：
   - 於 `tests/test_pipeline.py` 建立自動化合約測試，驗證 System Prompt 定義的排版格式與 Guardrail 錨點 100% 同步；任何提示詞變更若破壞了護欄合約，CI 立即報警阻擋合併。
@@ -330,12 +330,12 @@ flowchart TD
   - **自動化測試與覆蓋率**：建立覆蓋核心邏輯、Agent Harness 與黃金回歸案例之完整自動化測試集 (`tests/test_real_world_regressions.py`)，整合 `pytest-cov` Cobertura XML 報告與 GitLab CI/CD Pipeline (`.gitlab-ci.yml`)，未通過品質關卡禁止合併主線。
   - **全鏈路可觀測性看板 (Observability Pages & Design System)**：由 `src/eval/reporter.py` 載入獨立 HTML 模板 (`src/eval/templates/river_dashboard.html`) 生成現代 3-Pane 滿版全景河流圖看板 (`public/index.html`)，依循 [`docs/OBSERVABILITY_DESIGN_SYSTEM.md`](file:///c:/Users/User/OneDrive/文件/2026/PickForMe/docs/OBSERVABILITY_DESIGN_SYSTEM.md) 之 Draw.io 5 大語意形狀規範，達成 0 原始碼閱讀下的端到端即時架構透視。
 - **高內聚低耦合架構解耦 (Modular FSM & Facade Orchestrator)**：
-  - **狀態機管線與 Harness 模組化 (`src/agent/stages/`、`src/agent/gate.py`、`src/agent/schemas.py`)**：徹底根除單一巨大檔案 (God File)，`FoodRecommendationFSM` (`src/agent/pipeline.py`) 作為 Facade 調度器，協同 `gate.py` (`QuickPassGate` 0ms 入口快篩)、`schemas.py` (Pydantic v2 結構化合約與偏好抽取器) 與四大階段子模組：`stages/intent.py` (意圖、雙層記憶繼承與多輪追問)、`stages/places_search.py` (階梯擴圈與預篩)、`stages/enrichment.py` (Tabelog 雙平台並行補全、Deterministic Constraint Sensor 與老饕重排)、`stages/synthesis.py` (卡片合成與 Scoped Anchor 護欄)。
+  - **狀態機管線與 Harness 模組化 (`src/agent/stages/`、`src/agent/gate.py`、`src/agent/schemas.py`)**：徹底根除單一巨大檔案 (God File)，`FoodRecommendationFSM` (`src/agent/pipeline.py`) 作為 Facade 調度器，協同 `gate.py` (`QuickPassGate` 0ms 入口快篩)、`schemas.py` (Pydantic v2 結構化合約與偏好抽取器) 與四大階段子模組：`stages/intent.py` (意圖、雙層記憶繼承與多輪追問)、`stages/places_search.py` (階梯擴圈與預篩)、`stages/enrichment/` (拆分為 `formatting.py`、`scoring.py`、`geocoding.py`、`reviews.py`、`cache.py`、`crawler.py`、`single_place.py`、`orchestrator.py` 與 `__init__.py` Facade)、`stages/synthesis.py` (精簡 JSON 短評 + Python 確定性組卡片與防禦保底)。
   - **前後端表現層分離 (`src/eval/templates/`)**：將 2,200+ 行之互動式 Dashboard HTML/CSS/JS 抽離至獨立模板檔，評估腳本僅專注於資料計算與填充，落實關注點分離 (Separation of Concerns)。
 - **多店橫向對比與行程停靠站識別 (`src/agent/stages/intent.py`)**：
   - **跨店對照評鑑 (Multi-Store Comparison)**：支援使用者針對上一輪名單提出「比較 1 跟 2」、「1 跟 3 哪家比較好」等複選對比，由 `IntentOutput.target_indices` 承載，自動自 Session 記憶體撈出多店候選資料，輸出風味、CP 值與排隊情境之綜合對比矩陣。
   - **行程中停定錨 (Itinerary Stopover Anchoring)**：於意圖模型中建立行程分析原則，當句子出現「從 A 去 B，中停 C 轉車吃美食」時，精準定錨用餐地 `location="C"`，杜絕起點終點誤奪。
-- **營業時間與即時防踩雷體系 (`src/services/google_places.py`, `src/agent/stages/enrichment.py`, `src/agent/stages/synthesis.py`)**：
+- **營業時間與即時防踩雷體系 (`src/services/google_places.py`, `src/agent/stages/enrichment/scoring.py`, `src/agent/stages/synthesis.py`)**：
   - **Google Places 營業時段感知**：Places Client 全面納入 `currentOpeningHours` 與 `regularOpeningHours`，解析 `open_now` 與平日營業時段。
   - **情境時段硬性懲罰 (Deterministic Hours Sensor)**：當查詢帶有「宵夜/深夜」、「早餐」或「現在有開」等時間約束時，若店家明確標註打烊 (`open_now is False`) 則給予 `-0.45` 懲罰；若無資料則保護不扣分。卡片排版同步注入 `⏰ 營業狀態` 徽章。
   - **Telegram Webhook Secret Token 驗證**：要求驗證 `X-Telegram-Bot-Api-Secret-Token` 標頭，防止惡意流量觸發 Cloud Run。
