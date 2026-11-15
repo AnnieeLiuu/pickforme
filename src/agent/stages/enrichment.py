@@ -248,14 +248,12 @@ def _align_walking_and_station(
 
 
 def _is_tabelog_cache_complete(cached: dict[str, Any]) -> bool:
-    """檢查 Tabelog 快取是否具備推薦卡片所需核心欄位 (評分、連結、評價數、至少一項預算)"""
+    """檢查 Tabelog 資料是否具備推薦卡片所需核心欄位 (評分、連結、評價數、至少一項預算)"""
     has_budget = bool(cached.get("price_lunch") or cached.get("price_dinner"))
-    return bool(
-        cached.get("tabelog_rating")
-        and cached.get("tabelog_url")
-        and cached.get("review_count") is not None
-        and has_budget
-    )
+    review_count = cached.get("review_count")
+    if review_count is None:
+        review_count = cached.get("tabelog_review_count")
+    return bool(cached.get("tabelog_rating") and cached.get("tabelog_url") and review_count is not None and has_budget)
 
 
 def _build_cached_tabelog_result(
@@ -348,27 +346,34 @@ async def enrich_single_place(
                 asyncio.create_task(fsm._index_store_reviews(rid, place["reviews"]))
             return _build_cached_tabelog_result(place, cached, area_hint)
 
-    # 1.5 雙源直通車：若該店已由 State 2 Tabelog-First 雙源獵店取得有效 Tabelog 評分或百名店，免重複搜尋清單
-    if place.get("tabelog_seed") and (place.get("tabelog_rating") or place.get("awards") or place.get("hyakumeiten")):
+    # 1.5 雙源直通車：僅在 State 2 Tabelog-First 種子已具備完整核心欄位時才免重複搜尋清單；
+    # 若缺漏欄位（如預算），先保留保底並進入 # 2 嘗試補抓
+    def _build_seed_result(seed_place: dict[str, Any]) -> dict[str, Any]:
         pay_desc = format_payment_methods(
-            supports_paypay=place.get("supports_paypay"),
-            credit_cards=place.get("credit_cards"),
-            accepts_credit_cards=place.get("accepts_credit_cards"),
-            accepts_cash_only=place.get("accepts_cash_only"),
-            accepts_nfc=place.get("accepts_nfc"),
+            supports_paypay=seed_place.get("supports_paypay"),
+            credit_cards=seed_place.get("credit_cards"),
+            accepts_credit_cards=seed_place.get("accepts_credit_cards"),
+            accepts_cash_only=seed_place.get("accepts_cash_only"),
+            accepts_nfc=seed_place.get("accepts_nfc"),
         )
         res_dict = {
-            **place,
-            "name_ja": place.get("name_ja") or store_name,
-            "tabelog_rating": float(place["tabelog_rating"]) if place.get("tabelog_rating") else None,
-            "review_count": place.get("tabelog_review_count") or place.get("review_count"),
-            "awards": place.get("awards") or place.get("hyakumeiten") or [],
+            **seed_place,
+            "name_ja": seed_place.get("name_ja") or store_name,
+            "tabelog_rating": float(seed_place["tabelog_rating"]) if seed_place.get("tabelog_rating") else None,
+            "review_count": seed_place.get("tabelog_review_count") or seed_place.get("review_count"),
+            "awards": seed_place.get("awards") or seed_place.get("hyakumeiten") or [],
             "payment_methods_desc": pay_desc,
-            "sample_reviews": place.get("reviews") or [],
-            "nearest_station_desc": place.get("nearest_station_desc"),
+            "sample_reviews": seed_place.get("reviews") or [],
+            "nearest_station_desc": seed_place.get("nearest_station_desc"),
             "rating_source": "Tabelog",
         }
         return _align_walking_and_station(res_dict, res_dict.get("nearest_station_desc"), area_hint)
+
+    incomplete_seed_fallback: Optional[dict[str, Any]] = None
+    if place.get("tabelog_seed") and (place.get("tabelog_rating") or place.get("awards") or place.get("hyakumeiten")):
+        if _is_tabelog_cache_complete(place):
+            return _build_seed_result(place)
+        incomplete_seed_fallback = place
 
     # 2. 未命中快取：執行即時爬蟲與比對
     try:
@@ -516,6 +521,10 @@ async def enrich_single_place(
     if incomplete_cache_fallback is not None:
         logger.info(f"Live refresh yielded no match for '{store_name}'; falling back to cached Tabelog record.")
         return _build_cached_tabelog_result(place, incomplete_cache_fallback, area_hint)
+
+    if incomplete_seed_fallback is not None:
+        logger.info(f"Live refresh yielded no match for '{store_name}'; falling back to Tabelog seed record.")
+        return _build_seed_result(incomplete_seed_fallback)
 
     # 3. 爬蟲失敗或無資料保底：以 Google 評分呈現
     fallback_id = None

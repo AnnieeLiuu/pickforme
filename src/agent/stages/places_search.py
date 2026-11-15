@@ -304,10 +304,18 @@ async def _hydrate_tabelog_seeds_with_places(
                 )
 
             place["tabelog_seed"] = True
-            if seed.get("tabelog_url"):
-                place["tabelog_url"] = seed["tabelog_url"]
-            if seed.get("tabelog_rating") is not None:
-                place["tabelog_rating"] = seed["tabelog_rating"]
+            for k in (
+                "tabelog_url",
+                "tabelog_rating",
+                "name_ja",
+                "price_lunch",
+                "price_dinner",
+                "supports_paypay",
+                "credit_cards",
+                "nearest_station_desc",
+            ):
+                if seed.get(k) is not None:
+                    place[k] = seed[k]
             if seed.get("review_count") is not None:
                 place["tabelog_review_count"] = seed["review_count"]
             if seed.get("hyakumeiten"):
@@ -424,6 +432,11 @@ async def execute_state_2_places_ladder(
                     "tabelog_url",
                     "tabelog_rating",
                     "tabelog_review_count",
+                    "name_ja",
+                    "price_lunch",
+                    "price_dinner",
+                    "supports_paypay",
+                    "credit_cards",
                     "hyakumeiten",
                     "awards",
                     "nearest_station_desc",

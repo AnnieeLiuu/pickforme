@@ -102,6 +102,11 @@ def extract_nearest_station_from_transit_text(text: str) -> Optional[str]:
             meters = int(m_dist.group(2).strip())
             mins = max(1, round(meters / 80))
             return f"從「{st}」步行約 {mins} 分鐘"
+    # 麵包屑保底：Yahoo 搜尋摘要常列出「> 蔵前駅 カフェ」但未含徒歩分鐘數，回傳鄰近車站而不捏造分鐘數
+    m_breadcrumb = re.search(r">\s*([^\s>]{2,10}?駅)(?:\s|$)", text)
+    if m_breadcrumb:
+        st = clean_station_name(m_breadcrumb.group(1).strip())
+        return f"鄰近「{st}」"
     return None
 
 
@@ -368,9 +373,12 @@ class TabelogScraper:
                 soup = BeautifulSoup(resp.text, "html.parser")
                 from src.services.review_sanitizer import is_pure_metadata_noise
 
+                seen_texts: set[str] = set()
                 for card in soup.select("section, .sw-Card"):
                     title_elem = card.select_one("h3")
                     title_txt = title_elem.get_text(strip=True) if title_elem else "食べログ 口コミ"
+                    if "【移転】" in title_txt:
+                        continue
                     desc_tag = card.select_one(".sw-Card__description, .sw-Card__summary, p")
                     if not desc_tag:
                         continue
@@ -379,10 +387,16 @@ class TabelogScraper:
                         "",
                         desc_tag.get_text(" ", strip=True),
                     ).strip()
-                    # 排除「xxx さんの口コミです」空洞索引句
+                    if "【移転】" in clean_text[:40]:
+                        continue
+                    # 排除「xxx さんの口コミです」空洞索引句與重複評論片段
                     if re.search(r"^[^\n]{0,30}さんの口コミです", clean_text) and len(clean_text) < 60:
                         continue
+                    norm_key = clean_text[:80]
+                    if norm_key in seen_texts:
+                        continue
                     if len(clean_text) > 25 and not is_pure_metadata_noise(clean_text):
+                        seen_texts.add(norm_key)
                         reviews.append(
                             {
                                 "source": "tabelog",

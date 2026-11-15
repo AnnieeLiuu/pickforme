@@ -3350,3 +3350,115 @@ async def test_case_46_incomplete_tabelog_cache_triggers_live_refresh_and_fallba
     assert fallback["rating_source"] == "Tabelog"
     assert fallback["tabelog_rating"] == 3.6
     assert fallback["tabelog_url"] == "https://tabelog.com/tokyo/A1311/A131103/13281905/"
+
+
+@pytest.mark.asyncio
+async def test_case_47_tabelog_seed_preserves_budget_and_breadcrumb_station():
+    """
+    Case 47 (Production bug 94f83409):
+    1. Cloud Run log 實證：State 2 discover_area_top_stores 回傳 tabelog_seed 後，
+       places_search 漏複製 price_lunch/price_dinner/credit_cards，且 State 3「1.5 雙源直通車」
+       僅檢查 tabelog_rating 即捷徑回傳，導致 3 家店全部跳過即時爬蟲而顯示「預算區間：資料未載明」。
+    2. Yahoo 麵包屑含「> 蔵前駅 カフェ」但無徒歩分鐘數時，應萃取為「鄰近「蔵前站」」。
+    """
+    from src.agent.stages.enrichment import enrich_single_place
+    from src.services.tabelog_scraper import extract_nearest_station_from_transit_text
+
+    # 1. Yahoo 麵包屑車站萃取
+    snippet = "https://tabelog.com > ... > 蔵前駅 カフェ 予算 （口コミ集計）. ￥1,000～￥1,999."
+    assert extract_nearest_station_from_transit_text(snippet) == "鄰近「蔵前站」"
+
+    # 2. 若 tabelog_seed=True 但缺少預算，「1.5 雙源直通車」不得捷徑短路，必須進 Stage 3 重抓
+    incomplete_seed_place = {
+        "google_place_id": "gp-en-cafe",
+        "name": "EN CAFE",
+        "address": "東京都台東区蔵前2-6-2",
+        "tabelog_seed": True,
+        "tabelog_url": "https://tabelog.com/tokyo/A1311/A131103/13219340/",
+        "tabelog_rating": 3.5,
+        "tabelog_review_count": 700,
+        "price_lunch": None,
+        "price_dinner": None,
+        "walking_minutes": 2,
+        "distance_meters": 160,
+    }
+    fsm = MagicMock()
+    fsm.restaurant_repo = MagicMock(
+        get_by_google_place_id=AsyncMock(return_value=None),
+        save_restaurant_with_tabelog=AsyncMock(return_value="rest-en-cafe"),
+    )
+    fsm.tabelog_scraper = MagicMock(
+        search_tabelog_candidates=AsyncMock(
+            return_value=[
+                {
+                    "tabelog_url": "https://tabelog.com/tokyo/A1311/A131103/13219340/",
+                    "name_ja": "en cafe",
+                    "tabelog_rating": 3.5,
+                    "review_count": 700,
+                    "price_lunch": "￥1,000～￥1,999",
+                    "price_dinner": "￥1,000～￥1,999",
+                    "credit_cards": ["VISA", "Master", "JCB"],
+                    "nearest_station_desc": "鄰近「蔵前站」",
+                }
+            ]
+        ),
+        scrape_restaurant_details=AsyncMock(
+            return_value={
+                "tabelog_rating": 3.5,
+                "review_count": 700,
+                "price_lunch": "￥1,000～￥1,999",
+                "price_dinner": "￥1,000～￥1,999",
+                "credit_cards": ["VISA", "Master", "JCB"],
+            }
+        ),
+    )
+    fsm.entity_resolver = MagicMock(
+        resolve_entity=AsyncMock(
+            return_value={
+                "match_found": True,
+                "confidence": 0.98,
+                "match_method": "rule_high",
+                "candidate": {
+                    "tabelog_url": "https://tabelog.com/tokyo/A1311/A131103/13219340/",
+                    "name_ja": "en cafe",
+                    "tabelog_rating": 3.5,
+                    "review_count": 700,
+                    "price_lunch": "￥1,000～￥1,999",
+                    "price_dinner": "￥1,000～￥1,999",
+                    "credit_cards": ["VISA", "Master", "JCB"],
+                    "nearest_station_desc": "鄰近「蔵前站」",
+                },
+            }
+        )
+    )
+    fsm._index_store_reviews = AsyncMock()
+
+    res = await enrich_single_place(fsm, incomplete_seed_place, area_hint="藏前")
+    assert res["price_lunch"] == "￥1,000～￥1,999"
+    assert res["credit_cards"] == ["VISA", "Master", "JCB"]
+    assert res["walking_desc"] == "鄰近「蔵前站」"
+    fsm.tabelog_scraper.search_tabelog_candidates.assert_awaited_once()
+
+    # 3. fetch_tabelog_reviews 應過濾重複摘要與【移転】舊址評論
+    from unittest.mock import patch
+
+    import httpx
+    from src.services.tabelog_scraper import TabelogScraper
+
+    fake_html = """
+    <html><body>
+      <section><h3>口コミ一覧 : 喫茶 半月</h3><p>季節限定泡芙與深焙咖啡非常美味，店內氛圍安靜舒適，是藏前非常值得再訪的好店。</p></section>
+      <section><h3>口コミ一覧 : 喫茶 半月</h3><p>季節限定泡芙與深焙咖啡非常美味，店內氛圍安靜舒適，是藏前非常值得再訪的好店。</p></section>
+      <section><h3>口コミ一覧 : 【移転】喫茶 半月</h3><p>五年前在舊址造訪過，一樓烘焙點心也很受歡迎。</p></section>
+    </body></html>
+    """
+    mock_resp = MagicMock(status_code=200, text=fake_html)
+    mock_client = MagicMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+    mock_client.get = AsyncMock(return_value=mock_resp)
+
+    with patch.object(httpx, "AsyncClient", return_value=mock_client):
+        revs = await TabelogScraper().fetch_tabelog_reviews("喫茶 半月")
+    assert len(revs) == 1
+    assert "季節限定泡芙" in revs[0]["text"]
