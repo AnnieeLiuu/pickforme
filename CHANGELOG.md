@@ -7,6 +7,9 @@
 ## [Unreleased]
 
 ### Fixed
+- **Tabelog SEO 樣板句過濾與移除背景評論翻譯 (`src/services/review_sanitizer.py`, `src/services/tabelog_scraper.py`, `src/agent/stages/enrichment.py`, `tests/test_real_world_regressions.py`)**：
+  - `review_sanitizer.py` 新增 `TABELOG_SEO_BOILERPLATE_PATTERNS`（優先於食物關鍵字白名單攔截 4 類 Tabelog SEO 樣板句，並相容 Yahoo Search `<b>` 高亮空白）；`fetch_tabelog_reviews` 預設 `max_reviews` 調整為 `8`，避免樣板句佔滿 5 則名額擠掉真實食記（Case 48）。
+  - 移除 `enrichment.py` 的 `_translate_reviews_batch_fail_open` 背景翻譯，改由前景 `state_4_synthesis` 主 LLM 直接讀懂日文原文產出繁中推薦理由，並同步更新 Case 37 回歸測試，徹底消除背景與前景爭搶 Groq 配額造成的 `429` 連鎖超時。
 - **State 2 雙源種子預算同步、#1.5 完整性保底與麵包屑車站／評論去重 (`src/agent/stages/places_search.py`, `src/agent/stages/enrichment.py`, `src/services/tabelog_scraper.py`, `tests/test_real_world_regressions.py`)**：
   - 依 Cloud Run log (`94f83409` / `6ab46557`) 實證修復：補齊 `places_search.py` 合併 `tabelog_seed` 時漏複製 `price_lunch`、`price_dinner`、`supports_paypay`、`credit_cards`、`name_ja` 與 `nearest_station_desc`；並讓 Stage 3 `# 1.5 雙源直通車` 驗證 `_is_tabelog_cache_complete()`，缺漏時改進 `# 2` 重抓補齊（重抓無果仍安全退回原種子評分，兼顧 Case 25）。
   - `extract_nearest_station_from_transit_text` 新增 Yahoo 麵包屑 `> 〇〇駅 ` 保底萃取（如 `鄰近「蔵前站」`），並於 Stage 3 透過 Google Geocoding（同站單次快取）換算為實際車站步行距離與分鐘數；`fetch_tabelog_reviews` 新增重複評論片段去重與 `【移転】` 舊址評論過濾（Case 47）。

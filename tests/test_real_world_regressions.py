@@ -2907,8 +2907,8 @@ async def test_case_36_no_rating_boilerplate_in_sanitizer_and_in_place_repair():
 
 
 @pytest.mark.asyncio
-async def test_case_37_index_store_reviews_background_translation_and_fail_open():
-    """Case 37: index_store_reviews 背景將日文評論批次翻譯存入 review_text_zh，並保留日文原文與 Fail-Open 防護"""
+async def test_case_37_index_store_reviews_without_background_llm_calls():
+    """Case 37: index_store_reviews 不在背景呼叫 LLM 翻譯（避免與前景搶 Groq 配額），直接保留既有 zh 或原文寫入 pgvector"""
     from uuid import uuid4
 
     from src.agent.stages.enrichment import index_store_reviews
@@ -2916,7 +2916,7 @@ async def test_case_37_index_store_reviews_background_translation_and_fail_open(
     rid = uuid4()
     reviews = [
         {"text": "濃厚な豚骨スープが絶品です。", "source": "tabelog"},
-        {"text": "チャーシューが柔らかくて美味しい！", "source": "google"},
+        {"text": "チャーシューが柔らかくて美味しい！", "zh": "叉燒軟嫩又美味！", "source": "google"},
     ]
 
     fsm = MagicMock()
@@ -2925,26 +2925,17 @@ async def test_case_37_index_store_reviews_background_translation_and_fail_open(
     fsm.embedding_service = AsyncMock()
     fsm.embedding_service.get_embeddings_batch.return_value = [[0.1, 0.2], [0.3, 0.4]]
     fsm.llm_client = MagicMock()
-    fsm.llm_client.call_text = AsyncMock(
-        return_value=('["濃郁的豚骨湯頭堪稱一絕。", "叉燒軟嫩又美味！"]', "test-model", 50)
-    )
+    fsm.llm_client.call_text = AsyncMock()
 
     await index_store_reviews(fsm, rid, reviews)
+    fsm.llm_client.call_text.assert_not_called()
     fsm.vector_repo.batch_insert_reviews.assert_awaited_once()
     inserted = fsm.vector_repo.batch_insert_reviews.call_args[0][0]
     assert len(inserted) == 2
     assert inserted[0]["review_text_ja"] == "濃厚な豚骨スープが絶品です。"
-    assert inserted[0]["review_text_zh"] == "濃郁的豚骨湯頭堪稱一絕。"
+    assert inserted[0]["review_text_zh"] == "濃厚な豚骨スープが絶品です。"
+    assert inserted[1]["review_text_ja"] == "チャーシューが柔らかくて美味しい！"
     assert inserted[1]["review_text_zh"] == "叉燒軟嫩又美味！"
-
-    # Fail-Open：若 LLM 翻譯失敗，仍應照常寫入 embedding 且降級保留原文
-    fsm.vector_repo.batch_insert_reviews.reset_mock()
-    fsm.llm_client.call_text = AsyncMock(side_effect=RuntimeError("429 Rate Limit"))
-    await index_store_reviews(fsm, rid, reviews)
-    fsm.vector_repo.batch_insert_reviews.assert_awaited_once()
-    fallback_inserted = fsm.vector_repo.batch_insert_reviews.call_args[0][0]
-    assert fallback_inserted[0]["review_text_ja"] == "濃厚な豚骨スープが絶品です。"
-    assert fallback_inserted[0]["review_text_zh"] == "濃厚な豚骨スープが絶品です。"
 
 
 def test_case_38_ascii_store_does_not_bypass_hallucinated_stores():
@@ -3490,3 +3481,32 @@ async def test_case_47_tabelog_seed_preserves_budget_and_breadcrumb_station():
     assert stores_geo[0]["walking_desc"].startswith("從「蔵前站」步行約 ")
     assert "m)" in stores_geo[0]["walking_desc"]
     assert stores_geo[1]["walking_desc"].startswith("從「蔵前站」步行約 ")
+
+
+@pytest.mark.asyncio
+async def test_case_48_tabelog_seo_boilerplate_filtered_and_default_limit_8():
+    """Case 48 (3dc12ef3 巢鴨咖啡): 過濾 4 類 Tabelog SEO 樣板句 (含 Yahoo <b> 空白與人気字眼)，保留真實食記"""
+    import httpx
+    from src.services.tabelog_scraper import TabelogScraper
+
+    fake_html = """
+    <html><body>
+      <section><h3>伯爵 巣鴨店 - 食べログ</h3><p>日本最大級のグルメサイト「<b>食べログ</b>」では、伯爵 巣鴨店の人気メニューやお得なクーポン情報も満載です。</p></section>
+      <section><h3>伯爵 巣鴨店 - 食べログ</h3><p>伯爵 巣鴨店の店舗情報は<b>食べログ</b>でチェック！人気のモーニングや喫煙可否などの詳細。</p></section>
+      <section><h3>口コミ一覧 : 伯爵 巣鴨店</h3><p>2026/6/3 - 伯爵 巣鴨店へのkanamilkさんの <b>口コミ</b> です。人気のブレンドコーヒーを堪能。</p></section>
+      <section><h3>伯爵 巣鴨店 - 食べログ</h3><p>2026/6/3 - このお店の口コミ集計。～￥999 利用金額分布<b>を見る</b></p></section>
+      <section><h3>口コミ一覧 : 伯爵 巣鴨店</h3><p>珈琲専門店 伯爵巣鴨店 はちょっと不思議な空間で、サイフォンで淹れる香り高いブレンドと厚切りトーストが絶品です。</p></section>
+    </body></html>
+    """
+    mock_resp = MagicMock(status_code=200, text=fake_html)
+    mock_client = MagicMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=False)
+    mock_client.get = AsyncMock(return_value=mock_resp)
+
+    with patch.object(httpx, "AsyncClient", return_value=mock_client):
+        revs = await TabelogScraper().fetch_tabelog_reviews("伯爵 巣鴨店")
+
+    assert len(revs) == 1
+    assert "珈琲専門店 伯爵巣鴨店" in revs[0]["text"]
+    assert "サイフォン" in revs[0]["text"]

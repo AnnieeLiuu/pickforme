@@ -1,6 +1,6 @@
 # Plan 1: Guardrail Hardening & Background Review Translation
 
-> **Status**: Completed & Verified (`ruff`, `mypy`, `pytest` all passed)  
+> **Status**: Completed & Verified (註：其中「背景日翻中 `_translate_reviews_batch_fail_open`」已於 [2026-11-15-tabelog-seo-filter-and-remove-bg-translation.md](file:///c:/Users/User/OneDrive/%E6%96%87%E4%BB%B6/2026/PickForMe/docs/plans/2026-11-15-tabelog-seo-filter-and-remove-bg-translation.md) 移除，改由前景主 LLM 直接讀懂日文原文產出繁中卡片，避免與前景搶 Groq 配額)  
 > **Scope**: Bug/Review Items 1–4 (State 4 Card Synthesis, Validation, In-Place Repair, Rating Sanitization, and Background Review Translation)  
 > **Methodology**: `systematic-debugging` (Root-cause verified; awaiting user approval before implementation)  
 > **Design Principles**: 整體性 (Holistic pipeline alignment)、可維護性 (Shared block/name helpers, zero duplicate regex)、泛化能力 (Generalize across Markdown formats without hardcoded wordlists)

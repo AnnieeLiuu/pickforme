@@ -22,6 +22,14 @@ NOISE_PATTERNS = [
     r"ビル\s*\d+[F階]",
 ]
 
+# Tabelog 搜尋引擎 SEO 樣板句 / 導航索引雜訊 (命中即為無效樣板，不受食物關鍵字白名單豁免)
+TABELOG_SEO_BOILERPLATE_PATTERNS = [
+    r"日本最大級のグルメサイト「\s*食べログ\s*」では",
+    r"の店舗情報は\s*食べログ\s*でチェック",
+    r"への[^\n]{1,40}?さんの\s*口コミ\s*です",
+    r"利用金額分布\s*を見る",
+]
+
 # 食物與用餐體驗關鍵字 (正向食評特徵)
 FOOD_TASTE_KEYWORDS = [
     "美味",
@@ -75,6 +83,10 @@ def is_pure_metadata_noise(text: Any) -> bool:
         return True
 
     clean = text.strip()
+
+    # Tabelog SEO 樣板句 / 導航索引雜訊優先攔截 (不因含「人気」等字眼放行)
+    if any(re.search(p, clean, re.IGNORECASE) for p in TABELOG_SEO_BOILERPLATE_PATTERNS):
+        return True
 
     # 若含有顯著的美食與口感特徵詞，優先判定為有用評論
     has_food_keyword = any(kw in clean for kw in FOOD_TASTE_KEYWORDS)

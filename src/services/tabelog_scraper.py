@@ -352,7 +352,7 @@ class TabelogScraper:
         sorted_cands = sorted(raw_candidates, key=_seed_priority, reverse=True)
         return sorted_cands[:max_seeds]
 
-    async def fetch_tabelog_reviews(self, store_name: str, max_reviews: int = 5) -> list[dict[str, Any]]:
+    async def fetch_tabelog_reviews(self, store_name: str, max_reviews: int = 8) -> list[dict[str, Any]]:
         """定向提取特定店家之真實老饕口コミ (單一職責，單次 Yahoo 查詢自然全收)"""
         clean_name = re.sub(r"[（\(\-\|\:\[].*$", "", store_name).strip()
         if not clean_name:
@@ -388,9 +388,6 @@ class TabelogScraper:
                         desc_tag.get_text(" ", strip=True),
                     ).strip()
                     if "【移転】" in clean_text[:40]:
-                        continue
-                    # 排除「xxx さんの口コミです」空洞索引句與重複評論片段
-                    if re.search(r"^[^\n]{0,30}さんの口コミです", clean_text) and len(clean_text) < 60:
                         continue
                     norm_key = clean_text[:80]
                     if norm_key in seen_texts:
