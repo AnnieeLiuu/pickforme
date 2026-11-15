@@ -1252,27 +1252,24 @@ async def test_case21_no_raw_japanese_review_leak_and_code_block_repair():
         f"模板穿透了日文: {template_card}"
     )
 
-    # 3. 驗證 repair_card_in_place 能將日文理由外科手術修復為繁體中文
-    card_with_japanese_reason = (
+    # 3. 驗證含「(食べログ 口コミ)」標籤與日文專有名詞之繁中推薦理由不會被護欄誤殺
+    card_with_tabelog_label_and_cn_reason = (
         "🍱 **精選推薦：淺草商圈美食**\n\n"
         "🥇 **【1】 `浅草 聚楽`**\n"
         "🚶 **步行距離**：從「淺草站」步行約 3 分鐘\n"
         "⭐️ **雙平台評分**：⭐️ Tabelog 3.65 分\n"
         "💳 **支付方式**：現金為主\n"
-        f"📍 **老饕推薦理由 (食べログ 口コミ)**：{japanese_raw_review}\n"
+        "📍 **老饕推薦理由 (食べログ 口コミ)**：招牌炒飯粒粒分明、搭配ペリカン吐司更是老饕必點。\n"
         "🔗 **店家連結**：[Tabelog 頁面](https://tabelog.com/tokyo/A1311/A131102/13000000/)\n"
     )
 
-    fatal_errs, minor_warns = validate_card_tiered(card_with_japanese_reason, [mock_store_japanese])
-    assert len(fatal_errs) == 0, f"不應產生致命錯誤: {fatal_errs}"
-    assert any("Raw Japanese Leak" in w for w in minor_warns), f"應標記日文洩漏警告: {minor_warns}"
+    fatal_errs, minor_warns = validate_card_tiered(card_with_tabelog_label_and_cn_reason, [mock_store_japanese])
+    assert fatal_errs == []
+    assert minor_warns == []
 
-    repaired = repair_card_in_place(card_with_japanese_reason, [mock_store_japanese])
-    assert "チャーハン" not in repaired
-    assert "老饕推薦理由" not in repaired
-    fatal_after, minor_after = validate_card_tiered(repaired, [mock_store_japanese])
-    assert fatal_after == []
-    assert minor_after == []
+    repaired = repair_card_in_place(card_with_tabelog_label_and_cn_reason, [mock_store_japanese])
+    assert "老饕推薦理由 (食べログ 口コミ)" in repaired
+    assert "招牌炒飯粒粒分明" in repaired
 
     # 4. 驗證 repair_store_name_code_blocks 自動包裹缺失之反引號
     card_missing_code_block = (

@@ -314,7 +314,7 @@ async def execute_state_4_synthesis(
         cond_str = " / ".join(cond_parts)
         constraint_notice = (
             f"（偏好篩選提醒：使用者期望 {cond_str}。請優先推薦符合該條件的店家；"
-            f"若無完全符合者，絕不可全部淘汰成 0 家，請誠實說明差距並推薦最接近的 1~{len(stores)} 家）\n"
+            f"若無完全符合者，絕不可全部淘汰成 0 家，請用簡短一句話說明差距並推薦最接近的 1~{len(stores)} 家，確保篇幅精煉不截斷）\n"
         )
 
     prompt_content = (

@@ -7,6 +7,8 @@
 ## [Unreleased]
 
 ### Fixed
+- **移除 LLM 卡片假名刪行誤殺並精簡預算說明防截斷 (`src/agent/validator.py`, `src/agent/stages/synthesis.py`, `tests/test_real_world_regressions.py`)**：
+  - 依生產追蹤 `fc6c0f6e` 根因修復：移除 `validate_card_tiered` 與 `repair_card_in_place` 中對 LLM 卡片理由行的假名誤殺檢查（原本會因標籤 `(食べログ 口コミ)` 本身含假名而將 3 家店的 `📍 老饕推薦理由` 整行刪除），同時保留純程式保底模板的 `寧缺勿濫` 防護；並精簡 `synthesis` 預算差距提醒語氣，在維持 Groq `max_tokens: 800` 防 429 門檻下避免第 3 家卡片截斷。
 - **純淨日文搜尋詞 (`search_keyword_ja`) 與預算軟性重排防空 (`src/agent/schemas.py`, `config/prompts/intent_parser.md`, `src/agent/stages/places_search.py`, `src/agent/stages/enrichment.py`, `src/agent/stages/synthesis.py`, `src/agent/pipeline.py`, `tests/test_real_world_regressions.py`)**：
   - 依生產追蹤 `211f181a`（「藏前 咖啡 200台幣以下」）根因修復：`IntentOutput` 新增 `search_keyword_ja`（純淨日文搜尋詞如 `カフェ`）與 `budget_max_jpy`（金額上限日圓換算，如 `1000`），`resolve_search_constraints` 徹底停止將 `modifier` 拼入搜尋詞，防止 Google Places 與 Tabelog 獵店搜尋脫靶。
   - 將 `apply_deterministic_constraints` 移入 `execute_state_3_parallel_tabelog` 挑選 Top 3 之前執行並新增預算軟性扣分（正確處理 `～￥999` 下界為 `0`），同時於 `card-synthesis.md` 與 `synthesis.py` 加入「防篩空保底原則」（無完全符合者絕不淘汰成 0 家），並同步更新 Case 13、新增 Case 49 回歸測試。

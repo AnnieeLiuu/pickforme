@@ -315,9 +315,6 @@ def validate_card_tiered(
         ):
             minor_warnings.append("推薦理由中違規出現評分數值客套話 (No-Rating-As-Reason)")
             break
-        if re.search(r"[\u3040-\u309F\u30A0-\u30FF]", r_line):
-            minor_warnings.append("推薦理由中違規出現未翻譯之生硬日文原文 (Raw Japanese Leak)")
-            break
 
     return fatal_errors, minor_warnings
 
@@ -440,7 +437,7 @@ def repair_card_in_place(card_text: str, stores: list[dict[str, Any]], cuisine: 
                 new_lines.append(line)
             continue
 
-        # 檢驗是否為推薦理由行且包含評分客套話或日文假名
+        # 檢驗是否為推薦理由行且包含評分客套話 (不誤殺含「食べログ」來源標籤或日文料理專有名詞的中文食評)
         is_reason_line = bool(re.search(r"(?:老饕推薦理由|老饕評價與推薦理由|推薦理由)[^\n]*[：:]", line))
         has_boilerplate = bool(
             re.search(
@@ -449,9 +446,8 @@ def repair_card_in_place(card_text: str, stores: list[dict[str, Any]], cuisine: 
                 flags=re.IGNORECASE,
             )
         )
-        has_raw_japanese = contains_japanese_kana(line)
 
-        if is_reason_line and (has_boilerplate or has_raw_japanese) and stores and current_store_idx < len(stores):
+        if is_reason_line and has_boilerplate and stores and current_store_idx < len(stores):
             target_store = stores[current_store_idx]
             replacement_text, _ = synthesize_store_recommendation_reason(target_store, cuisine=cuisine)
             if not replacement_text or contains_japanese_kana(replacement_text):
