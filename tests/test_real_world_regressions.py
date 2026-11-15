@@ -3462,3 +3462,31 @@ async def test_case_47_tabelog_seed_preserves_budget_and_breadcrumb_station():
         revs = await TabelogScraper().fetch_tabelog_reviews("喫茶 半月")
     assert len(revs) == 1
     assert "季節限定泡芙" in revs[0]["text"]
+
+    # 4. 麵包屑車站應透過 Google Geocoding 換算為「從「蔵前站」步行約 X 分鐘 (Ym)」，且同站只查一次
+    from src.agent.stages.enrichment import _hydrate_station_walking_distances
+
+    geocode_mock = AsyncMock(return_value=(35.7033, 139.7908))
+    fsm_geo = MagicMock()
+    fsm_geo.places_client = MagicMock(geocode_location=geocode_mock)
+    stores_geo = [
+        {
+            "name": "喫茶 半月",
+            "lat": 35.7042,
+            "lng": 139.7918,
+            "nearest_station_desc": "鄰近「蔵前站」",
+            "walking_desc": "鄰近「蔵前站」",
+        },
+        {
+            "name": "EN CAFE",
+            "lat": 35.7028,
+            "lng": 139.7915,
+            "nearest_station_desc": "鄰近「蔵前站」",
+            "walking_desc": "鄰近「蔵前站」",
+        },
+    ]
+    await _hydrate_station_walking_distances(fsm_geo, stores_geo)
+    geocode_mock.assert_awaited_once_with("蔵前站 日本")
+    assert stores_geo[0]["walking_desc"].startswith("從「蔵前站」步行約 ")
+    assert "m)" in stores_geo[0]["walking_desc"]
+    assert stores_geo[1]["walking_desc"].startswith("從「蔵前站」步行約 ")

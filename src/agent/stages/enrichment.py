@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 import re
 import time
 from typing import TYPE_CHECKING, Any, Optional
@@ -18,6 +19,7 @@ from uuid import UUID
 from src.agent.schemas import extract_preferences_from_text
 from src.agent.stages.places_search import format_walking_description, is_wide_area_origin
 from src.services.entity_resolver import (
+    calculate_distance_meters,
     extract_prefecture_from_address,
     extract_prefecture_from_tabelog_url,
 )
@@ -716,6 +718,53 @@ async def semantic_rerank_reviews(
         return stores
 
 
+_BREADCRUMB_STATION_RE = re.compile(r"^鄰近「([^」]+)」$")
+
+
+async def _hydrate_station_walking_distances(
+    fsm: FoodRecommendationFSM,
+    top_stores: list[dict[str, Any]],
+) -> None:
+    """針對僅有車站名稱 (如 鄰近「蔵前站」) 的入選店家，透過 Google Geocoding 計算實際步行距離與分鐘數"""
+    geocode_fn = getattr(getattr(fsm, "places_client", None), "geocode_location", None)
+    if not callable(geocode_fn):
+        return
+
+    station_coords: dict[str, Optional[tuple[float, float]]] = {}
+    for store in top_stores:
+        st_desc = store.get("nearest_station_desc") or store.get("walking_desc") or ""
+        m = _BREADCRUMB_STATION_RE.match(st_desc.strip())
+        if not m:
+            continue
+        station_name = m.group(1).strip()
+        s_lat = store.get("lat")
+        s_lng = store.get("lng")
+        if not isinstance(s_lat, (int, float)) or not isinstance(s_lng, (int, float)):
+            continue
+
+        if station_name not in station_coords:
+            try:
+                res = geocode_fn(f"{station_name} 日本")
+                coords = await res if asyncio.iscoroutine(res) else res
+                if isinstance(coords, tuple) and len(coords) == 2 and all(isinstance(v, (int, float)) for v in coords):
+                    station_coords[station_name] = (float(coords[0]), float(coords[1]))
+                else:
+                    station_coords[station_name] = None
+            except Exception as e:
+                logger.debug(f"Station geocode failed for '{station_name}': {e}")
+                station_coords[station_name] = None
+
+        st_xy = station_coords.get(station_name)
+        if not st_xy:
+            continue
+        dist_m = int(calculate_distance_meters(st_xy[0], st_xy[1], float(s_lat), float(s_lng)))
+        if 0 < dist_m <= 3000:
+            walk_mins = max(1, math.ceil(dist_m / 80))
+            aligned_desc = f"從「{station_name}」步行約 {walk_mins} 分鐘 ({dist_m}m)"
+            store["nearest_station_desc"] = aligned_desc
+            store["walking_desc"] = aligned_desc
+
+
 async def execute_state_3_parallel_tabelog(
     fsm: FoodRecommendationFSM,
     places: list[dict[str, Any]],
@@ -795,7 +844,10 @@ async def execute_state_3_parallel_tabelog(
                     store["foodie_review_highlight"] = first_text
 
     if top_stores:
-        await asyncio.gather(*[_enrich_foodie_reviews(s) for s in top_stores])
+        await asyncio.gather(
+            _hydrate_station_walking_distances(fsm, top_stores),
+            *[_enrich_foodie_reviews(s) for s in top_stores],
+        )
 
     latency = int((time.time() - t0) * 1000)
 

@@ -316,7 +316,7 @@ flowchart TD
 - **老饕潛力預篩、自適應查驗與重排演算法 (`src/agent/pipeline.py`)**：
   - **Google 記憶體端老饕潛力預篩 (State 2.5)**：Google Places 單次調用直取 20 筆周邊店家，在記憶體中依評分、評論數與距離綜合預篩出 4 筆主選與 2 筆備選種子。
   - **自適應漸進查驗與提早終止 (State 3.1 & 3.2)**：第一梯隊並行查驗 4 家；若高分名店（Tabelog $\ge 3.45$ 或百名店）$\ge 2$ 家即觸發 Early Stop 提早終止，多數場景 0 額外延遲；品質不足時動態查驗備選店家救援。
-  - **$S_i$ 綜合老饕計分重排**：以 Tabelog 評分為核心權重（未命中時 Google 評分安全折算），疊加百名店/Award 加分、距離微幅懲罰與硬性條件違規懲罰 (`-0.45`)，精選 Top 3 店家並注入 `🥇/🥈/🥉` 排名徽章。
+  - **$S_i$ 綜合老饕計分重排**：以 Tabelog 評分為核心權重（未命中時 Google 評分安全折算），疊加百名店/Award 加分、距離微幅懲罰與硬性條件違規懲罰 (`-0.45`)，精選 Top 3 店家並注入 `🥇/🥈/🥉` 排名徽章；並透過 `_is_tabelog_cache_complete()` 與 `_hydrate_station_walking_distances()` 確保缺漏預算時自動重抓、麵包屑車站透過 Google Geocoding 換算實際步行分鐘數。
 - **防腐保證：CI 雙向合約測試防禦 (Contract Testing in CI/CD)**：
   - 於 `tests/test_pipeline.py` 建立自動化合約測試，驗證 System Prompt 定義的排版格式與 Guardrail 錨點 100% 同步；任何提示詞變更若破壞了護欄合約，CI 立即報警阻擋合併。
 - **即時監控：DevOps 遠端健康度巡檢 (`src/agent/devops.py`)**：
