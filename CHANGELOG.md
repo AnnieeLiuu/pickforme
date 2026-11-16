@@ -7,6 +7,8 @@
 ## [Unreleased]
 
 ### Changed
+- **全品類通用前置類型防線 (`src/agent/schemas.py`, `config/prompts/intent_parser.md`, `src/agent/stages/intent.py`, `src/db/repositories/session.py`, `src/services/category_guard.py`, `src/agent/stages/places_search.py`, `src/agent/pipeline.py`, `tests/test_real_world_regressions.py`)**：
+  - 移除 `category_guard.py` 咖啡專用特判，改由 Stage 1 `IntentOutput.target_place_types` 由 LLM 動態輸出 Google Places 標準目標類型（支援跨輪 `working_memory`「換一批」繼承）；Stage 2/3 依 `primary_type`（優先擋掉 `japanese_izakaya_restaurant`、`hookah_bar` 等獨立業態，即使次要 `types` 混入標籤）通用過濾，全面覆蓋拉麵、壽司、燒肉、咖啡、酒吧等全品類（Case 53）。
 - **Enrichment Stage 模組化拆分 (`src/agent/stages/enrichment/`, `tests/test_enrichment_modularization.py`)**：
   - 將原本 881 行的單體 `enrichment.py` 依單一職責解耦為無循環依賴的 8 個子模組（`formatting.py`、`scoring.py`、`geocoding.py`、`reviews.py`、`cache.py`、`crawler.py`、`single_place.py`、`orchestrator.py`）與向後相容 Facade `__init__.py`，並補齊獨立子模組單元測試。
 - **Step A：Stage 2 首頁全收三級預選 ＆ Stage 3 全查 Semaphore 限流 (`src/services/tabelog_scraper.py`, `src/agent/stages/places_search.py`, `src/agent/stages/enrichment/orchestrator.py`, `src/agent/pipeline.py`, `tests/test_real_world_regressions.py`)**：

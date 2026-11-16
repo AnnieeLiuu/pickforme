@@ -244,6 +244,7 @@ async def _hydrate_tabelog_seeds_with_places(
     exclude_set: set[str],
     budget_max_jpy: Optional[int] = None,
     preferences: Optional[dict[str, Any]] = None,
+    target_place_types: Optional[list[str]] = None,
 ) -> list[dict[str, Any]]:
     """源頭 A：主動從 Tabelog 獵取該地區高分/百名店名單，並反查 Google Places 錨定座標與步行距離"""
     if not origin_name:
@@ -268,6 +269,8 @@ async def _hydrate_tabelog_seeds_with_places(
                 discover_kwargs["budget_max_jpy"] = budget_max_jpy
             if has_varkw or "preferences" in sig.parameters:
                 discover_kwargs["preferences"] = preferences
+            if has_varkw or "target_place_types" in sig.parameters:
+                discover_kwargs["target_place_types"] = target_place_types
         except (ValueError, TypeError):
             pass
 
@@ -363,6 +366,7 @@ async def execute_state_2_places_ladder(
     budget_max_jpy: Optional[int] = None,
     preferences: Optional[dict[str, Any]] = None,
     explore_category: Optional[str] = None,
+    target_place_types: Optional[list[str]] = None,
 ) -> list[dict[str, Any]]:
     """State 2: Google Places 智慧階梯檢索 (800m ➔ 1200m ➔ 1800m ➔ 2500m 擴圈保底) + 潛力預篩"""
     t0 = time.time()
@@ -386,6 +390,7 @@ async def execute_state_2_places_ladder(
             exclude_set=exclude_set,
             budget_max_jpy=budget_max_jpy,
             preferences=preferences,
+            target_place_types=target_place_types,
         )
     )
 
@@ -416,7 +421,7 @@ async def execute_state_2_places_ladder(
             pid = p.get("google_place_id")
             if pid and pid not in existing_ids and pid not in exclude_set:
                 _hydrate_place_distance(p)
-                is_mismatch, _ = check_category_mismatch(p, search_keyword=keyword, explore_category=explore_category)
+                is_mismatch, _ = check_category_mismatch(p, target_place_types=target_place_types)
                 if is_mismatch:
                     if pid not in seen_mismatch_ids:
                         mismatch_fallback.append(p)
@@ -443,7 +448,7 @@ async def execute_state_2_places_ladder(
             if pid and pid not in existing_ids and pid not in exclude_set:
                 _hydrate_place_distance(p)
                 p["radius_expanded"] = True
-                is_mismatch, _ = check_category_mismatch(p, search_keyword=keyword, explore_category=explore_category)
+                is_mismatch, _ = check_category_mismatch(p, target_place_types=target_place_types)
                 if is_mismatch:
                     if pid not in seen_mismatch_ids:
                         mismatch_fallback.append(p)

@@ -101,6 +101,7 @@ async def execute_state_3_parallel_tabelog(
     cuisine: Optional[str] = None,
     search_keyword: Optional[str] = None,
     explore_category: Optional[str] = None,
+    target_place_types: Optional[list[str]] = None,
 ) -> list[dict[str, Any]]:
     """State 3: 全候選店 Semaphore 限流並發查驗 + Tabelog 老饕綜合重排"""
     t0 = time.time()
@@ -115,15 +116,7 @@ async def execute_state_3_parallel_tabelog(
     final_enriched = list(await asyncio.gather(*[_bounded_enrich(p) for p in candidate_places]))
 
     # 4. 預算與硬性條件預先加權評估（於挑選 Top 3 前執行，避免符合預算者被高價店擠出名單）
-    if (
-        modifier
-        or preferences
-        or time_constraint
-        or budget_max_jpy is not None
-        or cuisine
-        or search_keyword
-        or explore_category
-    ):
+    if modifier or preferences or time_constraint or budget_max_jpy is not None or target_place_types:
         final_enriched = apply_deterministic_constraints(
             final_enriched,
             modifier=modifier,
@@ -133,6 +126,7 @@ async def execute_state_3_parallel_tabelog(
             cuisine=cuisine,
             search_keyword=search_keyword,
             explore_category=explore_category,
+            target_place_types=target_place_types,
         )
 
     # 5. 老饕綜合加權重排，精選 Top 3（同步萃取未入選之延伸站點高分老店）

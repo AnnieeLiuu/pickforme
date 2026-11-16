@@ -1,24 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Shared Category Consistency Guardrail for Stage 2 & Stage 3."""
+"""Generic Category Consistency Guardrail for Stage 2 & Stage 3."""
 
 from __future__ import annotations
 
 from typing import Any, Optional
 
-_CAFE_TARGET_KEYWORDS = (
-    "カフェ",
-    "喫茶",
-    "コーヒー",
-    "珈琲",
-    "咖啡",
-    "cafe",
-    "coffee",
-    "tea",
-    "抹茶",
-    "茶房",
-)
-
-_ALLOWED_CAFE_GOOGLE_TYPES = frozenset(
+# 明確獨立之專賣或夜生活業態：若店家 primaryType 屬於此集合卻不在目標類型中，即使次要 types 混入其他標籤仍判定不符
+_DISTINCT_PRIMARY_TYPES = frozenset(
     {
         "cafe",
         "coffee_shop",
@@ -27,101 +15,109 @@ _ALLOWED_CAFE_GOOGLE_TYPES = frozenset(
         "dessert_shop",
         "ice_cream_shop",
         "confectionery",
-    }
-)
-
-_EXCLUDED_CAFE_GOOGLE_PRIMARY_TYPES = frozenset(
-    {
-        "japanese_restaurant",
-        "restaurant",
+        "bar",
+        "pub",
+        "hookah_bar",
+        "night_club",
+        "izakaya",
+        "japanese_izakaya_restaurant",
         "ramen_restaurant",
         "sushi_restaurant",
         "steak_house",
         "yakiniku_restaurant",
-        "izakaya",
-        "bar",
-        "hookah_bar",
-        "night_club",
-        "pub",
+        "hamburger_restaurant",
+        "pizza_restaurant",
         "fast_food_restaurant",
-        "meal_takeaway",
     }
 )
 
-_SAFE_CAFE_TABELOG_GENRES = (
-    "カフェ",
-    "喫茶",
-    "コーヒー",
-    "珈琲",
-    "紅茶",
-    "日本茶",
-    "スイーツ",
-    "ケーキ",
-    "パン",
-    "甘味",
-    "パフェ",
-    "クレープ",
-    "ジェラート",
+# 非正餐專賣類型：當目標全屬此類而店家 primaryType 為一般正餐 (restaurant / japanese_restaurant) 且 types 無交集時判定不符
+_NON_DINING_TARGET_TYPES = frozenset(
+    {
+        "cafe",
+        "coffee_shop",
+        "tea_house",
+        "bakery",
+        "dessert_shop",
+        "ice_cream_shop",
+        "confectionery",
+        "bar",
+        "pub",
+        "hookah_bar",
+        "night_club",
+    }
 )
 
-_EXCLUDED_CAFE_TABELOG_GENRES = (
-    "食堂",
-    "定食",
-    "居酒屋",
-    "ラーメン",
-    "焼肉",
-    "寿司",
-    "鮨",
-    "バー",
-    "シーシャ",
-    "焼鳥",
-    "ステーキ",
-    "とんかつ",
-    "うどん",
-    "そば",
-    "鍋",
-    "中華",
-    "カレー",
-)
+# 粗粒度互斥大類（僅用於 Stage 3 Tabelog genre 兜底比對，不寫死細部同義字字典）
+_MACRO_BUCKETS: dict[str, tuple[frozenset[str], tuple[str, ...]]] = {
+    "cafe_dessert": (
+        frozenset({"cafe", "coffee_shop", "tea_house", "bakery", "dessert_shop", "ice_cream_shop", "confectionery"}),
+        ("カフェ", "喫茶", "コーヒー", "珈琲", "紅茶", "日本茶", "スイーツ", "ケーキ", "パン", "甘味"),
+    ),
+    "ramen_noodle": (
+        frozenset({"ramen_restaurant"}),
+        ("ラーメン", "つけ麺", "まぜそば", "油そば", "うどん", "そば"),
+    ),
+    "sushi_seafood": (
+        frozenset({"sushi_restaurant"}),
+        ("寿司", "鮨", "海鮮"),
+    ),
+    "yakiniku_steak": (
+        frozenset({"yakiniku_restaurant", "steak_house"}),
+        ("焼肉", "ホルモン", "ステーキ"),
+    ),
+    "bar_izakaya": (
+        frozenset({"bar", "pub", "hookah_bar", "night_club", "izakaya", "japanese_izakaya_restaurant"}),
+        ("居酒屋", "バー", "シーシャ", "焼鳥", "ダイニングバー"),
+    ),
+    "dining_shokudo": (
+        frozenset({"japanese_restaurant", "restaurant", "fast_food_restaurant"}),
+        ("食堂", "定食"),
+    ),
+}
 
 
-def is_cafe_or_drink_target(
-    cuisine: Optional[str] = None,
-    search_keyword: Optional[str] = None,
-    explore_category: Optional[str] = None,
-) -> bool:
-    """判定本次查詢是否屬於咖啡／喫茶／飲品類別。"""
-    if explore_category == "drink":
-        return True
-    combined = f"{cuisine or ''} {search_keyword or ''}".lower()
-    return any(k in combined for k in _CAFE_TARGET_KEYWORDS)
+def _resolve_target_buckets(targets: set[str]) -> set[str]:
+    return {name for name, (g_types, _) in _MACRO_BUCKETS.items() if targets & g_types}
 
 
 def check_category_mismatch(
     store: dict[str, Any],
-    cuisine: Optional[str] = None,
-    search_keyword: Optional[str] = None,
-    explore_category: Optional[str] = None,
+    target_place_types: Optional[list[str]] = None,
 ) -> tuple[bool, Optional[str]]:
-    """檢查單一店家與目標品類是否明顯互斥（Fail-Open：缺欄位一律回傳 False）。"""
-    if not is_cafe_or_drink_target(cuisine=cuisine, search_keyword=search_keyword, explore_category=explore_category):
+    """通用檢查單一店家與目標 Google Places 類型是否明顯互斥（Fail-Open：缺欄位或無目標類型一律回傳 False）。"""
+    targets = {str(t).strip().lower() for t in (target_place_types or []) if str(t).strip()}
+    if not targets:
         return False, None
 
-    # 1. Google Places primaryType / types 檢查
+    # 1. Google Places primaryType / types 通用檢查
     raw_types = store.get("types")
     types_set = {str(t).strip().lower() for t in raw_types if t} if isinstance(raw_types, list) else set()
     primary = str(store.get("primary_type") or "").strip().lower()
 
     if primary or types_set:
-        if primary not in _ALLOWED_CAFE_GOOGLE_TYPES and not (types_set & _ALLOWED_CAFE_GOOGLE_TYPES):
-            if primary in _EXCLUDED_CAFE_GOOGLE_PRIMARY_TYPES:
-                return True, f"Google 類型（{primary}）與咖啡廳／飲品需求不符"
+        if primary in targets:
+            return False, None
+        if primary in _DISTINCT_PRIMARY_TYPES:
+            return True, f"Google 主類型（{primary}）與目標需求不符"
+        # primary 為泛用餐廳或缺失時，檢查次要 types 是否有交集
+        if not (types_set & targets):
+            if targets <= _NON_DINING_TARGET_TYPES or (types_set & _DISTINCT_PRIMARY_TYPES):
+                label = primary or ", ".join(sorted(types_set)[:2])
+                return True, f"Google 類型（{label}）與目標需求不符"
 
-    # 2. Tabelog genre 檢查（保護複合咖啡品類如「ダイニングバー・カフェ」）
+    # 2. Tabelog genre 粗粒度互斥檢查（僅在目標對應明確大類時觸發，且保護複合業態）
     genre = str(store.get("tabelog_genre") or "").strip()
     if genre:
-        if not any(safe in genre for safe in _SAFE_CAFE_TABELOG_GENRES):
-            if any(excl in genre for excl in _EXCLUDED_CAFE_TABELOG_GENRES):
-                return True, f"Tabelog 分類（{genre}）與咖啡廳／飲品需求不符"
+        target_buckets = _resolve_target_buckets(targets)
+        if target_buckets:
+            # 只要包含任一目標大類關鍵字即放行
+            for b_name in target_buckets:
+                if any(tok in genre for tok in _MACRO_BUCKETS[b_name][1]):
+                    return False, None
+            # 否則若命中其他互斥大類則判定不符
+            for b_name, (_, tokens) in _MACRO_BUCKETS.items():
+                if b_name not in target_buckets and any(tok in genre for tok in tokens):
+                    return True, f"Tabelog 分類（{genre}）與目標需求不符"
 
     return False, None

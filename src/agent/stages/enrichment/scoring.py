@@ -8,7 +8,7 @@ from typing import Any, Optional
 
 from src.agent.schemas import extract_preferences_from_text
 from src.agent.stages.places_search import is_wide_area_origin
-from src.services.category_guard import check_category_mismatch, is_cafe_or_drink_target
+from src.services.category_guard import check_category_mismatch
 from src.services.tabelog_scraper import TabelogScraper
 
 _extract_min_budget_jpy = TabelogScraper._extract_min_budget_jpy
@@ -62,6 +62,7 @@ def apply_deterministic_constraints(
     cuisine: Optional[str] = None,
     search_keyword: Optional[str] = None,
     explore_category: Optional[str] = None,
+    target_place_types: Optional[list[str]] = None,
 ) -> list[dict[str, Any]]:
     """Deterministic Constraint Sensor: 根據當輪 modifier、長期偏好、預算與時間對明確違反條件的店家標記降權"""
     if not stores:
@@ -91,11 +92,7 @@ def apply_deterministic_constraints(
             elif any(k in modifier for k in ("現在有開", "現在開著", "營業中")):
                 time_constraint = "now"
 
-    check_category = is_cafe_or_drink_target(
-        cuisine=cuisine,
-        search_keyword=search_keyword,
-        explore_category=explore_category,
-    )
+    check_category = bool(target_place_types)
 
     if not payment_reqs and not dietary_reqs and not time_constraint and budget_max_jpy is None and not check_category:
         return stores
@@ -161,9 +158,7 @@ def apply_deterministic_constraints(
         if check_category:
             is_mismatch, cat_reason = check_category_mismatch(
                 store,
-                cuisine=cuisine,
-                search_keyword=search_keyword,
-                explore_category=explore_category,
+                target_place_types=target_place_types,
             )
             if is_mismatch:
                 store["category_mismatch"] = True

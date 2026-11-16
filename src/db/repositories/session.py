@@ -307,6 +307,7 @@ class SessionRepository:
         last_location: Optional[str] = None,
         last_search_keyword_ja: Optional[str] = None,
         last_budget_max_jpy: Optional[int] = None,
+        last_target_place_types: Optional[list[str]] = None,
     ) -> None:
         """更新推薦店家清單，預設累積更新歷史看過的店家 ID，同時保留長期偏好與更新 Working Memory"""
         pool = await get_db_pool()
@@ -361,6 +362,11 @@ class SessionRepository:
             ),
             "last_budget_max_jpy": (
                 last_budget_max_jpy if last_budget_max_jpy is not None else existing_wm.get("last_budget_max_jpy")
+            ),
+            "last_target_place_types": (
+                last_target_place_types
+                if last_target_place_types is not None
+                else existing_wm.get("last_target_place_types")
             ),
         }
         # 一般搜尋完成即代表「特色導覽選單」或「縣級反問選單」已消費完畢：清除選單暫存，

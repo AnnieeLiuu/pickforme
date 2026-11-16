@@ -3746,11 +3746,17 @@ async def test_case_52_step_b_deterministic_card_json_warnings_and_search_meta()
 
 @pytest.mark.asyncio
 async def test_case_53_category_consistency_guardrail_cafe_vs_shinpachi_and_shisha():
-    """Case 53 (0c672e01 新宿御苑咖啡): Stage 2 排除食堂/水煙吧且不中斷擴圈，Stage 3 補齊 tabelog_genre='食堂' 重度降權"""
+    """Case 53 (0c672e01 / 398f28b4 通用 target_place_types): Stage 2 排除食堂/居酒屋/水煙吧（含偷塞 cafe 標籤），並通用於拉麵與酒吧"""
+    from src.agent.schemas import IntentOutput
     from src.agent.stages.enrichment import apply_deterministic_constraints, calculate_foodie_score
     from src.agent.stages.places_search import execute_state_2_places_ladder
+    from src.services.category_guard import check_category_mismatch
 
-    # 1. Stage 2: 800m 混入烤魚定食 (japanese_restaurant) 與水煙吧 (hookah_bar) 僅 1 家真咖啡，應繼續擴圈至 1200m
+    # 0. IntentOutput 對 target_place_types=None 安全轉為 []
+    intent_obj = IntentOutput(intent="search", target_place_types=None)
+    assert intent_obj.target_place_types == []
+
+    # 1. Stage 2: 800m 混入烤魚定食、居酒屋與偷塞 cafe 標籤的水煙吧 (398f28b4 真實結構)，僅 1 家真咖啡，應繼續擴圈至 1200m
     radius_800 = [
         {
             "google_place_id": "g_fish",
@@ -3763,6 +3769,16 @@ async def test_case_53_category_consistency_guardrail_cafe_vs_shinpachi_and_shis
             "types": ["japanese_restaurant", "restaurant"],
         },
         {
+            "google_place_id": "g_izakaya",
+            "name": "ナベサン（居酒屋&カフェ）",
+            "lat": 35.691,
+            "lng": 139.7075,
+            "rating": 4.9,
+            "user_ratings_total": 300,
+            "primary_type": "japanese_izakaya_restaurant",
+            "types": ["japanese_izakaya_restaurant", "japanese_restaurant", "restaurant"],
+        },
+        {
             "google_place_id": "g_shisha",
             "name": "C.Stand Shinjuku 3-chome",
             "lat": 35.691,
@@ -3770,7 +3786,7 @@ async def test_case_53_category_consistency_guardrail_cafe_vs_shinpachi_and_shis
             "rating": 4.8,
             "user_ratings_total": 400,
             "primary_type": "hookah_bar",
-            "types": ["bar", "hookah_bar"],
+            "types": ["hookah_bar", "cafe", "bar"],
         },
         {
             "google_place_id": "g_cafe1",
@@ -3819,11 +3835,19 @@ async def test_case_53_category_consistency_guardrail_cafe_vs_shinpachi_and_shis
     fsm._prefilter_potential_foodie_places = lambda cands, max_seeds=6: cands[:max_seeds]
     fsm.trace_logger = AsyncMock()
 
-    cands = await execute_state_2_places_ladder(fsm, 35.6906, 139.7069, keyword="カフェ", origin_name="新宿御苑")
+    cands = await execute_state_2_places_ladder(
+        fsm,
+        35.6906,
+        139.7069,
+        keyword="カフェ",
+        origin_name="新宿御苑",
+        target_place_types=["cafe", "coffee_shop"],
+    )
     cand_ids = [c["google_place_id"] for c in cands]
     assert fsm.places_client.search_nearby.await_count >= 2  # 確認沒有在 800m 提早停止擴圈
     assert set(cand_ids) == {"g_cafe1", "g_cafe2", "g_old_cafe"}
     assert "g_fish" not in cand_ids
+    assert "g_izakaya" not in cand_ids
     assert "g_shisha" not in cand_ids
 
     # 2. Stage 3: 若食堂漏網並補齊 tabelog_genre='食堂' (3.1分)，必須被 -1.5 重度降權輸給一般咖啡廳
@@ -3832,13 +3856,23 @@ async def test_case_53_category_consistency_guardrail_cafe_vs_shinpachi_and_shis
         {"name_ja": "正常咖啡廳", "rating": 4.4, "tabelog_rating": None},
         {"name_ja": "資料缺失老咖啡店", "rating": 4.2, "tabelog_rating": None, "tabelog_genre": None},
     ]
-    apply_deterministic_constraints(stage3_stores, cuisine="咖啡", search_keyword="カフェ")
+    apply_deterministic_constraints(
+        stage3_stores,
+        cuisine="咖啡",
+        search_keyword="カフェ",
+        target_place_types=["cafe", "coffee_shop"],
+    )
     assert stage3_stores[0].get("category_mismatch") is True
     assert stage3_stores[0].get("constraint_violation") is not True  # 不與硬性條件疊加雙重扣分
     assert stage3_stores[1].get("category_mismatch") is not True
     assert stage3_stores[2].get("category_mismatch") is not True
 
     assert calculate_foodie_score(stage3_stores[1]) > calculate_foodie_score(stage3_stores[0])
+
+    # 3. 通用跨品類驗證：拉麵擋居酒屋、酒吧正常放行酒吧
+    assert check_category_mismatch({"primary_type": "japanese_izakaya_restaurant"}, ["ramen_restaurant"])[0] is True
+    assert check_category_mismatch({"primary_type": "ramen_restaurant"}, ["ramen_restaurant"])[0] is False
+    assert check_category_mismatch({"primary_type": "bar"}, ["bar", "pub"])[0] is False
 
 
 @pytest.mark.asyncio

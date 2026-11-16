@@ -113,9 +113,18 @@ class IntentOutput(BaseModel):
         default_factory=list,
         description="若地點過於廣域模糊，請提供 2~3 個最具代表性的具體子商圈或城鎮名（含 name、desc、search_loc）",
     )
+    target_place_types: list[str] = Field(
+        default_factory=list,
+        description='目標店家的 Google Places API (New) 標準 primaryType 清單（例如咖啡廳填 ["cafe", "coffee_shop"]、拉麵填 ["ramen_restaurant"]、壽司填 ["sushi_restaurant"]、居酒屋填 ["japanese_izakaya_restaurant", "izakaya"]、酒吧填 ["bar", "pub"]）；若為泛稱「美食／餐廳」請設為 []',
+    )
 
     @field_validator(
-        "target_indices", "dietary_restrictions", "payment_preferences", "suggested_sub_areas", mode="before"
+        "target_indices",
+        "dietary_restrictions",
+        "payment_preferences",
+        "suggested_sub_areas",
+        "target_place_types",
+        mode="before",
     )
     @classmethod
     def _coerce_none_to_list(cls, v: Any) -> Any:
@@ -185,6 +194,7 @@ class FSMRunContext(BaseModel):
     style_tag: Optional[str] = None
     exclude_place_ids: set[str] = Field(default_factory=set)
     long_term_preferences: dict[str, list[str]] = Field(default_factory=dict)
+    target_place_types: list[str] = Field(default_factory=list)
 
 
 class GeocodeArgs(BaseModel):

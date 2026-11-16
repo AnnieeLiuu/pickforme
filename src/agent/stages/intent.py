@@ -282,6 +282,8 @@ async def execute_state_1_intent(
                     parsed["explore_category"] = last_cat
                     if last_cat == "drink":
                         parsed["cuisine"] = "人気 カフェ 茶房 日本茶"
+                        if not parsed.get("target_place_types"):
+                            parsed["target_place_types"] = ["cafe", "coffee_shop", "tea_house"]
                     elif last_cat == "souvenir":
                         parsed["cuisine"] = "人気 お土産 和菓子 老舗"
                     else:
@@ -329,7 +331,7 @@ async def execute_state_1_intent(
             parsed["intent"] = "need_location"
         return parsed
 
-    # 若為 "more" 且缺少料理、地名、日文搜尋詞或預算上限，優先從 Working Memory 繼承
+    # 若為 "more" 且缺少料理、地名、日文搜尋詞、預算上限或目標店家類型，優先從 Working Memory 繼承
     if (
         intent == "more"
         and chat_id
@@ -338,6 +340,7 @@ async def execute_state_1_intent(
             or not parsed.get("location")
             or not parsed.get("search_keyword_ja")
             or parsed.get("budget_max_jpy") is None
+            or not parsed.get("target_place_types")
         )
     ):
         try:
@@ -355,6 +358,9 @@ async def execute_state_1_intent(
                     if parsed.get("budget_max_jpy") is None and wm.get("last_budget_max_jpy") is not None:
                         if not orig_cuisine or orig_cuisine == wm.get("last_cuisine"):
                             parsed["budget_max_jpy"] = wm["last_budget_max_jpy"]
+                    if not parsed.get("target_place_types") and wm.get("last_target_place_types"):
+                        if not orig_cuisine or orig_cuisine == wm.get("last_cuisine"):
+                            parsed["target_place_types"] = wm["last_target_place_types"]
                     if not parsed.get("location") and wm.get("last_location"):
                         parsed["location"] = wm["last_location"]
         except Exception as e:

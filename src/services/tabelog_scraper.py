@@ -355,6 +355,7 @@ class TabelogScraper:
         max_seeds: int = 4,
         budget_max_jpy: Optional[int] = None,
         preferences: Optional[dict[str, Any]] = None,
+        target_place_types: Optional[list[str]] = None,
     ) -> list[dict[str, Any]]:
         """主動獵取指定地區與料理類別之 Tabelog 高分/百名店原生名單 (Tabelog-First Discovery)
 
@@ -426,7 +427,7 @@ class TabelogScraper:
             return 1  # Tier B: 疑罪從無（未知保留）
 
         def _seed_priority(c: dict[str, Any]) -> tuple[int, int, int, float]:
-            is_mismatch, _ = check_category_mismatch(c, search_keyword=clean_cuisine)
+            is_mismatch, _ = check_category_mismatch(c, target_place_types=target_place_types)
             cat_ok = 0 if is_mismatch else 1
             not_relocated = 0 if c.get("is_relocated") else 1
             tier_rank = _evaluate_tier(c)

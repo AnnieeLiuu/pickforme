@@ -139,6 +139,7 @@ class FoodRecommendationFSM:
         budget_max_jpy: Optional[int] = None,
         preferences: Optional[dict[str, Any]] = None,
         explore_category: Optional[str] = None,
+        target_place_types: Optional[list[str]] = None,
     ) -> list[dict[str, Any]]:
         """State 2: Google Places 智慧階梯檢索 (委派至 stages.places_search)"""
         return await stage_execute_state_2_places_ladder(
@@ -153,6 +154,7 @@ class FoodRecommendationFSM:
             budget_max_jpy=budget_max_jpy,
             preferences=preferences,
             explore_category=explore_category,
+            target_place_types=target_place_types,
         )
 
     async def _enrich_single_place(self, place: dict[str, Any], area_hint: Optional[str] = None) -> dict[str, Any]:
@@ -186,6 +188,7 @@ class FoodRecommendationFSM:
         cuisine: Optional[str] = None,
         search_keyword: Optional[str] = None,
         explore_category: Optional[str] = None,
+        target_place_types: Optional[list[str]] = None,
     ) -> list[dict[str, Any]]:
         """State 3: 全候選查驗 + Tabelog 老饕綜合重排 (委派至 stages.enrichment)"""
         return await stage_execute_state_3_parallel_tabelog(
@@ -199,6 +202,7 @@ class FoodRecommendationFSM:
             cuisine=cuisine,
             search_keyword=search_keyword,
             explore_category=explore_category,
+            target_place_types=target_place_types,
         )
 
     def _render_template_fallback_card(
@@ -491,6 +495,7 @@ class FoodRecommendationFSM:
                 style_tag=style_tag,
                 exclude_place_ids=exclude_ids,
                 long_term_preferences=preferences,
+                target_place_types=list(parsed.get("target_place_types") or []),
             )
             lat, lng = run_ctx.coords  # type: ignore[misc]
 
@@ -516,6 +521,7 @@ class FoodRecommendationFSM:
                 budget_max_jpy=run_ctx.budget_max_jpy,
                 preferences=run_ctx.long_term_preferences,
                 explore_category=run_ctx.explore_category,
+                target_place_types=run_ctx.target_place_types,
             )
             telemetry.end_span(span_s2, output_data={"candidate_count": len(candidates)})
             if not candidates:
@@ -538,6 +544,7 @@ class FoodRecommendationFSM:
                 cuisine=run_ctx.cuisine,
                 search_keyword=run_ctx.search_keyword,
                 explore_category=run_ctx.explore_category,
+                target_place_types=run_ctx.target_place_types,
             )
 
             # 3.5 pgvector 語意重排與食評亮點萃取 (RAG)
@@ -585,6 +592,7 @@ class FoodRecommendationFSM:
                         last_location=run_ctx.location_name,
                         last_search_keyword_ja=search_keyword_ja,
                         last_budget_max_jpy=run_ctx.budget_max_jpy,
+                        last_target_place_types=run_ctx.target_place_types,
                     )
                 except Exception as e:
                     logger.warning(f"Could not persist recommended stores to session: {e}")
