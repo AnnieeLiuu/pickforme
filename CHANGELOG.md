@@ -15,6 +15,8 @@
   - `apply_deterministic_constraints` 新增結構化 `constraint_warnings`（記錄 `budget`、`payment`、`hours`、`dietary` 違規明細）；`execute_state_4_synthesis` 改為要求 LLM 輸出 `{"stores": [{"index", "reason", "must_order"}], "tip"}` 精簡 JSON 並由 Python 確定性拼裝客觀欄位、單店差異標註與 `search_meta` 候選數透明說明（Gemini fallback 放寬 `max_tokens=1500`，Groq 維持 `800`，並新增 Case 52）。
 
 ### Fixed
+- **品類一致性防線 (`src/services/category_guard.py`, `src/services/google_places.py`, `src/services/tabelog_scraper.py`, `src/agent/stages/places_search.py`, `src/agent/stages/enrichment/scoring.py`, `tests/test_real_world_regressions.py`)**：
+  - 依生產追蹤 `0c672e01`（「新宿御苑附近的咖啡廳推薦」）根因修復：Google `search_by_text` / `search_nearby` 新增 `places.primaryType,places.types` 解析，並建立共用品類一致性檢查 `check_category_mismatch`（Fail-Open 疑罪從無，且放行複合型咖啡廳）；Stage 2 排除明顯互斥的食堂/水煙吧並不阻斷擴圈、Stage 3 補齊 `tabelog_genre` 傳遞鏈並對補齊後才現形的衝突店家施加 `-1.5` 重度降權（Case 53）。
 - **有預算條件時取消 State 3 早停並同步 Google >4.4 星壓平保護 (`src/agent/stages/enrichment.py`, `tests/test_real_world_regressions.py`)**：
   - 依生產追蹤 `ace8b4db` 修復：當使用者指定 `budget_max_jpy` 時，`execute_state_3_parallel_tabelog` 不再於 Tier 1 早停，改為查完 Tier 2（第 5～6 家）再排序，讓排在 Tier 2 的平價名店（如 `コフィノワ` `～￥999`）能進入 Top 3；並於 `calculate_foodie_score` 同步對無 Tabelog 評分的店家壓平 Google `> 4.4` 星，防止非目標類型的高分餐廳擠掉候選（Case 50）。
 - **移除 LLM 卡片假名刪行誤殺並精簡預算說明防截斷 (`src/agent/validator.py`, `src/agent/stages/synthesis.py`, `tests/test_real_world_regressions.py`)**：

@@ -3742,3 +3742,100 @@ async def test_case_52_step_b_deterministic_card_json_warnings_and_search_meta()
     assert "此區候選店家均略未完全符合設定條件（預算上限 ￥1,000）" in card
     assert "目前搜尋範圍內僅找到 2 家高關聯名店" in card
     assert "此區名店多僅收現金，建議備足現鈔。" in card
+
+
+@pytest.mark.asyncio
+async def test_case_53_category_consistency_guardrail_cafe_vs_shinpachi_and_shisha():
+    """Case 53 (0c672e01 新宿御苑咖啡): Stage 2 排除食堂/水煙吧且不中斷擴圈，Stage 3 補齊 tabelog_genre='食堂' 重度降權"""
+    from src.agent.stages.enrichment import apply_deterministic_constraints, calculate_foodie_score
+    from src.agent.stages.places_search import execute_state_2_places_ladder
+
+    # 1. Stage 2: 800m 混入烤魚定食 (japanese_restaurant) 與水煙吧 (hookah_bar) 僅 1 家真咖啡，應繼續擴圈至 1200m
+    radius_800 = [
+        {
+            "google_place_id": "g_fish",
+            "name": "しんぱち食堂 新宿御苑店",
+            "lat": 35.691,
+            "lng": 139.707,
+            "rating": 4.3,
+            "user_ratings_total": 500,
+            "primary_type": "japanese_restaurant",
+            "types": ["japanese_restaurant", "restaurant"],
+        },
+        {
+            "google_place_id": "g_shisha",
+            "name": "C.Stand Shinjuku 3-chome",
+            "lat": 35.691,
+            "lng": 139.708,
+            "rating": 4.8,
+            "user_ratings_total": 400,
+            "primary_type": "hookah_bar",
+            "types": ["bar", "hookah_bar"],
+        },
+        {
+            "google_place_id": "g_cafe1",
+            "name": "ajura",
+            "lat": 35.690,
+            "lng": 139.707,
+            "rating": 4.5,
+            "user_ratings_total": 200,
+            "primary_type": "cafe",
+            "types": ["cafe", "coffee_shop"],
+        },
+    ]
+    radius_1200 = [
+        {
+            "google_place_id": "g_cafe2",
+            "name": "Encounter Brunch Cafe",
+            "lat": 35.692,
+            "lng": 139.709,
+            "rating": 4.4,
+            "user_ratings_total": 150,
+            "primary_type": "restaurant",
+            "types": ["restaurant", "cafe"],  # 複合型早午餐咖啡廳：含 cafe 必須放行
+        },
+        {
+            "google_place_id": "g_old_cafe",
+            "name": "純喫茶老店",
+            "lat": 35.692,
+            "lng": 139.708,
+            "rating": 4.3,
+            "user_ratings_total": 80,
+            "primary_type": None,
+            "types": [],  # 缺欄位老店：Fail-Open 保護不誤殺
+        },
+    ]
+
+    async def fake_search_nearby(lat, lng, radius, keyword=""):
+        if radius == 800:
+            return radius_800
+        if radius == 1200:
+            return radius_1200
+        return []
+
+    fsm = MagicMock()
+    fsm.places_client = MagicMock(search_nearby=AsyncMock(side_effect=fake_search_nearby), search_by_text=None)
+    fsm.tabelog_scraper = None
+    fsm._prefilter_potential_foodie_places = lambda cands, max_seeds=6: cands[:max_seeds]
+    fsm.trace_logger = AsyncMock()
+
+    cands = await execute_state_2_places_ladder(fsm, 35.6906, 139.7069, keyword="カフェ", origin_name="新宿御苑")
+    cand_ids = [c["google_place_id"] for c in cands]
+    assert fsm.places_client.search_nearby.await_count >= 2  # 確認沒有在 800m 提早停止擴圈
+    assert set(cand_ids) == {"g_cafe1", "g_cafe2", "g_old_cafe"}
+    assert "g_fish" not in cand_ids
+    assert "g_shisha" not in cand_ids
+
+    # 2. Stage 3: 若食堂漏網並補齊 tabelog_genre='食堂' (3.1分)，必須被 -1.5 重度降權輸給一般咖啡廳
+    stage3_stores = [
+        {"name_ja": "しんぱち食堂", "tabelog_rating": 3.1, "tabelog_genre": "食堂"},
+        {"name_ja": "正常咖啡廳", "rating": 4.4, "tabelog_rating": None},
+        {"name_ja": "資料缺失老咖啡店", "rating": 4.2, "tabelog_rating": None, "tabelog_genre": None},
+    ]
+    apply_deterministic_constraints(stage3_stores, cuisine="咖啡", search_keyword="カフェ")
+    assert stage3_stores[0].get("category_mismatch") is True
+    assert stage3_stores[0].get("constraint_violation") is not True  # 不與硬性條件疊加雙重扣分
+    assert stage3_stores[1].get("category_mismatch") is not True
+    assert stage3_stores[2].get("category_mismatch") is not True
+
+    assert calculate_foodie_score(stage3_stores[1]) > calculate_foodie_score(stage3_stores[0])

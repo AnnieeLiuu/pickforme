@@ -7,6 +7,8 @@ from typing import Any, Optional
 import httpx
 from bs4 import BeautifulSoup
 
+from src.services.category_guard import check_category_mismatch
+
 logger = logging.getLogger(__name__)
 
 USER_AGENTS = [
@@ -423,12 +425,14 @@ class TabelogScraper:
                 return 2  # Tier A: 明確符合
             return 1  # Tier B: 疑罪從無（未知保留）
 
-        def _seed_priority(c: dict[str, Any]) -> tuple[int, int, float]:
+        def _seed_priority(c: dict[str, Any]) -> tuple[int, int, int, float]:
+            is_mismatch, _ = check_category_mismatch(c, search_keyword=clean_cuisine)
+            cat_ok = 0 if is_mismatch else 1
             not_relocated = 0 if c.get("is_relocated") else 1
             tier_rank = _evaluate_tier(c)
             rating = float(c.get("tabelog_rating") or 0.0)
             has_award = bool(c.get("hyakumeiten") or c.get("awards"))
-            return (not_relocated, tier_rank, rating + (0.5 if has_award else 0.0))
+            return (cat_ok, not_relocated, tier_rank, rating + (0.5 if has_award else 0.0))
 
         sorted_cands = sorted(raw_candidates, key=_seed_priority, reverse=True)
         return sorted_cands[:max_seeds]
@@ -532,6 +536,7 @@ class TabelogScraper:
                 "hyakumeiten": fallback_candidate.get("hyakumeiten", []),
                 "supports_paypay": fallback_candidate.get("supports_paypay"),
                 "credit_cards": fallback_candidate.get("credit_cards"),
+                "tabelog_genre": fallback_candidate.get("tabelog_genre"),
                 "sample_reviews": fallback_candidate.get("sample_reviews", []),
             }
 

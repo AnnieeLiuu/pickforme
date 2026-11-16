@@ -45,6 +45,8 @@ class GooglePlacesClient:
                 "places.currentOpeningHours,"
                 "places.paymentOptions,"
                 "places.googleMapsUri,"
+                "places.primaryType,"
+                "places.types,"
                 "places.reviews"
             ),
             "X-Goog-LanguageCode": "ja",
@@ -104,6 +106,8 @@ class GooglePlacesClient:
                 "places.currentOpeningHours,"
                 "places.paymentOptions,"
                 "places.googleMapsUri,"
+                "places.primaryType,"
+                "places.types,"
                 "places.reviews"
             ),
             "X-Goog-LanguageCode": "ja",
@@ -243,5 +247,7 @@ class GooglePlacesClient:
             "accepts_credit_cards": accepts_credit_cards,
             "accepts_cash_only": accepts_cash_only,
             "accepts_nfc": accepts_nfc,
+            "primary_type": item.get("primaryType"),
+            "types": item.get("types") or [],
             "reviews": reviews_list,
         }

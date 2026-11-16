@@ -137,6 +137,7 @@ class FoodRecommendationFSM:
         custom_radii: Optional[list[int]] = None,
         budget_max_jpy: Optional[int] = None,
         preferences: Optional[dict[str, Any]] = None,
+        explore_category: Optional[str] = None,
     ) -> list[dict[str, Any]]:
         """State 2: Google Places 智慧階梯檢索 (委派至 stages.places_search)"""
         return await stage_execute_state_2_places_ladder(
@@ -150,6 +151,7 @@ class FoodRecommendationFSM:
             custom_radii=custom_radii,
             budget_max_jpy=budget_max_jpy,
             preferences=preferences,
+            explore_category=explore_category,
         )
 
     async def _enrich_single_place(self, place: dict[str, Any], area_hint: Optional[str] = None) -> dict[str, Any]:
@@ -180,8 +182,11 @@ class FoodRecommendationFSM:
         preferences: Optional[dict[str, Any]] = None,
         time_constraint: Optional[str] = None,
         budget_max_jpy: Optional[int] = None,
+        cuisine: Optional[str] = None,
+        search_keyword: Optional[str] = None,
+        explore_category: Optional[str] = None,
     ) -> list[dict[str, Any]]:
-        """State 3: 自適應漸進查驗 + Tabelog 老饕綜合重排 (委派至 stages.enrichment)"""
+        """State 3: 全候選查驗 + Tabelog 老饕綜合重排 (委派至 stages.enrichment)"""
         return await stage_execute_state_3_parallel_tabelog(
             self,
             places,
@@ -190,6 +195,9 @@ class FoodRecommendationFSM:
             preferences=preferences,
             time_constraint=time_constraint,
             budget_max_jpy=budget_max_jpy,
+            cuisine=cuisine,
+            search_keyword=search_keyword,
+            explore_category=explore_category,
         )
 
     def _render_template_fallback_card(
@@ -505,6 +513,7 @@ class FoodRecommendationFSM:
                 custom_radii=run_ctx.radii_ladder,
                 budget_max_jpy=run_ctx.budget_max_jpy,
                 preferences=run_ctx.long_term_preferences,
+                explore_category=run_ctx.explore_category,
             )
             telemetry.end_span(span_s2, output_data={"candidate_count": len(candidates)})
             if not candidates:
@@ -524,6 +533,9 @@ class FoodRecommendationFSM:
                 preferences=run_ctx.long_term_preferences,
                 time_constraint=run_ctx.time_constraint,
                 budget_max_jpy=run_ctx.budget_max_jpy,
+                cuisine=run_ctx.cuisine,
+                search_keyword=run_ctx.search_keyword,
+                explore_category=run_ctx.explore_category,
             )
 
             # 3.5 pgvector 語意重排與食評亮點萃取 (RAG)

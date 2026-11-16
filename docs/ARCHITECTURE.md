@@ -296,7 +296,7 @@ flowchart TD
   - **ValidationError 自癒重試 (Self-Correction Loop)**：`LLMClient.call_structured_json(messages, schema=IntentOutput, max_retries=1)` 在解析 JSON 後自動執行 Pydantic 驗證；若模型輸出違反 Schema（如欄位型別錯誤或非法枚舉值），自動將 `ValidationError` 詳細錯誤附加回對話訊息要求模型即時修正重試，重試仍失敗時平滑降級至安全預設結構。
 - **Stage 3 確定性硬性條件感測器 (`src/agent/stages/enrichment/scoring.py` - `apply_deterministic_constraints`)**：
   - **硬性飲食、支付、時段與預算掃描**：透過 `extract_preferences_from_text` 結合當輪 `modifier`、`budget_max_jpy`、`time_constraint` 與跨輪 `long_term_preferences`（支援 `credit_card`、`paypay`、`不吃牛`、`不吃豬`、`不吃生食`、`不吃辣`），在 Stage 3 對候選店家進行確定性稽核。
-  - **違規降權與結構化原因透傳**：一旦偵測到店家違反硬性條件，自動標記 `constraint_violation = True` 並記錄結構化 `constraint_warnings`（`budget`、`payment`、`hours`、`dietary`），於 `calculate_foodie_score` 施加 `-0.45` 重度懲罰重排，並由 Stage 4 確定性標註於推薦卡片旁。
+  - **違規降權與結構化原因透傳**：一旦偵測到店家違反硬性條件，自動標記 `constraint_violation = True` 並記錄結構化 `constraint_warnings`（`budget`、`payment`、`hours`、`dietary`），於 `calculate_foodie_score` 施加 `-0.45` 重度懲罰重排，並由 Stage 4 確定性標註於推薦卡片旁；另於 Stage 2/3 共用 `src/services/category_guard.py`（`check_category_mismatch`）檢查 Google `primary_type`/`types` 與 `tabelog_genre` 品類一致性，衝突店家於 Stage 2 不計入擴圈門檻並於 Stage 3 施加 `-1.5` 重度降權（Fail-Open 疑罪從無）。
 - **痛點與挑戰 (The Problem)**：
   - LLM 在生成高生動度推薦卡片時存在機率性微調數值幻覺（如將 3.78 筆誤寫成 3.70），高敏感美食評分失真將嚴重損害用戶信任。
   - 若使用二次 LLM 審核（LLM-as-a-Judge）會增加 >1s 延遲與 Token 成本；若使用寬鬆正則，極易誤傷內文中的非評分數值（如「排隊 3.5 小時」）。

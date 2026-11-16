@@ -8,6 +8,7 @@ from typing import Any, Optional
 
 from src.agent.schemas import extract_preferences_from_text
 from src.agent.stages.places_search import is_wide_area_origin
+from src.services.category_guard import check_category_mismatch, is_cafe_or_drink_target
 from src.services.tabelog_scraper import TabelogScraper
 
 _extract_min_budget_jpy = TabelogScraper._extract_min_budget_jpy
@@ -45,10 +46,11 @@ def calculate_foodie_score(store: dict[str, Any]) -> float:
         elif dist_m > 800:
             dist_penalty = 0.05
 
-    # 4. 硬性條件違反懲罰 (Deterministic Constraint Sensor)
+    # 4. 硬性條件違反懲罰 (Deterministic Constraint Sensor) & 品類不符重度降權
     constraint_penalty = 0.45 if store.get("constraint_violation") is True else 0.0
+    category_penalty = 1.50 if store.get("category_mismatch") is True else 0.0
 
-    return base_score + award_bonus - dist_penalty - constraint_penalty
+    return base_score + award_bonus - dist_penalty - constraint_penalty - category_penalty
 
 
 def apply_deterministic_constraints(
@@ -57,6 +59,9 @@ def apply_deterministic_constraints(
     preferences: Optional[dict[str, Any]] = None,
     time_constraint: Optional[str] = None,
     budget_max_jpy: Optional[int] = None,
+    cuisine: Optional[str] = None,
+    search_keyword: Optional[str] = None,
+    explore_category: Optional[str] = None,
 ) -> list[dict[str, Any]]:
     """Deterministic Constraint Sensor: 根據當輪 modifier、長期偏好、預算與時間對明確違反條件的店家標記降權"""
     if not stores:
@@ -86,7 +91,13 @@ def apply_deterministic_constraints(
             elif any(k in modifier for k in ("現在有開", "現在開著", "營業中")):
                 time_constraint = "now"
 
-    if not payment_reqs and not dietary_reqs and not time_constraint and budget_max_jpy is None:
+    check_category = is_cafe_or_drink_target(
+        cuisine=cuisine,
+        search_keyword=search_keyword,
+        explore_category=explore_category,
+    )
+
+    if not payment_reqs and not dietary_reqs and not time_constraint and budget_max_jpy is None and not check_category:
         return stores
 
     for store in stores:
@@ -146,6 +157,20 @@ def apply_deterministic_constraints(
         if warnings:
             store["constraint_violation"] = True
             store["constraint_warnings"] = warnings
+
+        if check_category:
+            is_mismatch, cat_reason = check_category_mismatch(
+                store,
+                cuisine=cuisine,
+                search_keyword=search_keyword,
+                explore_category=explore_category,
+            )
+            if is_mismatch:
+                store["category_mismatch"] = True
+                if cat_reason:
+                    existing_warnings = list(store.get("constraint_warnings") or [])
+                    existing_warnings.append({"type": "category", "detail": cat_reason})
+                    store["constraint_warnings"] = existing_warnings
 
     return stores
 

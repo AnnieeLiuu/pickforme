@@ -167,6 +167,9 @@ async def search_and_resolve_tabelog(
                 "supports_paypay": paypay_val,
                 "credit_cards": cards_list,
                 "payment_methods_desc": pay_desc,
+                "tabelog_genre": details.get("tabelog_genre")
+                or cand.get("tabelog_genre")
+                or place.get("tabelog_genre"),
                 "sample_reviews": chosen_reviews,
                 "nearest_station_desc": nearest_st,
                 "rating_source": "Tabelog",
