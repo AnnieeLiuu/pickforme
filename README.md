@@ -210,35 +210,19 @@ python scripts/run_eval.py --live
 
 ---
 
-## ⚖️ 架構決策與理性反思 (Architecture Decisions & Rational Trade-offs)
+## 💡 設計哲學與架構取捨 (Design Philosophy & Trade-offs)
 
-> [!IMPORTANT]
-> **面對 Over-engineering 疑慮的工程自白：產品 MVP vs 企業級架構沙盒 (Enterprise Sandbox)**
-> 
-> 本專案身為開源專案與個人作品集，**並非盲目追求技術名詞堆砌，而是將真實業務痛點作為出發點、並作為探索低成本企業級 AI Agent 生產架構的原型沙盒**。
+> 在低成本、高可用性與極致延遲之間，探索 Production-Ready AI Agent 的工程平衡點：
 
-### 1. 為什麼選擇確定性 4-Stage FSM，而非 LangChain / ReAct 自由 Agent？
-- **真實痛點**：在美食搜尋這種強領域任務中，讓 LLM 自主決定「要不要 call tool、呼叫幾次、什麼時候停」，實測平均延遲高達 **12s ~ 15s**，單次對話消耗超過 \$0.05，且偶發死循環或輸出捏造之店家地址。
-- **架構取捨**：將管線嚴格固化為 `State 1 (意圖) ➔ State 2 (階梯搜尋) ➔ State 3 (雙平台對齊) ➔ State 4 (卡片合成)`。LLM 調用次數從不可控收斂為確定性的 1~2 次，端到端平均延遲壓制在 **1.2s**，成本降低 80%，且保證 0 幻覺店家產生。
+| 架構選型 | 面臨的真實痛點與瓶頸 | 關鍵決策與取捨成果 (Trade-offs) |
+| :--- | :--- | :--- |
+| **確定性 4-Stage FSM**<br>*(捨棄 ReAct 自由 Agent)* | ReAct 延遲高達 12s~15s，易陷入死循環或捏造虛假店家 | 將管線固化為 4 階段狀態機，LLM 呼叫收斂至 1~2 次，**延遲壓制在 1.2s、0 幻覺** |
+| **家用 IP 預熱 + Yahoo 備援**<br>*(破解雲端機房 IP 限制)* | Tabelog 對雲端機房 (GCP/AWS) IP 之 **403 阻擋率 > 85%** | 背景 Worker 家用 IP 批次預熱（**命中 800ms**）；遇 403 秒級降級至 Yahoo Grounding |
+| **pgvector + Parquet + DuckDB**<br>*(零雲端數倉帳單)* | Neon 免費層儲存水位線低，全量 Trace 兩週即爆滿 | 768 維半精度向量省 50% 記憶體；雙重水位線轉存 Parquet，DuckDB **0 帳單本機秒級分析** |
 
-### 2. 為什麼需要本機住宅 IP 預熱與 Yahoo Grounding 備援？
-- **真實踩坑數據**：Tabelog 對 AWS / GCP 等海外雲端機房 IP 的 WAF 封鎖極其嚴格，Cloud Run 直連抓取之 **403 阻擋率高達 85% 以上**。
-- **架構取捨**：
-  - **熱門商圈（新宿、澀谷、箱根等）**：透過本機住宅 IP 之背景非同步 Worker（`SKIP LOCKED` 佇列）提早批次預熱並存入 Neon DB，**快取命中時 P95 延遲僅 800ms**。
-  - **冷門地點遇 403 阻擋時**：自動秒級降級至 Yahoo Japan Web Grounding（限定 `.lg.jp` / `.or.jp` 地方政府觀光機構），雖然延遲拉長至 **4.5s ~ 6.0s**，但保障了極限環境下的高可用性（SLA 99.9%）。
-
-### 3. 為什麼上了 pgvector (halfvec) + Parquet 冷存檔 + DuckDB OLAP？
-- **真實痛點**：Neon Postgres 免費層有儲存與運算水位線限制。詳細的 Agent 執行 Trace（每輪包含完整上下文、Tool Input/Output 與評測 Log）若全數留存 OLTP，兩週即會吃滿 DB 空間並拖慢查詢。
-- **架構取捨**：
-  - **pgvector (halfvec 768 維)**：Tabelog 老饕長評向量化採用 768 維半精度浮點數，相較於傳統 1536 維節省 50% 記憶體，大幅壓低向量索引成本。
-  - **雙重水位線 Parquet 封存 + DuckDB 本地免數倉分析**：模仿現代 Databricks 湖倉架構，線上熱資料留存於 Neon，歷史 Trace 壓縮轉存為 Snappy Parquet 冷檔案（壓縮率達 80%），再由 DuckDB OLAP 引擎進行毫秒級聚合分析，達成「0 雲端數倉帳單、完整鏈路深潛」的極限優化。
-
-### 4. 減法思維：如果這是一個極簡 MVP，我會拿掉哪些組件？
-若回歸最輕量商業驗證（Lean Startup MVP），以下組件在初期**完全可以刪減**以極大化開發速度：
-- ❌ **移除 Parquet 歸檔與 DuckDB**：改用 Postgres 原生單一表格配合定時 CRON 刪除 30 天前 Trace。
-- ❌ **移除 pgvector 語意評論重排**：初期以 Google / Tabelog 數值評分與關鍵字排序即可滿足 80% 用戶需求。
-- ❌ **移除自研 IDE Bridge Server**：直接使用雲端可觀測性看板（如 Langfuse SaaS）。
-- ✅ **核心必須保留**：確定性 4-Stage FSM、0ms QuickPassGate 安全絆線、Two-Tier Session 記憶、以及雙平台實體對齊器（Entity Resolver）。
+#### ✂️ 減法思維：若回歸商業極簡 MVP，我會砍掉哪些組件？
+- **可暫時剃除**：DuckDB+Parquet 湖倉（改用 Postgres 定時 CRON 30 天清理）、pgvector 評論重排、自研 IDE 觀測（改用 Langfuse）。
+- **必須捍衛之核心**：確定性 4-Stage FSM、0ms 安全絆線、雙平台 Entity Resolver、Two-Tier Session 記憶。
 
 ---
 
