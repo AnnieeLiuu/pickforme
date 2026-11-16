@@ -153,6 +153,8 @@ async def execute_state_3_parallel_tabelog(
             "name": p.get("name"),
             "phone": p.get("phone"),
             "google_rating": p.get("rating") or p.get("google_rating"),
+            "primary_type": p.get("primary_type"),
+            "types": p.get("types") or [],
         }
         for p in places
     ]
@@ -171,6 +173,10 @@ async def execute_state_3_parallel_tabelog(
             "sample_reviews": s.get("sample_reviews") or [],
             "rating_source": s.get("rating_source", "Tabelog"),
             "rank_badge": s.get("rank_badge"),
+            "primary_type": s.get("primary_type"),
+            "types": s.get("types") or [],
+            "tabelog_genre": s.get("tabelog_genre"),
+            "category_mismatch": bool(s.get("category_mismatch")),
         }
         for s in top_stores
     ]

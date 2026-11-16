@@ -356,3 +356,38 @@ def test_dashboard_html_encoding_and_js_syntax(tmp_path: Path) -> None:
             text=True,
         )
         assert result.returncode == 0, f"JavaScript SyntaxError detected in dashboard: {result.stderr}"
+
+
+async def test_state_3_trace_includes_category_observability_fields() -> None:
+    """Observability Contract: 確保 State 3 Trace 必含 primary_type / types / tabelog_genre / category_mismatch。"""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from src.agent.stages.enrichment import execute_state_3_parallel_tabelog
+
+    place = {
+        "name": "Coffee Lounge Lemon",
+        "phone": "03-3352-3955",
+        "rating": 4.2,
+        "primary_type": "cafe",
+        "types": ["cafe", "coffee_shop"],
+        "tabelog_genre": "喫茶店",
+        "tabelog_rating": 3.50,
+    }
+    fsm = MagicMock()
+    fsm._enrich_single_place = AsyncMock(return_value=place)
+    fsm.rank_and_select_top_stores = MagicMock(return_value=[{**place, "rank_badge": "🥇"}])
+    fsm.places_client = MagicMock(geocode_location=AsyncMock(return_value=None))
+    fsm.tabelog_scraper = MagicMock(fetch_tabelog_reviews=None)
+    fsm.trace_logger = AsyncMock()
+
+    await execute_state_3_parallel_tabelog(fsm, [place], area_hint="新宿御苑", cuisine="咖啡")
+
+    log_kwargs = fsm.trace_logger.log_step.call_args.kwargs
+    searched = log_kwargs["tool_input"]["stores_searched"][0]
+    aligned = log_kwargs["tool_output"]["aligned_stores"][0]
+    assert searched["primary_type"] == "cafe"
+    assert searched["types"] == ["cafe", "coffee_shop"]
+    assert aligned["primary_type"] == "cafe"
+    assert aligned["types"] == ["cafe", "coffee_shop"]
+    assert aligned["tabelog_genre"] == "喫茶店"
+    assert "category_mismatch" in aligned
