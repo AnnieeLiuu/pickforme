@@ -38,9 +38,9 @@ def calculate_foodie_score(store: dict[str, Any]) -> float:
     if rev_count >= 500:
         award_bonus += 0.05
 
-    # 3. 距離懲罰 (若為廣域景區或已具備最近車站描述，豁免中心點距離扣分，杜絕偏遠降權)
+    # 3. 距離懲罰 (僅對廣域景區豁免幾何中心點扣分；市區具體地標正常套用距離懲罰)
     dist_penalty = 0.0
-    if not (is_wide_area_origin(store.get("origin_name")) or store.get("nearest_station_desc")):
+    if not is_wide_area_origin(store.get("origin_name")):
         if dist_m > 1500:
             dist_penalty = 0.12
         elif dist_m > 800:

@@ -367,7 +367,8 @@ async def execute_state_2_places_ladder(
     """State 2: Google Places 智慧階梯檢索 (800m ➔ 1200m ➔ 1800m ➔ 2500m 擴圈保底) + 潛力預篩"""
     t0 = time.time()
     candidates: list[dict[str, Any]] = []
-    demoted_fallback: list[dict[str, Any]] = []
+    out_of_radius_fallback: list[dict[str, Any]] = []
+    mismatch_fallback: list[dict[str, Any]] = []
     exclude_set = set(exclude_place_ids or set())
 
     radii = custom_radii or [800, 1200, 1800]
@@ -405,10 +406,11 @@ async def execute_state_2_places_ladder(
                 address=p.get("address"),
             )
 
-    seen_demoted_ids: set[str] = set()
+    seen_out_of_radius_ids: set[str] = set()
+    seen_mismatch_ids: set[str] = set()
     for r in radii:
         raw_places = await fsm.places_client.search_nearby(lat=lat, lng=lng, radius=r, keyword=keyword)
-        # 過濾重複、已看過與明顯不相干品類店家
+        # 過濾重複、已看過、明顯不相干品類與超過當前半徑之店家
         existing_ids = {c["google_place_id"] for c in candidates}
         for p in raw_places:
             pid = p.get("google_place_id")
@@ -416,9 +418,15 @@ async def execute_state_2_places_ladder(
                 _hydrate_place_distance(p)
                 is_mismatch, _ = check_category_mismatch(p, search_keyword=keyword, explore_category=explore_category)
                 if is_mismatch:
-                    if pid not in seen_demoted_ids:
-                        demoted_fallback.append(p)
-                        seen_demoted_ids.add(pid)
+                    if pid not in seen_mismatch_ids:
+                        mismatch_fallback.append(p)
+                        seen_mismatch_ids.add(pid)
+                    continue
+                dist_m = p.get("distance_meters")
+                if dist_m is not None and dist_m > r:
+                    if pid not in seen_out_of_radius_ids:
+                        out_of_radius_fallback.append(p)
+                        seen_out_of_radius_ids.add(pid)
                     continue
                 candidates.append(p)
                 existing_ids.add(pid)
@@ -437,9 +445,15 @@ async def execute_state_2_places_ladder(
                 p["radius_expanded"] = True
                 is_mismatch, _ = check_category_mismatch(p, search_keyword=keyword, explore_category=explore_category)
                 if is_mismatch:
-                    if pid not in seen_demoted_ids:
-                        demoted_fallback.append(p)
-                        seen_demoted_ids.add(pid)
+                    if pid not in seen_mismatch_ids:
+                        mismatch_fallback.append(p)
+                        seen_mismatch_ids.add(pid)
+                    continue
+                dist_m = p.get("distance_meters")
+                if dist_m is not None and dist_m > 2500:
+                    if pid not in seen_out_of_radius_ids:
+                        out_of_radius_fallback.append(p)
+                        seen_out_of_radius_ids.add(pid)
                     continue
                 candidates.append(p)
                 existing_ids.add(pid)
@@ -485,10 +499,14 @@ async def execute_state_2_places_ladder(
                 candidates.insert(0, t_seed)
                 by_id[pid] = t_seed
 
-    # 抗零結果保底：若所有半徑與 Tabelog 種子合併後仍不足 3 家，才從 demoted_fallback 補回
-    if len(candidates) < 3 and demoted_fallback:
+    # 抗零結果保底：若所有半徑與 Tabelog 種子合併後仍不足 3 家，優先從同品類超距池補回（距離近者優先），仍不足才補 mismatch
+    if len(candidates) < 3 and (out_of_radius_fallback or mismatch_fallback):
         existing_ids = {c.get("google_place_id") for c in candidates}
-        for fb in demoted_fallback:
+        sorted_out = sorted(
+            out_of_radius_fallback,
+            key=lambda x: (x.get("distance_meters") is None, x.get("distance_meters") or 0),
+        )
+        for fb in [*sorted_out, *mismatch_fallback]:
             pid = fb.get("google_place_id")
             if pid and pid not in existing_ids:
                 candidates.append(fb)

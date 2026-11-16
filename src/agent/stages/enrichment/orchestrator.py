@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import time
 from typing import TYPE_CHECKING, Any, Optional
 
@@ -16,6 +17,77 @@ if TYPE_CHECKING:
     from src.agent.pipeline import FoodRecommendationFSM
 
 logger = logging.getLogger(__name__)
+
+
+def _extract_station_label(raw_desc: Any) -> Optional[str]:
+    """從 nearest_station_desc 提取乾淨站名，避免巢狀引號。"""
+    if not isinstance(raw_desc, str) or not raw_desc.strip():
+        return None
+    m = re.search(r"「([^」]+)」", raw_desc)
+    if m:
+        return m.group(1).strip() or None
+    cleaned = re.sub(r"^(?:從|鄰近)", "", raw_desc.strip())
+    cleaned = re.sub(r"步行約.*$", "", cleaned).strip("「」『』\"' ")
+    return cleaned or None
+
+
+def _extract_distant_station_gems(
+    final_enriched: list[dict[str, Any]],
+    top_stores: list[dict[str, Any]],
+    max_gems: int = 2,
+) -> list[dict[str, Any]]:
+    """從未入選 Top 3 的已查驗店家中，萃取具備明確車站的高評價延伸老店。"""
+    top_ids = {id(s) for s in top_stores}
+    top_urls = {s.get("tabelog_url") for s in top_stores if s.get("tabelog_url")}
+    top_names = {
+        re.sub(r"[\s\-_・，,（）()]+", "", str(s.get("name_ja") or s.get("name") or "")).lower()
+        for s in top_stores
+        if (s.get("name_ja") or s.get("name"))
+    }
+
+    candidates: list[dict[str, Any]] = []
+    for s in final_enriched:
+        if id(s) in top_ids:
+            continue
+        if s.get("category_mismatch") or s.get("constraint_violation"):
+            continue
+        t_url = s.get("tabelog_url")
+        raw_name = str(s.get("name_ja") or s.get("name") or "").strip()
+        clean_name = re.sub(r"[\s\-_・，,（）()]+", "", raw_name).lower()
+        if (t_url and t_url in top_urls) or (clean_name and clean_name in top_names) or not raw_name:
+            continue
+
+        station = _extract_station_label(s.get("nearest_station_desc"))
+        if not station:
+            continue
+
+        t_rating = float(s.get("tabelog_rating") or 0.0)
+        has_award = bool(s.get("awards") or s.get("hyakumeiten"))
+        dist_m = int(s.get("distance_meters") or 0)
+        if t_rating >= 3.45 or has_award or (dist_m > 1000 and t_rating >= 3.30):
+            candidates.append(
+                {
+                    "name": raw_name,
+                    "station": station,
+                    "tabelog_rating": t_rating if t_rating > 0 else None,
+                    "has_award": has_award,
+                }
+            )
+
+    candidates.sort(
+        key=lambda g: (1 if g.get("has_award") else 0, float(g.get("tabelog_rating") or 0.0)),
+        reverse=True,
+    )
+    gems: list[dict[str, Any]] = []
+    seen_stations: set[str] = set()
+    for g in candidates:
+        if g["station"] in seen_stations:
+            continue
+        seen_stations.add(g["station"])
+        gems.append(g)
+        if len(gems) >= max_gems:
+            break
+    return gems
 
 
 async def execute_state_3_parallel_tabelog(
@@ -63,8 +135,9 @@ async def execute_state_3_parallel_tabelog(
             explore_category=explore_category,
         )
 
-    # 5. 老饕綜合加權重排，精選 Top 3
+    # 5. 老饕綜合加權重排，精選 Top 3（同步萃取未入選之延伸站點高分老店）
     top_stores = fsm.rank_and_select_top_stores(final_enriched, top_k=3)
+    fsm._last_distant_station_gems = _extract_distant_station_gems(final_enriched, top_stores)
 
     # 6. 為最終入選的 Top 店家平行豐富定向老饕食評與車站步行距離
     if top_stores:

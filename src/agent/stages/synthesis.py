@@ -332,6 +332,22 @@ def render_template_fallback_card(
     elif llm_tip:
         lines.append(f"💡 **特派員提醒**：{llm_tip}\n")
 
+    distant_gems = (search_meta or {}).get("distant_station_gems") or []
+    if isinstance(distant_gems, list) and distant_gems:
+        gem_parts: list[str] = []
+        for g in distant_gems[:2]:
+            if not isinstance(g, dict):
+                continue
+            g_name = str(g.get("name") or "").replace("`", "").strip()
+            g_station = str(g.get("station") or "").strip()
+            if not g_name or not g_station:
+                continue
+            g_rating = g.get("tabelog_rating")
+            score_suffix = f"（Tabelog {float(g_rating):.2f} 分）" if g_rating else ""
+            gem_parts.append(f"「{g_station}」附近的 `{g_name}`{score_suffix}")
+        if gem_parts:
+            lines.append(f"🚉 **延伸站點老店參考**：若願意多移動一段距離，{'、'.join(gem_parts)}也是高評價選擇。\n")
+
     return "\n".join(lines).strip()
 
 
@@ -353,8 +369,8 @@ def sanitize_card_ratings(card_text: str, stores: list[dict[str, Any]]) -> str:
         for part in parts:
             stripped = part.lstrip()
             first_line = stripped.splitlines()[0] if stripped else ""
-            # 若為特派員提醒或分隔線結尾段落，直接保留不進行評分替換
-            if first_line.startswith("💡") or first_line.startswith("---"):
+            # 若為特派員提醒、延伸站點參考或分隔線結尾段落，直接保留不進行評分替換
+            if first_line.startswith("💡") or first_line.startswith("🚉") or first_line.startswith("---"):
                 modified_parts.append(part)
                 continue
 

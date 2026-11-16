@@ -3839,3 +3839,160 @@ async def test_case_53_category_consistency_guardrail_cafe_vs_shinpachi_and_shis
     assert stage3_stores[2].get("category_mismatch") is not True
 
     assert calculate_foodie_score(stage3_stores[1]) > calculate_foodie_score(stage3_stores[0])
+
+
+@pytest.mark.asyncio
+async def test_case_54_distance_guard_and_distant_station_gems():
+    """Case 54 (9f3157be 新宿御苑咖啡): Stage 2 擋掉超距飄移店且不中斷擴圈，市區地標正常扣距離分，並於卡片下方顯示延伸站點老店"""
+    import json
+
+    from src.agent.stages.enrichment import calculate_foodie_score, execute_state_3_parallel_tabelog
+    from src.agent.stages.places_search import execute_state_2_places_ladder
+    from src.agent.stages.synthesis import execute_state_4_synthesis
+    from src.agent.validator import validate_recommendation_card
+
+    # 1. Stage 2: 800m 圈回傳 1.6km 外的新大久保店（因 locationBias 飄入）與 1 家真 800m 內咖啡廳，不應在 800m 提早停止
+    radius_800 = [
+        {
+            "google_place_id": "g_far_okubo",
+            "name": "cafe&barFACTORY45",
+            "lat": 35.7015,
+            "lng": 139.7010,  # 距新宿御苑約 1.3km > 800m
+            "rating": 4.4,
+            "user_ratings_total": 300,
+            "primary_type": "cafe",
+            "types": ["cafe"],
+        },
+        {
+            "google_place_id": "g_near1",
+            "name": "御苑近鄰咖啡1",
+            "lat": 35.6910,
+            "lng": 139.7075,  # ~68m <= 800m
+            "rating": 4.5,
+            "user_ratings_total": 200,
+            "primary_type": "cafe",
+            "types": ["cafe"],
+        },
+    ]
+    radius_1200 = [
+        {
+            "google_place_id": "g_near2",
+            "name": "御苑近鄰咖啡2",
+            "lat": 35.6920,
+            "lng": 139.7080,  # ~180m <= 1200m
+            "rating": 4.4,
+            "user_ratings_total": 180,
+            "primary_type": "cafe",
+            "types": ["cafe"],
+        },
+        {
+            "google_place_id": "g_near3",
+            "name": "御苑近鄰咖啡3",
+            "lat": 35.6930,
+            "lng": 139.7090,  # ~330m <= 1200m
+            "rating": 4.3,
+            "user_ratings_total": 150,
+            "primary_type": "cafe",
+            "types": ["cafe"],
+        },
+    ]
+
+    async def fake_search_nearby(lat, lng, radius, keyword=""):
+        if radius == 800:
+            return radius_800
+        if radius == 1200:
+            return radius_1200
+        return []
+
+    fsm_s2 = MagicMock()
+    fsm_s2.places_client = MagicMock(search_nearby=AsyncMock(side_effect=fake_search_nearby), search_by_text=None)
+    fsm_s2.tabelog_scraper = None
+    fsm_s2._prefilter_potential_foodie_places = lambda cands, max_seeds=6: cands[:max_seeds]
+    fsm_s2.trace_logger = AsyncMock()
+
+    cands = await execute_state_2_places_ladder(fsm_s2, 35.6906, 139.7069, keyword="カフェ", origin_name="新宿御苑")
+    assert fsm_s2.places_client.search_nearby.await_count >= 2
+    assert [c["google_place_id"] for c in cands] == ["g_near1", "g_near2", "g_near3"]
+
+    # 2. 市區地標（新宿御苑）即使店家有 nearest_station_desc，也不再豁免距離扣分
+    far_urban = {
+        "name_ja": "遠い老店",
+        "origin_name": "新宿御苑",
+        "distance_meters": 1600,
+        "tabelog_rating": 3.55,
+        "nearest_station_desc": "從「山手線新大久保站」步行約 6 分鐘",
+    }
+    assert calculate_foodie_score(far_urban) == pytest.approx(3.55 - 0.12)
+
+    # 3. Stage 3 -> Stage 4: 未入選 Top 3 之遠距高分老店應透過 _last_distant_station_gems 在卡片下方呈現，且通過 validator
+    enriched_pool = [
+        {
+            "name_ja": "近店A",
+            "tabelog_rating": 3.60,
+            "distance_meters": 200,
+            "walking_desc": "從「新宿御苑」步行約 3 分鐘 (200m)",
+            "tabelog_url": "https://tabelog.com/1",
+        },
+        {
+            "name_ja": "近店B",
+            "tabelog_rating": 3.58,
+            "distance_meters": 250,
+            "walking_desc": "從「新宿御苑」步行約 4 分鐘 (250m)",
+            "tabelog_url": "https://tabelog.com/2",
+        },
+        {
+            "name_ja": "近店C",
+            "tabelog_rating": 3.56,
+            "distance_meters": 300,
+            "walking_desc": "從「新宿御苑」步行約 4 分鐘 (300m)",
+            "tabelog_url": "https://tabelog.com/3",
+        },
+        {
+            "name_ja": "強羅老舖",
+            "tabelog_rating": 3.65,
+            "distance_meters": 2200,
+            "nearest_station_desc": "從「強羅站」步行約 5 分鐘",
+            "tabelog_url": "https://tabelog.com/4",
+        },
+    ]
+
+    fsm = MagicMock()
+    fsm._enrich_single_place = AsyncMock(side_effect=lambda p, area_hint=None: p)
+    fsm.rank_and_select_top_stores = lambda stores, top_k=3: sorted(stores, key=calculate_foodie_score, reverse=True)[
+        :top_k
+    ]
+    fsm.places_client = MagicMock(geocode_location=AsyncMock(return_value=None))
+    fsm.tabelog_scraper = MagicMock(fetch_tabelog_reviews=None)
+    fsm.trace_logger = AsyncMock()
+    fsm._last_distant_station_gems = []
+
+    top_3 = await execute_state_3_parallel_tabelog(fsm, enriched_pool, area_hint="新宿御苑", cuisine="咖啡")
+    assert len(fsm._last_distant_station_gems) == 1
+    assert fsm._last_distant_station_gems[0]["station"] == "強羅站"
+    assert fsm._last_distant_station_gems[0]["name"] == "強羅老舖"
+
+    llm_json = json.dumps(
+        {
+            "stores": [
+                {"index": 1, "reason": "香醇手沖咖啡。"},
+                {"index": 2, "reason": "招牌戚風蛋糕。"},
+                {"index": 3, "reason": "安靜舒適空間。"},
+            ],
+            "tip": "建議避開午後尖峰時段。",
+        },
+        ensure_ascii=False,
+    )
+    fsm.llm_client = MagicMock(call_text=AsyncMock(return_value=(llm_json, "llama-3.3-70b-versatile", 150)))
+    card = await execute_state_4_synthesis(
+        fsm,
+        top_3,
+        cuisine="咖啡",
+        location_name="新宿御苑",
+        search_meta={"stage2_count": 4, "distant_station_gems": fsm._last_distant_station_gems},
+    )
+    assert (
+        "🚉 **延伸站點老店參考**：若願意多移動一段距離，「強羅站」附近的 `強羅老舖`（Tabelog 3.65 分）也是高評價選擇。"
+        in card
+    )
+    ok, reasons = validate_recommendation_card(card, top_3)
+    assert ok is True, reasons

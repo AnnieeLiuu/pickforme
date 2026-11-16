@@ -315,7 +315,7 @@ flowchart TD
   - **跨語言 Micro-LLM 智慧裁決**：當字面相似度因跨語系落差過大時，自動流向 Level 2 Micro-LLM，結合地址、品類與發音進行語意判定。
 - **老饕潛力預篩、全候選查驗與重排演算法 (`src/agent/pipeline.py`, `src/agent/stages/enrichment/`)**：
   - **Stage 2 首頁全收三級預篩**：`TabelogScraper.discover_area_top_stores` 全收第 1 頁候選並採三級 Fail-Open 優先權排序（Tier A 明確符合 > Tier B 未知保留 > Tier C 明確超標墊底），再與 Google Places 階梯檢索彙整出最多 6 家候選。
-  - **Stage 3 全候選 Semaphore(4) 並發查驗**：`orchestrator.py` 廢除 Tier 1/2 早停，以 `asyncio.Semaphore(4)` 對全部候選進行並發查驗，避免高潛力或符合預算/偏好的第 5～6 家遺珠被提前捨棄。
+  - **Stage 3 全候選 Semaphore(4) 並發查驗**：`orchestrator.py` 廢除 Tier 1/2 早停，以 `asyncio.Semaphore(4)` 對全部候選進行並發查驗，避免高潛力或符合預算/偏好的第 5～6 家遺珠被提前捨棄；同時在 Stage 2 依當前半徑暫存超距店、Stage 3 僅對廣域景區豁免距離扣分，並將未入選 Top 3 之延伸站點高分老店透過 `distant_station_gems` 於卡片下方確定性補充提示（`🚉 延伸站點老店參考`）。
   - **$S_i$ 綜合老饕計分重排**：以 Tabelog 評分為核心權重（未命中時 Google 評分安全折算），疊加百名店/Award 加分、距離微幅懲罰與硬性條件違規懲罰 (`-0.45`)，精選 Top 3 店家並注入 `🥇/🥈/🥉` 排名徽章；並透過 `_is_tabelog_cache_complete()` 與 `_hydrate_station_walking_distances()` 確保缺漏預算時自動重抓、麵包屑車站透過 Google Geocoding 換算實際步行分鐘數。
 - **防腐保證：CI 雙向合約測試防禦 (Contract Testing in CI/CD)**：
   - 於 `tests/test_pipeline.py` 建立自動化合約測試，驗證 System Prompt 定義的排版格式與 Guardrail 錨點 100% 同步；任何提示詞變更若破壞了護欄合約，CI 立即報警阻擋合併。

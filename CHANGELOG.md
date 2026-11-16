@@ -15,6 +15,8 @@
   - `apply_deterministic_constraints` 新增結構化 `constraint_warnings`（記錄 `budget`、`payment`、`hours`、`dietary` 違規明細）；`execute_state_4_synthesis` 改為要求 LLM 輸出 `{"stores": [{"index", "reason", "must_order"}], "tip"}` 精簡 JSON 並由 Python 確定性拼裝客觀欄位、單店差異標註與 `search_meta` 候選數透明說明（Gemini fallback 放寬 `max_tokens=1500`，Groq 維持 `800`，並新增 Case 52）。
 
 ### Fixed
+- **距離守門與延伸站點老店參考 (`src/agent/stages/places_search.py`, `src/agent/stages/enrichment/scoring.py`, `src/agent/stages/enrichment/orchestrator.py`, `src/agent/stages/synthesis.py`, `src/agent/validator.py`, `src/agent/pipeline.py`, `tests/test_real_world_regressions.py`)**：
+  - 依生產追蹤 `9f3157be`（「新宿御苑附近的咖啡店推薦」卻讓 1.6km 外的新大久保店登頂）根因修復：Stage 2 源頭 B 半徑迴圈新增 `dist_m > r` 暫存至 `out_of_radius_fallback`（僅不足 3 家時保底補回）；Stage 3 `calculate_foodie_score` 移除市區 `or store.get("nearest_station_desc")` 距離扣分豁免（僅保留廣域景區豁免）；並從未入選 Top 3 之高分候選萃取 `distant_station_gems` 於卡片下方確定性渲染「🚉 延伸站點老店參考」（Case 54）。
 - **品類一致性防線 (`src/services/category_guard.py`, `src/services/google_places.py`, `src/services/tabelog_scraper.py`, `src/agent/stages/places_search.py`, `src/agent/stages/enrichment/scoring.py`, `tests/test_real_world_regressions.py`)**：
   - 依生產追蹤 `0c672e01`（「新宿御苑附近的咖啡廳推薦」）根因修復：Google `search_by_text` / `search_nearby` 新增 `places.primaryType,places.types` 解析，並建立共用品類一致性檢查 `check_category_mismatch`（Fail-Open 疑罪從無，且放行複合型咖啡廳）；Stage 2 排除明顯互斥的食堂/水煙吧並不阻斷擴圈、Stage 3 補齊 `tabelog_genre` 傳遞鏈並對補齊後才現形的衝突店家施加 `-1.5` 重度降權（Case 53）。
 - **有預算條件時取消 State 3 早停並同步 Google >4.4 星壓平保護 (`src/agent/stages/enrichment.py`, `tests/test_real_world_regressions.py`)**：

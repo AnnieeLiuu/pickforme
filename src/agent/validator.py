@@ -54,13 +54,14 @@ def split_card_store_blocks(card_text: str) -> list[str]:
         r"(?:###\s*|(?:\*\*))?(?:[🥇🥈🥉]|\d+[\.、](?!\d))"
         r"|###\s*(?:`[^`\n]+`|\*\*[^*\n]+)"
         r"|💡\s*\*{0,2}特派員提醒"
+        r"|🚉\s*\*{0,2}延伸站點老店參考"
         r"|---+\s*$"
         r"))"
     )
     return [part for part in re.split(pattern, card_text) if part]
 
 
-_DETAIL_LINE_ICON_RE = re.compile(r"^\s*(?:[-•*]\s*)?(?:🚶|⭐️|⭐|💳|💰|🔗|📍|💡)")
+_DETAIL_LINE_ICON_RE = re.compile(r"^\s*(?:[-•*]\s*)?(?:🚶|⭐️|⭐|💳|💰|🔗|📍|💡|🚉)")
 _DETAIL_LINE_LABEL_RE = re.compile(
     r"^\s*(?:[-•*]\s*)?(?:\*\*)?(?:支付(?:方式)?|付款(?:方式)?|交通|步行(?:距離)?|預算|價位|營業(?:狀態|時間)?|地址|評分|雙平台評分|評價|老饕推薦理由|老饕評價與推薦理由|推薦理由|點評|特派員提醒|提醒|店家連結|連結)(?:\*\*)?\s*[：:]"
 )
@@ -122,8 +123,9 @@ def validate_recommendation_card(
             reasons.append("偵測到偽造的 Google Maps 搜尋關鍵字連結")
             break
 
-    # 3. 檢驗是否包含反引號 Code block (一鍵複製店名)
-    code_blocks = re.findall(r"`([^`\n]+)`", card_text)
+    # 3. 檢驗是否包含反引號 Code block (一鍵複製店名，略過 🚉 延伸站點參考行)
+    card_for_cb = "\n".join(line for line in card_text.splitlines() if not line.lstrip().startswith("🚉"))
+    code_blocks = re.findall(r"`([^`\n]+)`", card_for_cb)
     if not code_blocks:
         reasons.append("缺少一鍵複製店名反引號代碼塊 (`店名`)")
     elif stores:

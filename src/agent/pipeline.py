@@ -101,6 +101,7 @@ class FoodRecommendationFSM:
         self.early_response: Optional[str] = None
         self._last_state_4_model: Optional[str] = None
         self._last_state_4_tokens: int = 0
+        self._last_distant_station_gems: list[dict[str, Any]] = []
 
     def _sanitize_history_for_intent(
         self, conversation_history: Optional[list[dict[str, str]]]
@@ -257,6 +258,7 @@ class FoodRecommendationFSM:
     ) -> str:
         """FSM 狀態機執行主入口"""
         self.early_response = None
+        self._last_distant_station_gems = []
         await self.trace_logger.start_run(chat_id=chat_id, user_query=user_message)
         trace = telemetry.start_trace(
             name="handle-user-request",
@@ -565,7 +567,10 @@ class FoodRecommendationFSM:
                 user_query=user_message,
                 modifier=run_ctx.modifier,
                 budget_max_jpy=run_ctx.budget_max_jpy,
-                search_meta={"stage2_count": len(candidates)},
+                search_meta={
+                    "stage2_count": len(candidates),
+                    "distant_station_gems": getattr(self, "_last_distant_station_gems", []),
+                },
             )
             telemetry.end_span(span_s4, output_data={"card_length": len(final_card)})
 
