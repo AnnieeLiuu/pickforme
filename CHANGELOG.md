@@ -19,6 +19,8 @@
   - `apply_deterministic_constraints` 新增結構化 `constraint_warnings`（記錄 `budget`、`payment`、`hours`、`dietary` 違規明細）；`execute_state_4_synthesis` 改為要求 LLM 輸出 `{"stores": [{"index", "reason", "must_order"}], "tip"}` 精簡 JSON 並由 Python 確定性拼裝客觀欄位、單店差異標註與 `search_meta` 候選數透明說明（Gemini fallback 放寬 `max_tokens=1500`，Groq 維持 `800`，並新增 Case 52）。
 
 ### Fixed
+- **Langfuse 環境屬性顯式傳遞與測試隔離 (`src/services/telemetry.py`, `tests/conftest.py`, `tests/test_langfuse_telemetry.py`)**：
+  - 修復 Langfuse 5.x 觀測環境未與 Cloud Run 同步問題：在 `Langfuse` 客戶端建構式與 `propagate_attributes` 中顯式傳入 `environment=settings.ENVIRONMENT`，解決 Trace 誤入 `default` 環境之問題；並於 `tests/conftest.py` 建立全域自動 fixture 將測試環境鎖定為 `test`，杜絕單元測試洩漏至線上看板。
 - **多輪廣域分區反問語境快照還原 (`src/db/repositories/session.py`, `src/agent/stages/intent.py`, `src/agent/pipeline.py`, `tests/test_real_world_regressions.py`)**：
   - 依生產追蹤 `c4aba176`（「靜岡 下午茶」➔ 反問分區 ➔ 使用者回覆 `1` 或地名 ➔ 誤推關東煮居酒屋）根因修復：在 `working_memory` 建立 `pending_search_context` 快照，次輪無論透過數字索引或自然語言文字地名選取時，100% 還原 `cuisine`、`search_keyword_ja`、`target_place_types`、`category` 等所有檢索與護欄約束，使 Stage 2/3 品類護欄成功阻絕居酒屋/關東煮；並於搜尋完成後主動清理快照防範 stale menu 誤觸發（Case 55）。
 - **距離守門與延伸站點老店參考 (`src/agent/stages/places_search.py`, `src/agent/stages/enrichment/scoring.py`, `src/agent/stages/enrichment/orchestrator.py`, `src/agent/stages/synthesis.py`, `src/agent/validator.py`, `src/agent/pipeline.py`, `tests/test_real_world_regressions.py`)**：
