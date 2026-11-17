@@ -106,6 +106,7 @@ class TelemetryManager:
                 session_id=session_id,
                 user_id=user_id,
                 tags=tags or ["fsm", settings.ENVIRONMENT],
+                environment=settings.ENVIRONMENT,
                 metadata=metadata or {},
             ).__enter__()
 

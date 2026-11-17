@@ -80,6 +80,13 @@ def test_telemetry_enabled_mock_client():
             input_data={"message": "東京拉麵"},
         )
         assert trace == mock_trace
+        mock_propagate.assert_called_once_with(
+            session_id="12345",
+            user_id="12345",
+            tags=["fsm", "production"],
+            environment="production",
+            metadata={},
+        )
         mock_client.start_observation.assert_called_with(
             name="handle-user-request",
             as_type="chain",
