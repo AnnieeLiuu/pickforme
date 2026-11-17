@@ -14,9 +14,9 @@
 
 ## ⚡ 延遲基準統計 (Latency Benchmark)
 
-- **平均延遲 (Average Latency)**：`27.8 ms`
-- **P50 延遲**：`21.0 ms`
-- **P90 延遲**：`37.0 ms`
+- **平均延遲 (Average Latency)**：`18.6 ms`
+- **P50 延遲**：`16.0 ms`
+- **P90 延遲**：`33.0 ms`
 
 ## 🛡️ Agent Harness 架構防護矩陣 (Harness Capabilities)
 
@@ -29,23 +29,23 @@
 
 | ID | 分類 | 測試提問句 | T1 (意圖) | T2 (比對) | T3 (護欄) | 耗時 |
 | :---: | :--- | :--- | :---: | :---: | :---: | :---: |
-| `eval_001` | `typo_colloquial` | 新宿歌舞妓町有啥開很晚的拉麵，不要太油 | ✅ | ✅ | ✅ | 136ms |
-| `eval_002` | `multi_landmark` | 想要在橫濱棒球場或橫濱車站附近的壽喜燒 | ✅ | ✅ | ✅ | 37ms |
-| `eval_003` | `taste_rag` | 池袋 想要麵條偏硬有嚼勁的拉麵 | ✅ | ✅ | ✅ | 25ms |
-| `eval_004` | `multi_turn_more` | 還有更多推薦嗎？ | ✅ | ✅ | ✅ | 25ms |
-| `eval_005` | `multi_turn_more` | 我想找更在地的老店 | ✅ | ✅ | ✅ | 20ms |
-| `eval_006` | `follow_up` | 第2家今天有開嗎？ | ✅ | ✅ | ✅ | 10ms |
-| `eval_007` | `follow_up` | 第一家可以刷信用卡或 PayPay 嗎？ | ✅ | ✅ | ✅ | 21ms |
-| `eval_008` | `chitchat` | 哈囉你好！請問你可以幫我做什麼？ | ✅ | ✅ | ✅ | 30ms |
-| `eval_009` | `need_location` | 我想吃炸豬排 | ✅ | ✅ | ✅ | 21ms |
-| `eval_010` | `typo_colloquial` | 澀谷平價居酒屋，預算3000日幣內 | ✅ | ✅ | ✅ | 28ms |
-| `eval_011` | `taste_rag` | 京都 祇園 適合長輩吃的清淡湯豆腐 | ✅ | ✅ | ✅ | 28ms |
-| `eval_012` | `typo_colloquial` | 原宿竹下通排隊人氣可麗餅 | ✅ | ✅ | ✅ | 30ms |
-| `eval_013` | `multi_turn_more` | 有沒有更便宜一點的？ | ✅ | ✅ | ✅ | 21ms |
-| `eval_014` | `chitchat` | 明天東京會下雨嗎？ | ✅ | ✅ | ✅ | 18ms |
-| `eval_015` | `multi_landmark` | 秋葉原跟御茶之水中間有名的日式咖哩 | ✅ | ✅ | ✅ | 20ms |
-| `eval_016` | `taste_rag` | 新宿 想要牛舌厚切多汁的炭火燒肉 | ✅ | ✅ | ✅ | 18ms |
-| `eval_017` | `follow_up` | 第3家可以線上訂位或打電話預約嗎？ | ✅ | ✅ | ✅ | 9ms |
-| `eval_018` | `typo_colloquial` | 秋葉 一個人也能吃的燒肉定食 | ✅ | ✅ | ✅ | 17ms |
-| `eval_019` | `multi_turn_more` | 換一批，但不要排隊太久的 | ✅ | ✅ | ✅ | 18ms |
-| `eval_020` | `need_location` | 好想吃鰻魚飯喔！ | ✅ | ✅ | ✅ | 23ms |
+| `eval_001` | `typo_colloquial` | 新宿歌舞妓町有啥開很晚的拉麵，不要太油 | ✅ | ✅ | ✅ | 58ms |
+| `eval_002` | `multi_landmark` | 想要在橫濱棒球場或橫濱車站附近的壽喜燒 | ✅ | ✅ | ✅ | 15ms |
+| `eval_003` | `taste_rag` | 池袋 想要麵條偏硬有嚼勁的拉麵 | ✅ | ✅ | ✅ | 16ms |
+| `eval_004` | `multi_turn_more` | 還有更多推薦嗎？ | ✅ | ✅ | ✅ | 16ms |
+| `eval_005` | `multi_turn_more` | 我想找更在地的老店 | ✅ | ✅ | ✅ | 15ms |
+| `eval_006` | `follow_up` | 第2家今天有開嗎？ | ✅ | ✅ | ✅ | 15ms |
+| `eval_007` | `follow_up` | 第一家可以刷信用卡或 PayPay 嗎？ | ✅ | ✅ | ✅ | 0ms |
+| `eval_008` | `chitchat` | 哈囉你好！請問你可以幫我做什麼？ | ✅ | ✅ | ✅ | 16ms |
+| `eval_009` | `need_location` | 我想吃炸豬排 | ✅ | ✅ | ✅ | 16ms |
+| `eval_010` | `typo_colloquial` | 澀谷平價居酒屋，預算3000日幣內 | ✅ | ✅ | ✅ | 15ms |
+| `eval_011` | `taste_rag` | 京都 祇園 適合長輩吃的清淡湯豆腐 | ✅ | ✅ | ✅ | 15ms |
+| `eval_012` | `typo_colloquial` | 原宿竹下通排隊人氣可麗餅 | ✅ | ✅ | ✅ | 15ms |
+| `eval_013` | `multi_turn_more` | 有沒有更便宜一點的？ | ✅ | ✅ | ✅ | 33ms |
+| `eval_014` | `chitchat` | 明天東京會下雨嗎？ | ✅ | ✅ | ✅ | 17ms |
+| `eval_015` | `multi_landmark` | 秋葉原跟御茶之水中間有名的日式咖哩 | ✅ | ✅ | ✅ | 30ms |
+| `eval_016` | `taste_rag` | 新宿 想要牛舌厚切多汁的炭火燒肉 | ✅ | ✅ | ✅ | 20ms |
+| `eval_017` | `follow_up` | 第3家可以線上訂位或打電話預約嗎？ | ✅ | ✅ | ✅ | 11ms |
+| `eval_018` | `typo_colloquial` | 秋葉 一個人也能吃的燒肉定食 | ✅ | ✅ | ✅ | 20ms |
+| `eval_019` | `multi_turn_more` | 換一批，但不要排隊太久的 | ✅ | ✅ | ✅ | 16ms |
+| `eval_020` | `need_location` | 好想吃鰻魚飯喔！ | ✅ | ✅ | ✅ | 14ms |
