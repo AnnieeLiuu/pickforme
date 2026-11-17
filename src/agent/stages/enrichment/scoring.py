@@ -49,8 +49,18 @@ def calculate_foodie_score(store: dict[str, Any]) -> float:
     # 4. 硬性條件違反懲罰 (Deterministic Constraint Sensor) & 品類不符重度降權
     constraint_penalty = 0.45 if store.get("constraint_violation") is True else 0.0
     category_penalty = 1.50 if store.get("category_mismatch") is True else 0.0
+    specialty_bonus = 0.10 if store.get("specialty_match") is True else 0.0
+    side_dish_penalty = 0.10 if store.get("side_dish_provider") is True else 0.0
 
-    return base_score + award_bonus - dist_penalty - constraint_penalty - category_penalty
+    return (
+        base_score
+        + award_bonus
+        + specialty_bonus
+        - dist_penalty
+        - constraint_penalty
+        - category_penalty
+        - side_dish_penalty
+    )
 
 
 def apply_deterministic_constraints(
@@ -93,8 +103,18 @@ def apply_deterministic_constraints(
                 time_constraint = "now"
 
     check_category = bool(target_place_types)
+    has_cuisine_ranking = bool(
+        (cuisine or search_keyword or "").strip() not in ("", "熱門人氣美食", "熱門美食", "グルメ")
+    )
 
-    if not payment_reqs and not dietary_reqs and not time_constraint and budget_max_jpy is None and not check_category:
+    if (
+        not payment_reqs
+        and not dietary_reqs
+        and not time_constraint
+        and budget_max_jpy is None
+        and not check_category
+        and not has_cuisine_ranking
+    ):
         return stores
 
     for store in stores:
@@ -166,6 +186,29 @@ def apply_deterministic_constraints(
                     existing_warnings = list(store.get("constraint_warnings") or [])
                     existing_warnings.append({"type": "category", "detail": cat_reason})
                     store["constraint_warnings"] = existing_warnings
+
+        # 5. 專門店 vs 附屬菜單店 柔性加權 (依 Tabelog 分類與店名動態判定，零硬編碼字典)
+        target_c = (cuisine or search_keyword or "").strip()
+        if target_c and target_c not in ("熱門人氣美食", "熱門美食", "グルメ"):
+            target_tokens = {target_c}
+            if len(target_c) >= 2 and target_c.endswith(("丼", "鍋", "飯", "麵", "面")):
+                target_tokens.add(target_c[-1])
+            if target_c.startswith(("日式", "日本")):
+                target_tokens.add(target_c[2:])
+
+            genre = str(store.get("tabelog_genre") or "").strip()
+            name = str(store.get("name_ja") or store.get("name") or "").strip()
+            text_target = f"{genre} {name}"
+
+            if any(tok in text_target for tok in target_tokens if tok):
+                store["specialty_match"] = True
+            elif genre:
+                is_noodle_target = any(
+                    k in target_c for k in ("そば", "蕎麦", "うどん", "烏龍", "ラーメン", "拉麵", "麺", "麵")
+                )
+                store_is_noodle = any(k in genre for k in ("そば", "蕎麦", "うどん", "ラーメン"))
+                if store_is_noodle and not is_noodle_target:
+                    store["side_dish_provider"] = True
 
     return stores
 

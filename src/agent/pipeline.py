@@ -358,6 +358,7 @@ class FoodRecommendationFSM:
                                     chat_id=chat_id,
                                     suggested_locations=parsed["suggested_locations"],
                                     pending_cuisine=parsed.get("pending_cuisine"),
+                                    pending_search_context=parsed.get("pending_search_context"),
                                 )
                                 if inspect.isawaitable(res):
                                     await res

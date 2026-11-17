@@ -73,11 +73,21 @@ async def test_dynamic_disambiguation_when_ambiguous():
     assert hasattr(fsm, "early_response")
     assert fsm.early_response == prompt
 
-    # Verify working memory is updated with suggested_locations and pending_cuisine
+    # Verify working memory is updated with suggested_locations, pending_cuisine, and pending_search_context
     session_repo.update_working_memory.assert_awaited_once_with(
         chat_id=12345,
         suggested_locations=["熱海溫泉", "修善寺"],
         pending_cuisine="溫泉饅頭",
+        pending_search_context={
+            "cuisine": "溫泉饅頭",
+            "category": None,
+            "search_keyword_ja": None,
+            "target_place_types": None,
+            "explore_category": None,
+            "dietary_restrictions": None,
+            "payment_preferences": None,
+            "budget_max_jpy": None,
+        },
     )
 
     # Verify run_pipeline early completion without calling geocoding

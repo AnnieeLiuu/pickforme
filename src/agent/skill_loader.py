@@ -142,7 +142,8 @@ class SkillLoader:
         parts: list[str] = []
 
         core = self.load_core_persona()
-        card_rules = self.load_scenario("card-synthesis")
+        target_cuisine = cuisine or "熱門料理"
+        card_rules = self.load_scenario("card-synthesis", cuisine=target_cuisine)
         if core and card_rules:
             parts.append(core)
             parts.append(card_rules)

@@ -152,6 +152,44 @@ def sanitize_history_for_intent(
     return clean_msgs
 
 
+def _restore_pending_search_context(
+    parsed: dict[str, Any],
+    wm_data: dict[str, Any],
+    target_location: Optional[str] = None,
+) -> None:
+    """從 working_memory 的 pending_search_context 完整還原第一輪檢索與護欄約束"""
+    if target_location:
+        parsed["location"] = str(target_location)
+    ctx = wm_data.get("pending_search_context")
+    if not isinstance(ctx, dict):
+        ctx = {}
+
+    cuisine = ctx.get("cuisine") or wm_data.get("pending_cuisine")
+    if cuisine and (not parsed.get("cuisine") or parsed.get("cuisine") in ("熱門人氣美食", "熱門美食")):
+        parsed["cuisine"] = cuisine
+
+    if ctx.get("search_keyword_ja") and not parsed.get("search_keyword_ja"):
+        parsed["search_keyword_ja"] = ctx["search_keyword_ja"]
+
+    if ctx.get("target_place_types") and not parsed.get("target_place_types"):
+        parsed["target_place_types"] = ctx["target_place_types"]
+
+    if ctx.get("category") and not parsed.get("category"):
+        parsed["category"] = ctx["category"]
+
+    if ctx.get("explore_category") and not parsed.get("explore_category"):
+        parsed["explore_category"] = ctx["explore_category"]
+
+    if ctx.get("dietary_restrictions") and not parsed.get("dietary_restrictions"):
+        parsed["dietary_restrictions"] = ctx["dietary_restrictions"]
+
+    if ctx.get("payment_preferences") and not parsed.get("payment_preferences"):
+        parsed["payment_preferences"] = ctx["payment_preferences"]
+
+    if ctx.get("budget_max_jpy") and not parsed.get("budget_max_jpy"):
+        parsed["budget_max_jpy"] = ctx["budget_max_jpy"]
+
+
 async def execute_state_1_intent(
     fsm: FoodRecommendationFSM,
     user_message: str,
@@ -249,8 +287,7 @@ async def execute_state_1_intent(
         suggested_locs = wm_sel.get("suggested_locations")
         if isinstance(suggested_locs, list) and 0 <= idx_1based - 1 < len(suggested_locs):
             target_loc = suggested_locs[idx_1based - 1]
-            parsed["location"] = str(target_loc)
-            parsed["cuisine"] = wm_sel.get("pending_cuisine") or "熱門人氣美食"
+            _restore_pending_search_context(parsed, wm_sel, target_location=target_loc)
             parsed["intent"] = "search"
         # 雙軌感知 2：次之檢查是否為「特色料理導覽選單 (suggested_cuisines)」
         else:
@@ -292,18 +329,17 @@ async def execute_state_1_intent(
             logger.warning(f"Failed to resolve direct recommend from working memory: {e}")
             parsed["cuisine"] = "熱門人氣美食"
 
-    # 若上一輪為縣級反問選單，且使用者下一輪直接輸入城鎮名 (如「濱松」)，自動繼承暫存之 pending_cuisine
+    # 若上一輪為縣級反問選單，且使用者下一輪直接輸入城鎮名 (如「濱松」或「靜岡車站」)，自動繼承暫存之 pending_search_context
     if chat_id and parsed.get("location") and intent == "search":
         try:
             wm_fn = getattr(fsm.session_repo, "get_working_memory", None)
             if callable(wm_fn):
                 wm_res = wm_fn(chat_id)
                 wm_val = await wm_res if inspect.isawaitable(wm_res) else wm_res
-                if isinstance(wm_val, dict) and wm_val.get("pending_cuisine"):
-                    if not parsed.get("cuisine") or parsed.get("cuisine") in ("熱門人氣美食", "熱門美食"):
-                        parsed["cuisine"] = wm_val["pending_cuisine"]
+                if isinstance(wm_val, dict) and (wm_val.get("pending_cuisine") or wm_val.get("pending_search_context")):
+                    _restore_pending_search_context(parsed, wm_val)
         except Exception as e:
-            logger.debug(f"Failed to inherit pending_cuisine: {e}")
+            logger.debug(f"Failed to inherit pending_search_context: {e}")
 
     # 若為 "explore_cuisine" 且未帶地名，嘗試從 Working Memory 繼承上一輪地名
     if intent == "explore_cuisine":
@@ -484,15 +520,27 @@ async def execute_state_1_intent(
             # 設置 early_response
             setattr(fsm, "early_response", prompt_text)
 
-            # 更新 Session working memory
+            # 更新 Session working memory (保存完整 pending_search_context 快照供次輪選區完整還原)
             if chat_id:
                 try:
+                    pending_ctx = {
+                        "cuisine": parsed.get("cuisine"),
+                        "category": parsed.get("category"),
+                        "search_keyword_ja": parsed.get("search_keyword_ja"),
+                        "target_place_types": parsed.get("target_place_types"),
+                        "explore_category": parsed.get("explore_category"),
+                        "dietary_restrictions": parsed.get("dietary_restrictions"),
+                        "payment_preferences": parsed.get("payment_preferences"),
+                        "budget_max_jpy": parsed.get("budget_max_jpy"),
+                    }
+                    parsed["pending_search_context"] = pending_ctx
                     upd_fn = getattr(fsm.session_repo, "update_working_memory", None)
                     if callable(upd_fn):
                         res = upd_fn(
                             chat_id=chat_id,
                             suggested_locations=parsed["suggested_locations"],
                             pending_cuisine=parsed.get("pending_cuisine"),
+                            pending_search_context=pending_ctx,
                         )
                         if inspect.isawaitable(res):
                             await res

@@ -7,6 +7,8 @@
 ## [Unreleased]
 
 ### Changed
+- **老饕主題錨定與專門店 vs 附餐名店柔性排序 (`config/skills/scenarios/card-synthesis.md`, `src/agent/skill_loader.py`, `src/agent/stages/synthesis.py`, `src/agent/stages/enrichment/scoring.py`, `src/agent/stages/enrichment/orchestrator.py`, `tests/test_real_world_regressions.py`)**：
+  - 依生產追蹤 `78f550aa`（「靜岡 親子丼」➔ 推薦戶隱蕎麥麵店且必點寫蕎麥麵、理由通篇大讚蕎麥麵）修復：Stage 4 卡片生成新增「老饕主題一致性與複合名店規範」，`must_order` 嚴格鎖定目標料理或其套餐，推薦理由自然帶出複合名店背景並闡明常客推薦目標料理之風味特色（為什麼值得吃）；Stage 3 `scoring.py` 依 Tabelog genre / 店名動態實施專門店加權 `+0.10` 與附餐名店柔性降權 `-0.10`（總差額 `0.20`），既確保專門店優先排列，亦保護 3.50+ 分老饕名店不被評分倒掛擠掉（Case 56）。
 - **全品類通用前置類型防線 (`src/agent/schemas.py`, `config/prompts/intent_parser.md`, `src/agent/stages/intent.py`, `src/db/repositories/session.py`, `src/services/category_guard.py`, `src/agent/stages/places_search.py`, `src/agent/pipeline.py`, `tests/test_real_world_regressions.py`)**：
   - 移除 `category_guard.py` 咖啡專用特判，改由 Stage 1 `IntentOutput.target_place_types` 由 LLM 動態輸出 Google Places 標準目標類型（支援跨輪 `working_memory`「換一批」繼承）；Stage 2/3 依 `primary_type`（優先擋掉 `japanese_izakaya_restaurant`、`hookah_bar` 等獨立業態，即使次要 `types` 混入標籤）通用過濾，全面覆蓋拉麵、壽司、燒肉、咖啡、酒吧等全品類（Case 53）。
 - **Enrichment Stage 模組化拆分 (`src/agent/stages/enrichment/`, `tests/test_enrichment_modularization.py`)**：
@@ -17,6 +19,8 @@
   - `apply_deterministic_constraints` 新增結構化 `constraint_warnings`（記錄 `budget`、`payment`、`hours`、`dietary` 違規明細）；`execute_state_4_synthesis` 改為要求 LLM 輸出 `{"stores": [{"index", "reason", "must_order"}], "tip"}` 精簡 JSON 並由 Python 確定性拼裝客觀欄位、單店差異標註與 `search_meta` 候選數透明說明（Gemini fallback 放寬 `max_tokens=1500`，Groq 維持 `800`，並新增 Case 52）。
 
 ### Fixed
+- **多輪廣域分區反問語境快照還原 (`src/db/repositories/session.py`, `src/agent/stages/intent.py`, `src/agent/pipeline.py`, `tests/test_real_world_regressions.py`)**：
+  - 依生產追蹤 `c4aba176`（「靜岡 下午茶」➔ 反問分區 ➔ 使用者回覆 `1` 或地名 ➔ 誤推關東煮居酒屋）根因修復：在 `working_memory` 建立 `pending_search_context` 快照，次輪無論透過數字索引或自然語言文字地名選取時，100% 還原 `cuisine`、`search_keyword_ja`、`target_place_types`、`category` 等所有檢索與護欄約束，使 Stage 2/3 品類護欄成功阻絕居酒屋/關東煮；並於搜尋完成後主動清理快照防範 stale menu 誤觸發（Case 55）。
 - **距離守門與延伸站點老店參考 (`src/agent/stages/places_search.py`, `src/agent/stages/enrichment/scoring.py`, `src/agent/stages/enrichment/orchestrator.py`, `src/agent/stages/synthesis.py`, `src/agent/validator.py`, `src/agent/pipeline.py`, `tests/test_real_world_regressions.py`)**：
   - 依生產追蹤 `9f3157be`（「新宿御苑附近的咖啡店推薦」卻讓 1.6km 外的新大久保店登頂）根因修復：Stage 2 源頭 B 半徑迴圈新增 `dist_m > r` 暫存至 `out_of_radius_fallback`（僅不足 3 家時保底補回）；Stage 3 `calculate_foodie_score` 移除市區 `or store.get("nearest_station_desc")` 距離扣分豁免（僅保留廣域景區豁免）；並從未入選 Top 3 之高分候選萃取 `distant_station_gems` 於卡片下方確定性渲染「🚉 延伸站點老店參考」（Case 54）。
 - **品類一致性防線 (`src/services/category_guard.py`, `src/services/google_places.py`, `src/services/tabelog_scraper.py`, `src/agent/stages/places_search.py`, `src/agent/stages/enrichment/scoring.py`, `tests/test_real_world_regressions.py`)**：

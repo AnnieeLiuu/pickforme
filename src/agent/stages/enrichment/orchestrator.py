@@ -116,7 +116,7 @@ async def execute_state_3_parallel_tabelog(
     final_enriched = list(await asyncio.gather(*[_bounded_enrich(p) for p in candidate_places]))
 
     # 4. 預算與硬性條件預先加權評估（於挑選 Top 3 前執行，避免符合預算者被高價店擠出名單）
-    if modifier or preferences or time_constraint or budget_max_jpy is not None or target_place_types:
+    if modifier or preferences or time_constraint or budget_max_jpy is not None or target_place_types or cuisine:
         final_enriched = apply_deterministic_constraints(
             final_enriched,
             modifier=modifier,

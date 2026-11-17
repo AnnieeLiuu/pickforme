@@ -205,7 +205,7 @@ flowchart TD
             MatchCheck -- No --> FallbackGoogle["保底：標註「Tabelog 暫無評分，以 Google 為依據」"]
         end
 
-        HitCache --> ConstraintSensor["🎯 Deterministic Constraint Sensor<br/>(apply_deterministic_constraints: 硬性飲食禁忌 / 支付偏好 / 宵夜·早餐營業狀態降權)"]
+        HitCache --> ConstraintSensor["🎯 Deterministic Constraint Sensor<br/>(apply_deterministic_constraints: 硬性飲食/支付/營業降權 + 專門店±0.10柔性排序 + 語境快照繼承)"]
         SaveCache --> ConstraintSensor
         FallbackGoogle --> ConstraintSensor
         ConstraintSensor --> AlignWalk["🚶 雙階地理步行描述對齊 (_align_walking_and_station / format_walking_description)<br/>• 場景 2 (景區): 從「強羅站」步行約 5 分鐘 (嚴禁拼接中心點 2800m 米數，杜絕 Usain Bolt 錯位)<br/>• 場景 3 (都會): 從「新宿」步行約 4 分鐘 (320m)"]
@@ -218,7 +218,7 @@ flowchart TD
         ResolveCardCat -- "drink (名茶/地酒/咖啡)" --> CatDrink["稱謂:「茶房／名店」<br/>徽章: 🍵 指標推薦茶房<br/>專屬注入: 焙火、茶湯、咖啡豆香、地酒吟釀點評"]
         ResolveCardCat -- "souvenir (伴手禮/銘菓)" --> CatSouvenir["稱謂:「老舖／名店」<br/>徽章: 🎁 指標伴手禮老舖<br/>專屬注入: 常溫送禮、包裝、保存期限、名產特色點評"]
 
-        CatFood --> LLMSynthesis["LLMClient 精簡 JSON 短評生成 (reason, must_order, tip)<br/>+ Python 確定性組卡片 (含 constraint_warnings 與 search_meta 透明說明)"]
+        CatFood --> LLMSynthesis["LLMClient 老饕主題錨定精簡 JSON (reason, must_order, tip)<br/>+ Python 確定性組卡片 (含複合名店背景與推薦原因、constraint_warnings)"]
         CatDrink --> LLMSynthesis
         CatSouvenir --> LLMSynthesis
 

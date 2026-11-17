@@ -124,6 +124,8 @@ class SessionRepository:
         last_explore_category: Optional[str] = None,
         suggested_locations: Optional[list[str]] = None,
         pending_cuisine: Optional[str] = None,
+        pending_search_context: Optional[dict[str, Any]] = None,
+        clear_disambiguation: bool = False,
         pending_prewarm_options: Optional[dict[str, Any]] = None,
         clear_pending_prewarm: bool = False,
         trip_scoping: Optional[dict[str, Any]] = None,
@@ -164,11 +166,17 @@ class SessionRepository:
             updated_wm.pop("pending_cuisine", None)
         if last_explore_category is not None:
             updated_wm["last_explore_category"] = last_explore_category
+        if clear_disambiguation:
+            updated_wm.pop("suggested_locations", None)
+            updated_wm.pop("pending_cuisine", None)
+            updated_wm.pop("pending_search_context", None)
         if suggested_locations is not None:
             updated_wm["suggested_locations"] = suggested_locations
             updated_wm.pop("suggested_cuisines", None)
         if pending_cuisine is not None:
             updated_wm["pending_cuisine"] = pending_cuisine
+        if pending_search_context is not None:
+            updated_wm["pending_search_context"] = pending_search_context
         if clear_pending_prewarm or pending_prewarm_options == {}:
             updated_wm.pop("pending_prewarm_options", None)
         elif pending_prewarm_options is not None:
@@ -374,6 +382,7 @@ class SessionRepository:
         updated_wm.pop("suggested_cuisines", None)
         updated_wm.pop("suggested_locations", None)
         updated_wm.pop("pending_cuisine", None)
+        updated_wm.pop("pending_search_context", None)
         updated_wm.pop("trip_scoping", None)
 
         data_to_store = {

@@ -8,6 +8,7 @@
 
 import asyncio
 import re
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -4030,3 +4031,141 @@ async def test_case_54_distance_guard_and_distant_station_gems():
     )
     ok, reasons = validate_recommendation_card(card, top_3)
     assert ok is True, reasons
+
+
+# ==============================================================================
+# Case 55: 多輪廣域分區反問語境快照還原 (c4aba176 靜岡下午茶誤推關東煮居酒屋)
+# ==============================================================================
+
+
+@pytest.mark.asyncio
+async def test_case_55_multi_turn_disambiguation_context_snapshot_restoration():
+    """Case 55 (c4aba176 靜岡下午茶):
+    驗證第一輪廣域反問時，建立 pending_search_context 快照保存至 working_memory；
+    第二輪使用者無論輸入數字「1」或地名文字「靜岡車站」，皆 100% 完整還原
+    search_keyword_ja (カフェ) 與 target_place_types (cafe, coffee_shop)，
+    使 Stage 2/3 品類護欄成功阻絕居酒屋/關東煮；並在搜尋完成後清理選區快照避免過期誤觸發。
+    """
+    from src.agent.stages.intent import _restore_pending_search_context
+    from src.services.category_guard import check_category_mismatch
+
+    # 1. 驗證快照還原函式 _restore_pending_search_context
+    wm_data = {
+        "suggested_locations": ["靜岡車站", "駿府城公園", "靜岡溫泉"],
+        "pending_cuisine": "下午茶",
+        "pending_search_context": {
+            "cuisine": "下午茶",
+            "category": "drink",
+            "search_keyword_ja": "カフェ",
+            "target_place_types": ["cafe", "coffee_shop"],
+            "explore_category": "drink",
+            "dietary_restrictions": ["不吃牛"],
+            "payment_preferences": ["credit_card"],
+            "budget_max_jpy": 2000,
+        },
+    }
+
+    # 測試分支 A: 使用者輸入數字「1」
+    parsed_num: dict[str, Any] = {"intent": "search", "cuisine": None, "location": None}
+    _restore_pending_search_context(parsed_num, wm_data, target_location="靜岡車站")
+    assert parsed_num["location"] == "靜岡車站"
+    assert parsed_num["cuisine"] == "下午茶"
+    assert parsed_num["category"] == "drink"
+    assert parsed_num["search_keyword_ja"] == "カフェ"
+    assert parsed_num["target_place_types"] == ["cafe", "coffee_shop"]
+    assert parsed_num["budget_max_jpy"] == 2000
+    assert parsed_num["dietary_restrictions"] == ["不吃牛"]
+
+    # 測試分支 B: 使用者輸入地名文字「靜岡車站」
+    parsed_text: dict[str, Any] = {"intent": "search", "cuisine": "熱門人氣美食", "location": "靜岡車站"}
+    _restore_pending_search_context(parsed_text, wm_data)
+    assert parsed_text["location"] == "靜岡車站"
+    assert parsed_text["cuisine"] == "下午茶"
+    assert parsed_text["search_keyword_ja"] == "カフェ"
+    assert parsed_text["target_place_types"] == ["cafe", "coffee_shop"]
+
+    # 2. 驗證還原後的 target_place_types 能夠成功阻絕真實痛點店家（海ぼうず居酒屋、魚市場直營店）
+    izakaya_store = {
+        "name": "海ぼうず 本店",
+        "primary_type": "japanese_izakaya_restaurant",
+        "types": ["japanese_izakaya_restaurant", "restaurant", "food"],
+        "tabelog_genre": "おでん、居酒屋",
+    }
+    mismatch, reason = check_category_mismatch(izakaya_store, target_place_types=parsed_num["target_place_types"])
+    assert mismatch is True
+    assert "Google 主類型" in (reason or "")
+
+    cafe_store = {
+        "name": "モンシェール カフェ 静岡駅店",
+        "primary_type": "cafe",
+        "types": ["cafe", "cake_shop", "bakery"],
+        "tabelog_genre": "カフェ",
+    }
+    mismatch_cafe, _ = check_category_mismatch(cafe_store, target_place_types=parsed_num["target_place_types"])
+    assert mismatch_cafe is False
+
+
+# ==============================================================================
+# Case 56: 親子丼專門店 vs 附餐名店柔性排序與老饕主題錨定 (78f550aa 蕎麥麵店跑題)
+# ==============================================================================
+
+
+@pytest.mark.asyncio
+async def test_case_56_connoisseur_oyakodon_theme_alignment_and_specialty_scoring():
+    """Case 56 (78f550aa 靜岡親子丼):
+    1. 驗證 Stage 3 專門店 vs 附餐名店柔性加權：
+       - 鳥料理/親子丼專門店 (+0.10) 優先於同分段之蕎麥附餐店 (-0.10)；
+       - 但 3.50+ 分的老饕頂級名店不被一棒打死，仍可憑高分排入前列。
+    2. 驗證 Stage 4 提示詞規範老饕口吻：當推薦蕎麥名店時，必點鎖定親子丼，推薦理由兼具招牌背景與推薦原因。
+    """
+    from src.agent.skill_loader import get_skill_loader
+    from src.agent.stages.enrichment.scoring import apply_deterministic_constraints, calculate_foodie_score
+
+    soba_store_340 = {
+        "name_ja": "戸隠そば 呉服町店",
+        "tabelog_rating": 3.40,
+        "tabelog_genre": "そば、天ぷら",
+        "distance_meters": 200,
+    }
+    specialty_store_335 = {
+        "name_ja": "地鶏炭火焼 親子丼 喜三郎",
+        "tabelog_rating": 3.35,
+        "tabelog_genre": "鳥料理、親子丼",
+        "distance_meters": 200,
+    }
+    legendary_soba_360 = {
+        "name_ja": "手打蕎麥 匠",
+        "tabelog_rating": 3.60,
+        "tabelog_genre": "そば",
+        "distance_meters": 200,
+    }
+
+    stores = [soba_store_340, specialty_store_335, legendary_soba_360]
+    apply_deterministic_constraints(stores, cuisine="親子丼")
+
+    assert specialty_store_335.get("specialty_match") is True
+    assert soba_store_340.get("side_dish_provider") is True
+    assert legendary_soba_360.get("side_dish_provider") is True
+
+    # 計分驗證：
+    # specialty_store_335: 3.35 + 0.10 = 3.45
+    # soba_store_340: 3.40 - 0.10 = 3.30
+    # legendary_soba_360: 3.60 - 0.10 = 3.50
+    score_specialty = calculate_foodie_score(specialty_store_335)
+    score_soba_340 = calculate_foodie_score(soba_store_340)
+    score_legendary = calculate_foodie_score(legendary_soba_360)
+
+    assert score_specialty > score_soba_340  # 3.45 > 3.30 (專門店成功反超同分段麵店)
+    assert score_legendary > score_specialty  # 3.50 > 3.45 (3.60 分老饕神店保留優先度，不被誤殺)
+
+    # 驗證 Stage 4 模組化 Prompt 包含 Cuisine-Anchored 契約
+    loader = get_skill_loader()
+    loader.reload()
+    prompt = loader.build_synthesis_system_prompt(
+        resolved_category="food",
+        store_count=3,
+        location_name="靜岡車站",
+        cuisine="親子丼",
+    )
+    assert "【老饕主題一致性與複合名店規範" in prompt
+    assert "親子丼" in prompt
