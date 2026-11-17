@@ -67,6 +67,7 @@ class TelemetryManager:
                     public_key=settings.LANGFUSE_PUBLIC_KEY,
                     secret_key=settings.LANGFUSE_SECRET_KEY,
                     host=settings.LANGFUSE_HOST,
+                    environment=settings.ENVIRONMENT,
                 )
                 self._initialized = True
                 logger.info(
