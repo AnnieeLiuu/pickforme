@@ -91,6 +91,14 @@ flowchart TD
 
 ## 🔄 第三部分：端到端根因排查 5 步 SOP (The 5-Step Root-Cause SOP)
 
+> [!TIP]
+> **🚀 優先使用專屬維運工具 `pickforme-ops` (MCP-First Observability)**：
+> 排查線上即時異常或回放壞案例時，**強制優先呼叫內建 MCP 工具**，嚴禁在終端機手動下臨時 SQL 或撰寫一次性腳本查詢：
+> - **線上 Trace 快速調閱**：使用 `fetch_failed_traces(days=1, only_errors=...)` 快速拉出使用者輸入與輸出。
+> - **階段細節深入穿透**：使用 `get_trace_spans(trace_id=...)` 獲取 State 1~4 的各 Span 耗時與模型調用細節。
+> - **Neon DB 步驟完全回放**：使用 `get_recent_agent_runs` 與 `get_agent_step_detail(run_id=..., step_number=...)` 提取無截斷之完整 `tool_input` 與 `tool_output`。
+> - **壞案例固化為 Eval Case**：排查確認根因後，使用 `save_eval_case` 一鍵存入 `evals/cases/` 納入常態化防禦。
+
 1. **步驟 1：依據全景圖，填寫【6 維個案深入盤點矩陣】**：
    - 逐一標註出該店家在「原始資料 ➡️ 快取 ➡️ 對齊 ➡️ 食評覆蓋 ➡️ 向量 ➡️ 護欄」的流轉狀態，找出最初發源點。
 2. **步驟 2：執行 5-Whys 深度溯源**：
