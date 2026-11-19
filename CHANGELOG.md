@@ -19,6 +19,8 @@
   - `apply_deterministic_constraints` 新增結構化 `constraint_warnings`（記錄 `budget`、`payment`、`hours`、`dietary` 違規明細）；`execute_state_4_synthesis` 改為要求 LLM 輸出 `{"stores": [{"index", "reason", "must_order"}], "tip"}` 精簡 JSON 並由 Python 確定性拼裝客觀欄位、單店差異標註與 `search_meta` 候選數透明說明（Gemini fallback 放寬 `max_tokens=1500`，Groq 維持 `800`，並新增 Case 52）。
 
 ### Fixed
+- **任務級 Gemini 路由與 Stage 2/3 檢索防呆加固 (`src/agent/llm_client.py`, `src/agent/stages/intent.py`, `src/services/cuisine_guide.py`, `src/services/category_guard.py`, `src/agent/stages/places_search.py`, `src/services/tabelog_scraper.py`, `src/agent/pipeline.py`, `tests/test_real_world_regressions.py`)**：
+  - 依生產追蹤 `cf31b483`（「日本橋人形町 烏龍麵」因 `qwen/qwen3.8-27b` 誤譯為 `"烏龍ラーメン"` 導致漏掉 `谷や` 且混入寫真館 `モリヤスタジオ` 與子頁籤標題 `メニュー写真`）修復：新增任務級 `preferred_provider="gemini"` 路由（僅 Stage 1 意圖解析與 Cuisine Guide Cache Miss 優先使用 Gemini，其餘高 Token 場景維持 Groq）及 HTTP `503` 退避重試；`category_guard.py` 強化非餐飲業態硬封殺且不進入保底；Stage 2 新增 `800m` 原語意 `raw_cuisine` 補救與收緊低分種子保送門檻；`tabelog_scraper.py` 剝離子頁籤冒號前綴並以 `総合得点` 補齊單店結果（Case 59）。
 - **Langfuse 環境屬性顯式傳遞與測試隔離 (`src/services/telemetry.py`, `tests/conftest.py`, `tests/test_langfuse_telemetry.py`)**：
   - 修復 Langfuse 5.x 觀測環境未與 Cloud Run 同步問題：在 `Langfuse` 客戶端建構式與 `propagate_attributes` 中顯式傳入 `environment=settings.ENVIRONMENT`，解決 Trace 誤入 `default` 環境之問題；並於 `tests/conftest.py` 建立全域自動 fixture 將測試環境鎖定為 `test`，杜絕單元測試洩漏至線上看板。
 - **多輪廣域分區反問語境快照還原 (`src/db/repositories/session.py`, `src/agent/stages/intent.py`, `src/agent/pipeline.py`, `tests/test_real_world_regressions.py`)**：
