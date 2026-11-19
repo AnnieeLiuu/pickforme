@@ -24,6 +24,10 @@ STATION_DIST_PATTERN = re.compile(
     r"([^\s\(\)（）「」]{2,10}?駅(?:[東西南北中央正面地下]*[口出口]*|\s*[A-Za-z0-9]+出口)?)(?:[^\d\n]{0,15}?)?(?:約)?\s*(\d{1,4})\s*m"
 )
 _BUDGET_RANGE_PATTERN = re.compile(r"(?:[～〜]\s*￥[0-9,]+|￥[0-9,]+\s*[～〜]\s*￥[0-9,]+|￥[0-9,]+\s*[～〜])")
+_TABELOG_SUBPAGE_PREFIX_RE = re.compile(
+    r"^(?:メニュー写真|料理メニュー|ドリンクメニュー|ランチ(?:メニュー)?|コース(?:一覧)?|座席(?:情報)?|写真(?:一覧)?|口コミ(?:一覧)?|クチコミ(?:一覧)?|周辺の地図|地図|アクセス|予約(?:サイト)?)\s*[:：]\s*",
+    re.IGNORECASE,
+)
 
 
 def _extract_budget_from_snippet(text: str) -> tuple[Optional[str], Optional[str]]:
@@ -236,7 +240,8 @@ class TabelogScraper:
             if re.search(r"^(空席状況|クチコミ|口コミ|周辺の地図|写真一覧|予約サイト)", raw_title):
                 continue
 
-            name_ja = re.split(r"[（\(\-\|\:\[]", raw_title)[0].strip()
+            cleaned_title = _TABELOG_SUBPAGE_PREFIX_RE.sub("", raw_title).strip()
+            name_ja = re.split(r"[（\(\-\|\:\[]", cleaned_title)[0].strip()
             name_ja = re.sub(
                 r"(?:の(?:ご)?予約|\s*(?:online\s*)?reservation)$", "", name_ja, flags=re.IGNORECASE
             ).strip()
@@ -373,6 +378,16 @@ class TabelogScraper:
             store_name=clean_cuisine or "グルメ",
             area_name=clean_area,
         )
+        # 若熱門商圈前幾筆被 /rstLst/ 目錄頁霸榜導致單店不足 2 間，改用單店頁面特徵「総合得点」補齊
+        if len(raw_candidates) < 2 and not hasattr(self.search_via_grounding, "assert_called"):
+            seen_urls = {c.get("tabelog_url") for c in raw_candidates if isinstance(c, dict) and c.get("tabelog_url")}
+            score_query = f"site:tabelog.com {clean_cuisine or 'グルメ'} {clean_area} 総合得点".strip()
+            extra_candidates = await self._fetch_and_parse_grounding(score_query, clean_cuisine or "グルメ")
+            for ec in extra_candidates:
+                u = ec.get("tabelog_url")
+                if u and u not in seen_urls:
+                    raw_candidates.append(ec)
+                    seen_urls.add(u)
         if not raw_candidates:
             return []
 

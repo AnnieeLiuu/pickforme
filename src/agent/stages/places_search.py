@@ -207,9 +207,9 @@ def prefilter_potential_foodie_places(
         has_award = bool(p.get("hyakumeiten") or p.get("awards"))
         is_tabelog_seed = bool(p.get("tabelog_seed"))
 
-        # 1. Tabelog 老饕種子保送通道
+        # 1. Tabelog 老饕種子保送通道（僅限高分名店 >=3.45 / 百名店 / 尚無評分之種子，低分誤配種子不享免死金牌）
         tabelog_boost = 0.0
-        if is_tabelog_seed or t_rating >= 3.45 or has_award:
+        if (is_tabelog_seed and (t_rating >= 3.45 or t_rating == 0.0)) or t_rating >= 3.45 or has_award:
             tabelog_boost = 10.0 + (t_rating if t_rating > 0 else 3.5) + (0.5 if has_award else 0.0)
 
         g_rating = float(p.get("rating") or p.get("google_rating") or 3.5)
@@ -345,6 +345,9 @@ async def _hydrate_tabelog_seeds_with_places(
             if seed.get("hyakumeiten"):
                 place["hyakumeiten"] = seed["hyakumeiten"]
                 place["awards"] = seed["hyakumeiten"]
+            is_mismatch, _ = check_category_mismatch(place, target_place_types=target_place_types)
+            if is_mismatch:
+                return None
             return place
         except Exception as e:
             logger.debug(f"Failed to hydrate Tabelog seed '{name_ja}': {e}")
@@ -367,6 +370,7 @@ async def execute_state_2_places_ladder(
     preferences: Optional[dict[str, Any]] = None,
     explore_category: Optional[str] = None,
     target_place_types: Optional[list[str]] = None,
+    raw_cuisine: Optional[str] = None,
 ) -> list[dict[str, Any]]:
     """State 2: Google Places 智慧階梯檢索 (800m ➔ 1200m ➔ 1800m ➔ 2500m 擴圈保底) + 潛力預篩"""
     t0 = time.time()
@@ -413,28 +417,46 @@ async def execute_state_2_places_ladder(
 
     seen_out_of_radius_ids: set[str] = set()
     seen_mismatch_ids: set[str] = set()
-    for r in radii:
-        raw_places = await fsm.places_client.search_nearby(lat=lat, lng=lng, radius=r, keyword=keyword)
-        # 過濾重複、已看過、明顯不相干品類與超過當前半徑之店家
+
+    def _absorb_raw_places(raw_list: list[dict[str, Any]], radius_limit: int, mark_expanded: bool = False) -> None:
         existing_ids = {c["google_place_id"] for c in candidates}
-        for p in raw_places:
+        for p in raw_list:
             pid = p.get("google_place_id")
-            if pid and pid not in existing_ids and pid not in exclude_set:
-                _hydrate_place_distance(p)
-                is_mismatch, _ = check_category_mismatch(p, target_place_types=target_place_types)
-                if is_mismatch:
-                    if pid not in seen_mismatch_ids:
-                        mismatch_fallback.append(p)
-                        seen_mismatch_ids.add(pid)
-                    continue
-                dist_m = p.get("distance_meters")
-                if dist_m is not None and dist_m > r:
-                    if pid not in seen_out_of_radius_ids:
-                        out_of_radius_fallback.append(p)
-                        seen_out_of_radius_ids.add(pid)
-                    continue
-                candidates.append(p)
-                existing_ids.add(pid)
+            if not pid or pid in existing_ids or pid in exclude_set:
+                continue
+            _hydrate_place_distance(p)
+            if mark_expanded:
+                p["radius_expanded"] = True
+            is_mismatch, mismatch_reason = check_category_mismatch(p, target_place_types=target_place_types)
+            if is_mismatch:
+                if not (mismatch_reason or "").startswith("非餐飲業態") and pid not in seen_mismatch_ids:
+                    mismatch_fallback.append(p)
+                    seen_mismatch_ids.add(pid)
+                continue
+            dist_m = p.get("distance_meters")
+            if dist_m is not None and dist_m > radius_limit:
+                if pid not in seen_out_of_radius_ids:
+                    out_of_radius_fallback.append(p)
+                    seen_out_of_radius_ids.add(pid)
+                continue
+            candidates.append(p)
+            existing_ids.add(pid)
+
+    clean_raw_cuisine = (raw_cuisine or "").strip()
+    can_raw_rescue = bool(
+        clean_raw_cuisine
+        and clean_raw_cuisine not in ("熱門美食", "熱門人氣美食", "グルメ")
+        and clean_raw_cuisine != (keyword or "").strip()
+    )
+
+    for idx, r in enumerate(radii):
+        raw_places = await fsm.places_client.search_nearby(lat=lat, lng=lng, radius=r, keyword=keyword)
+        _absorb_raw_places(raw_places, radius_limit=r)
+
+        # 若核心半徑 (radii[0]) 因翻譯關鍵字偏差導致不足 3 家，先以原語意 raw_cuisine 在同半徑補救，避免誤擴圈到外區
+        if idx == 0 and len(candidates) < 3 and can_raw_rescue:
+            rescue_places = await fsm.places_client.search_nearby(lat=lat, lng=lng, radius=r, keyword=clean_raw_cuisine)
+            _absorb_raw_places(rescue_places, radius_limit=r)
 
         if len(candidates) >= 3:
             break
@@ -442,28 +464,7 @@ async def execute_state_2_places_ladder(
     # 自適應擴圈：若在 1800m 內候選店少於 3 家，自動向外擴圈至 2500m 保底
     if len(candidates) < 3:
         raw_places = await fsm.places_client.search_nearby(lat=lat, lng=lng, radius=2500, keyword=keyword)
-        existing_ids = {c["google_place_id"] for c in candidates}
-        for p in raw_places:
-            pid = p.get("google_place_id")
-            if pid and pid not in existing_ids and pid not in exclude_set:
-                _hydrate_place_distance(p)
-                p["radius_expanded"] = True
-                is_mismatch, _ = check_category_mismatch(p, target_place_types=target_place_types)
-                if is_mismatch:
-                    if pid not in seen_mismatch_ids:
-                        mismatch_fallback.append(p)
-                        seen_mismatch_ids.add(pid)
-                    continue
-                dist_m = p.get("distance_meters")
-                if dist_m is not None and dist_m > 2500:
-                    if pid not in seen_out_of_radius_ids:
-                        out_of_radius_fallback.append(p)
-                        seen_out_of_radius_ids.add(pid)
-                    continue
-                candidates.append(p)
-                existing_ids.add(pid)
-            if len(candidates) >= 3:
-                break
+        _absorb_raw_places(raw_places, radius_limit=2500, mark_expanded=True)
 
     # 雙源匯流：合併 Tabelog 主動獵店種子與 Google 階梯候選池
     tabelog_hydrated_seeds = await tabelog_seed_task

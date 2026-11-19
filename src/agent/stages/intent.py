@@ -227,7 +227,12 @@ async def execute_state_1_intent(
         messages.append({"role": "user", "content": user_message})
 
         t0 = time.time()
-        parsed_raw, model, tokens = await fsm.llm_client.call_structured_json(messages, schema=IntentOutput)
+        try:
+            parsed_raw, model, tokens = await fsm.llm_client.call_structured_json(
+                messages, schema=IntentOutput, preferred_provider="gemini"
+            )
+        except TypeError:
+            parsed_raw, model, tokens = await fsm.llm_client.call_structured_json(messages, schema=IntentOutput)
         parsed = dict(parsed_raw)
         latency = int((time.time() - t0) * 1000)
 

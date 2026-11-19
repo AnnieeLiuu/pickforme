@@ -140,6 +140,7 @@ class FoodRecommendationFSM:
         preferences: Optional[dict[str, Any]] = None,
         explore_category: Optional[str] = None,
         target_place_types: Optional[list[str]] = None,
+        raw_cuisine: Optional[str] = None,
     ) -> list[dict[str, Any]]:
         """State 2: Google Places 智慧階梯檢索 (委派至 stages.places_search)"""
         return await stage_execute_state_2_places_ladder(
@@ -155,6 +156,7 @@ class FoodRecommendationFSM:
             preferences=preferences,
             explore_category=explore_category,
             target_place_types=target_place_types,
+            raw_cuisine=raw_cuisine,
         )
 
     async def _enrich_single_place(self, place: dict[str, Any], area_hint: Optional[str] = None) -> dict[str, Any]:
@@ -523,6 +525,7 @@ class FoodRecommendationFSM:
                 preferences=run_ctx.long_term_preferences,
                 explore_category=run_ctx.explore_category,
                 target_place_types=run_ctx.target_place_types,
+                raw_cuisine=run_ctx.cuisine,
             )
             telemetry.end_span(span_s2, output_data={"candidate_count": len(candidates)})
             if not candidates:
@@ -561,9 +564,6 @@ class FoodRecommendationFSM:
                 )
 
             # 4. State 4: 單輪卡片生成
-            span_s4 = telemetry.start_span(
-                "synthesize-recommendations", input_data={"store_count": len(enriched_stores)}
-            )
             span_s4 = telemetry.start_span(
                 "synthesize-recommendations", input_data={"store_count": len(enriched_stores)}
             )

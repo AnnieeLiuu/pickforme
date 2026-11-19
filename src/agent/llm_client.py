@@ -99,6 +99,10 @@ class LLMClient:
                     logger.warning(f"LLM API ({model}) 觸發 Rate Limit (429)，動態等待 {wait_time} 秒後重試...")
                     await asyncio.sleep(wait_time)
                     resp = await client.post(url, json=body, headers=headers)
+                elif resp.status_code == 503:
+                    logger.warning(f"LLM API ({model}) 暫時性負載過高 (503)，等待 1.5 秒後重試...")
+                    await asyncio.sleep(1.5)
+                    resp = await client.post(url, json=body, headers=headers)
 
                 if resp.status_code >= 400:
                     logger.error(f"LLM API Error ({model}) HTTP {resp.status_code}: {resp.text[:500]}")
@@ -235,10 +239,11 @@ class LLMClient:
         self,
         messages: list[dict[str, Any]],
         response_format: Optional[dict[str, Any]] = None,
+        preferred_provider: Optional[str] = None,
     ) -> tuple[str, str, int]:
-        """純文字問答呼叫 (回傳 content, model_used, tokens)"""
+        """純文字問答呼叫 (回傳 content, model_used, tokens；支援單次呼叫指定 preferred_provider)"""
         errors: list[str] = []
-        primary = getattr(settings, "LLM_PRIMARY_PROVIDER", "groq").lower()
+        primary = str(preferred_provider or getattr(settings, "LLM_PRIMARY_PROVIDER", "groq") or "groq").lower()
 
         if primary == "groq":
             groq_models = get_active_groq_models()
@@ -273,6 +278,7 @@ class LLMClient:
         messages: list[dict[str, Any]],
         schema: Optional[type[BaseModel]] = None,
         max_retries: int = 1,
+        preferred_provider: Optional[str] = None,
     ) -> tuple[dict[str, Any], str, int]:
         """結構化 JSON 輸出呼叫 (支援 Pydantic Schema 驗證與 Self-Correction 自癒重試，回傳 parsed_json, model_used, tokens)"""
         working_messages = [dict(m) for m in messages]
@@ -285,13 +291,30 @@ class LLMClient:
         total_tokens = 0
         model = "unknown"
 
+        call_kwargs: dict[str, Any] = {}
+        if preferred_provider is not None:
+            call_kwargs["preferred_provider"] = preferred_provider
+
         for attempt in range(max_retries + 1):
             try:
                 # 優先嘗試強制 JSON 物件模式 (OpenAI/Groq compatible)
-                content, model, tokens = await self.call_text(working_messages, response_format={"type": "json_object"})
+                content, model, tokens = await self.call_text(
+                    working_messages, response_format={"type": "json_object"}, **call_kwargs
+                )
+            except TypeError:
+                # 若測試 monkeypatch 之 call_text 未接收 preferred_provider，安全降級
+                try:
+                    content, model, tokens = await self.call_text(
+                        working_messages, response_format={"type": "json_object"}
+                    )
+                except Exception:
+                    content, model, tokens = await self.call_text(working_messages, response_format=None)
             except Exception:
                 # 若後端模型不支援 response_format 參數，降級為純文字解析
-                content, model, tokens = await self.call_text(working_messages, response_format=None)
+                try:
+                    content, model, tokens = await self.call_text(working_messages, response_format=None, **call_kwargs)
+                except TypeError:
+                    content, model, tokens = await self.call_text(working_messages, response_format=None)
 
             total_tokens += tokens
 

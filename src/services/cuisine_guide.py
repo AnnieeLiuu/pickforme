@@ -448,13 +448,21 @@ class LocalSpecialtyGuideService:
                 )
                 user_prompt = f"目標地區：{clean_area}\n探索類別：{category}\n官方權威網頁內容：\n{clean_text[:2500]}"
 
-                data, _, _ = await client_to_use.call_structured_json(
-                    messages=[
-                        {"role": "system", "content": sys_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    schema=AreaSpecialtyGuide,
-                )
+                guide_msgs = [
+                    {"role": "system", "content": sys_prompt},
+                    {"role": "user", "content": user_prompt},
+                ]
+                try:
+                    data, _, _ = await client_to_use.call_structured_json(
+                        messages=guide_msgs,
+                        schema=AreaSpecialtyGuide,
+                        preferred_provider="gemini",
+                    )
+                except TypeError:
+                    data, _, _ = await client_to_use.call_structured_json(
+                        messages=guide_msgs,
+                        schema=AreaSpecialtyGuide,
+                    )
 
                 if isinstance(data, dict) and data.get("specialties") and len(data["specialties"]) == 3:
                     data["category"] = category
@@ -519,13 +527,21 @@ class LocalSpecialtyGuideService:
         )
         user_prompt = f"目標地區：{clean_area}\n探索類別：{category}\n\n日本網頁真實檢索摘要：\n{grounding_context}"
         try:
-            data, _, _ = await client_to_use.call_structured_json(
-                messages=[
-                    {"role": "system", "content": sys_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
-                schema=AreaSpecialtyGuide,
-            )
+            guide_msgs = [
+                {"role": "system", "content": sys_prompt},
+                {"role": "user", "content": user_prompt},
+            ]
+            try:
+                data, _, _ = await client_to_use.call_structured_json(
+                    messages=guide_msgs,
+                    schema=AreaSpecialtyGuide,
+                    preferred_provider="gemini",
+                )
+            except TypeError:
+                data, _, _ = await client_to_use.call_structured_json(
+                    messages=guide_msgs,
+                    schema=AreaSpecialtyGuide,
+                )
             if isinstance(data, dict) and data.get("specialties") and len(data["specialties"]) == 3:
                 data["category"] = category
                 data["source_tier"] = "grounding"

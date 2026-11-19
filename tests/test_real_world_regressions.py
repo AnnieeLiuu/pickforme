@@ -4169,3 +4169,235 @@ async def test_case_56_connoisseur_oyakodon_theme_alignment_and_specialty_scorin
     )
     assert "【老饕主題一致性與複合名店規範" in prompt
     assert "親子丼" in prompt
+
+
+# ==============================================================================
+# Case 59: Task-Specific Gemini Routing, Non-F&B Guard, Subpage Prefix & Raw-Cuisine Rescue
+# ==============================================================================
+@pytest.mark.asyncio
+async def test_case_59_task_specific_gemini_routing_and_503_retry():
+    """Case 59.1: Stage 1 與 Cuisine Guide 任務級路由至 Gemini，其餘維持 Groq，並支援 503 退避重試
+
+    [真實線上異常]
+    - 預設 LLM_PRIMARY_PROVIDER="groq" 時，qwen/qwen3.8-27b 缺乏台灣繁中「烏龍麵 ➔ うどん」詞彙映射。
+    - 透過 preferred_provider="gemini" 僅針對 Stage 1 (意圖解析) 與 Cuisine Guide (Cache Miss)
+      優先使用 Gemini，其餘高 Token 場景 (Stage 4 合成、Entity Resolver 等) 維持 Groq。
+    - 遇暫時性 HTTP 503 高負載尖峰時自動退避 1 次再 Failover。
+    """
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    from src.agent.llm_client import LLMClient
+    from src.agent.stages.intent import execute_state_1_intent
+    from src.services.cuisine_guide import LocalSpecialtyGuideService
+
+    client = LLMClient()
+    call_order: list[str] = []
+
+    async def fake_gemini(messages, errors, response_format=None):
+        call_order.append("gemini")
+        return (
+            '{"intent": "search", "location": "日本橋人形町", "cuisine": "烏龍麵", "search_keyword_ja": "うどん"}',
+            "gemini-3.8-flash",
+            40,
+        )
+
+    async def fake_groq(messages, errors, response_format=None, models=None):
+        call_order.append("groq")
+        return '{"intent": "search"}', "qwen/qwen3.8-27b", 40
+
+    with (
+        patch("src.config.settings.LLM_PRIMARY_PROVIDER", "groq"),
+        patch.object(client, "_try_gemini", side_effect=fake_gemini),
+        patch.object(client, "_try_groq", side_effect=fake_groq),
+    ):
+        # 1. 預設呼叫 (如 Stage 4) 維持 Groq
+        await client.call_text([{"role": "user", "content": "hi"}])
+        assert call_order == ["groq"]
+
+        # 2. 指定 preferred_provider="gemini" (Stage 1) 優先走 Gemini
+        call_order.clear()
+        mock_fsm = MagicMock()
+        mock_fsm.llm_client = client
+        mock_fsm.places_client = MagicMock(geocode_location=AsyncMock(return_value=(35.6852, 139.7843)))
+        mock_fsm.session_repo = MagicMock()
+        mock_fsm.trace_logger = MagicMock(log_step=AsyncMock())
+        res = await execute_state_1_intent(mock_fsm, "日本橋人形町 烏龍麵", None, None)
+        assert call_order == ["gemini"]
+        assert res["search_keyword_ja"] == "うどん"
+
+        # 3. Cuisine Guide Grounding 合成優先走 Gemini
+        svc = LocalSpecialtyGuideService(guide_repo=None)
+        with (
+            patch.object(
+                svc,
+                "_fetch_yahoo_grounding_snippets",
+                AsyncMock(return_value=["讃岐うどんが名物です。", "手打ちうどんの老舗が多いです。"]),
+            ),
+            patch.object(
+                client,
+                "call_structured_json",
+                AsyncMock(
+                    return_value=(
+                        {
+                            "area_name": "高松",
+                            "category": "food",
+                            "intro": "讚岐烏龍麵聖地",
+                            "specialties": [
+                                {
+                                    "index": 1,
+                                    "cuisine_name": "讚岐烏龍麵",
+                                    "name_ja": "讃岐うどん",
+                                    "search_keyword_ja": "うどん",
+                                    "history_story": "歷史悠久",
+                                    "flavor_profile": "彈牙有勁",
+                                },
+                                {
+                                    "index": 2,
+                                    "cuisine_name": "骨付鳥",
+                                    "name_ja": "骨付鳥",
+                                    "search_keyword_ja": "骨付鳥",
+                                    "history_story": "地方名物",
+                                    "flavor_profile": "香辣多汁",
+                                },
+                                {
+                                    "index": 3,
+                                    "cuisine_name": "醬油豆",
+                                    "name_ja": "しょうゆ豆",
+                                    "search_keyword_ja": "しょうゆ豆",
+                                    "history_story": "傳統小菜",
+                                    "flavor_profile": "甘醇下飯",
+                                },
+                            ],
+                        },
+                        "gemini-3.8-flash",
+                        100,
+                    )
+                ),
+            ) as spy_json,
+        ):
+            await svc._fetch_and_synthesize_via_grounding("高松", category="food", llm_client=client)
+            assert spy_json.call_args.kwargs.get("preferred_provider") == "gemini"
+
+
+@pytest.mark.asyncio
+async def test_case_59_non_food_veto_subpage_prefix_and_raw_cuisine_rescue():
+    """Case 59.2: 非餐飲業態硬封殺、Tabelog 子頁籤前綴剝離、與 Stage 2 原語意 800m 補救
+
+    [真實線上異常 run_id: cf31b483]
+    1. Google Places 回傳 `モリヤスタジオ` (`primary_type="service"`) 混入 Stage 3。
+    2. Yahoo Grounding 回傳 `メニュー写真 : 桃源台ビューレストラン - 食べログ`，舊版 `split(:)[0]` 誤取 `メニュー写真` 為店名。
+    3. Stage 2 若因 `search_keyword_ja` 翻譯偏差導致 800m 不足 3 家，應優先以原詞 `raw_cuisine` 在同半徑補救撈出 `谷や`，而非擴圈去東京車站。
+    """
+    from unittest.mock import AsyncMock, MagicMock
+
+    from src.agent.stages.places_search import execute_state_2_places_ladder, prefilter_potential_foodie_places
+    from src.services.category_guard import check_category_mismatch
+    from src.services.tabelog_scraper import TabelogScraper
+
+    # 1. 非餐飲業態硬封殺 (即使 target_place_types 為空，且保留無欄位 Mock Fail-Open)
+    assert check_category_mismatch({"name": "無欄位Mock"}) == (False, None)
+    is_mm_service, reason_service = check_category_mismatch(
+        {
+            "name": "モリヤスタジオ",
+            "primary_type": "service",
+            "types": ["point_of_interest", "service", "establishment"],
+        },
+        target_place_types=[],
+    )
+    assert is_mm_service is True
+    assert (reason_service or "").startswith("非餐飲業態")
+
+    is_mm_photo, _ = check_category_mismatch(
+        {"name": "寫真館", "primary_type": "photo_shop", "types": ["photo_shop", "store", "establishment"]},
+    )
+    assert is_mm_photo is True
+
+    # 2. Tabelog 子頁籤標題前綴剝離
+    scraper = TabelogScraper()
+    fake_html = """
+    <html><body>
+      <section class="sw-Card">
+        <h3>メニュー写真 : 桃源台ビューレストラン - 食べログ</h3>
+        <a href="https://tabelog.com/kanagawa/A1410/A141001/14001234/">link</a>
+        <p>評価： 3.45 178件のレビュー ￥1,000～￥1,999</p>
+      </section>
+    </body></html>
+    """
+    with MagicMock() as mock_resp:
+        mock_resp.status_code = 200
+        mock_resp.text = fake_html
+        mock_client = MagicMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client.get = AsyncMock(return_value=mock_resp)
+        from unittest.mock import patch
+
+        with patch("src.services.tabelog_scraper.httpx.AsyncClient", return_value=mock_client):
+            cands = await scraper._fetch_and_parse_grounding("site:tabelog.com test", "fallback")
+    assert len(cands) == 1
+    assert cands[0]["name_ja"] == "桃源台ビューレストラン"
+
+    # 3. Stage 2: 排除非餐飲業態 (連 mismatch_fallback 也不準進入) + 800m raw_cuisine 補救撈出谷や
+    mock_fsm = MagicMock()
+    mock_fsm.trace_logger = MagicMock(log_step=AsyncMock())
+    mock_fsm._prefilter_potential_foodie_places = prefilter_potential_foodie_places
+    mock_fsm.tabelog_scraper = MagicMock(discover_area_top_stores=AsyncMock(return_value=[]))
+
+    async def fake_search_nearby(lat, lng, radius=800, keyword=""):
+        if keyword == "烏龍ラーメン":
+            return [
+                {
+                    "google_place_id": "studio_1",
+                    "name": "モリヤスタジオ",
+                    "primary_type": "service",
+                    "types": ["point_of_interest", "service", "establishment"],
+                    "lat": 35.6853,
+                    "lng": 139.7844,
+                    "google_rating": 5.0,
+                },
+                {
+                    "google_place_id": "hanayama_1",
+                    "name": "五代目 花山うどん 日本橋店",
+                    "primary_type": "japanese_restaurant",
+                    "types": ["japanese_restaurant", "restaurant", "food"],
+                    "lat": 35.6850,
+                    "lng": 139.7800,
+                    "google_rating": 4.3,
+                },
+            ]
+        if keyword == "烏龍麵":
+            return [
+                {
+                    "google_place_id": "taniya_1",
+                    "name": "谷や",
+                    "primary_type": "japanese_restaurant",
+                    "types": ["japanese_restaurant", "restaurant", "food"],
+                    "lat": 35.6860,
+                    "lng": 139.7850,
+                    "google_rating": 4.1,
+                },
+                {
+                    "google_place_id": "senkichi_1",
+                    "name": "カレーうどん 千吉",
+                    "primary_type": "japanese_restaurant",
+                    "types": ["japanese_restaurant", "restaurant", "food"],
+                    "lat": 35.6880,
+                    "lng": 139.7820,
+                    "google_rating": 4.0,
+                },
+            ]
+        return []
+
+    mock_fsm.places_client = MagicMock(search_nearby=AsyncMock(side_effect=fake_search_nearby))
+    result_cands = await execute_state_2_places_ladder(
+        fsm=mock_fsm,
+        lat=35.6852807,
+        lng=139.7843792,
+        keyword="烏龍ラーメン",
+        origin_name="日本橋人形町",
+        raw_cuisine="烏龍麵",
+    )
+    cand_names = {c["name"] for c in result_cands}
+    assert "モリヤスタジオ" not in cand_names
+    assert "谷や" in cand_names
+    assert "五代目 花山うどん 日本橋店" in cand_names
